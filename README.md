@@ -13,6 +13,7 @@ Prepare deployment node:
 
     sudo apt-get update
     sudo apt-get upgrade -y
+    sudo apt-get install -y golang-cfssl
     sudo apt-get install python tree -y
     sudo apt install software-properties-common
     sudo apt-add-repository --yes --update ppa:ansible/ansible
@@ -64,18 +65,40 @@ Test ansible connection:
 
     # on NODE_DEV
     export ANSIBLE_HOST_KEY_CHECKING=False		# to avoid  WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!
-    				# or clear the contents of ~/.ssh/known_hosts
+						# or clear the contents of ~/.ssh/known_hosts
     ansible -m ping cluster
 
 Generate etcd keys:
 
-    cd pki-dir
-    openssl req -newkey rsa:2048 -new -nodes -x509 -days 3650 -keyout NODE_1-key.pem -out NODE_1.pem
-    openssl req -newkey rsa:2048 -new -nodes -x509 -days 3650 -keyout NODE_2-key.pem -out NODE_2.pem
-    openssl req -newkey rsa:2048 -new -nodes -x509 -days 3650 -keyout NODE_3-key.pem -out NODE_3.pem
-    openssl req -newkey rsa:2048 -new -nodes -x509 -days 3650 -keyout ca-key.pem -out ca.pem
+    cd tools
+    # format of etcd.conf: <external-DNS>,<external-IP>,<AWS-internal-DNS>,<AWS-internal-IP>
+    cat > etcd.conf << EOL
+    NODE_1,185.246.65.116,NODE_1,185.246.65.116
+    NODE_2,185.246.65.118,NODE_2,185.246.65.118
+    NODE_3,185.246.65.119,NODE_3,185.246.65.119
+    EOL
+    ./ssl-gen.sh etcd.conf
+	cd ..
 
 Deploy cluster:
 
     ansible-playbook pg-cluster.yaml
 
+Check etcd status:
+
+    # on NODE_1
+    etcdctl --endpoints https://185.246.65.116:2379 \
+    --ca-file=/var/lib/etcd/pg-cluster.pki/ca.pem \
+    --cert-file=/var/lib/etcd/pg-cluster.pki/NODE_1.pem \
+    --key-file=/var/lib/etcd/pg-cluster.pki/NODE_1-key.pem \
+    --debug cluster-health
+
+    # or
+    ... --debug member list
+
+### Links
+
+https://koudingspawn.de/setup-an-etcd-cluster/
+https://coreos.com/os/docs/latest/generate-self-signed-certificates.html
+https://github.com/portworx/cfssl-certs
+https://github.com/andrewrothstein/ansible-etcd-cluster

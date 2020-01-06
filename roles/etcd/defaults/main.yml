@@ -18,7 +18,7 @@ etcd_iface_cluster: '{{ etcd_network_iface | default("default") }}'
 etcd_port_client: 2379
 etcd_port_peer: 2380
 
-etcd_cluster_name: test-cluster-name
+etcd_cluster_name: pg-cluster
 etcd_initial_cluster_token: d8bf8cc6-5158-11e6-8f13-3b32f4935bde
 
 etcd_init_system: systemd

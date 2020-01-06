@@ -5,6 +5,7 @@
     - iotop
     - sysstat
     - nano
+    - net-tools
     state: latest
 
 - name: Install gnupg
