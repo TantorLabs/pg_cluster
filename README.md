@@ -98,7 +98,7 @@ Check etcd status:
 
 ### Links
 
-https://koudingspawn.de/setup-an-etcd-cluster/ 
-https://coreos.com/os/docs/latest/generate-self-signed-certificates.html 
-https://github.com/portworx/cfssl-certs 
-https://github.com/andrewrothstein/ansible-etcd-cluster 
+https://koudingspawn.de/setup-an-etcd-cluster/  
+https://coreos.com/os/docs/latest/generate-self-signed-certificates.html  
+https://github.com/portworx/cfssl-certs  
+https://github.com/andrewrothstein/ansible-etcd-cluster  
