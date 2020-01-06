@@ -64,7 +64,7 @@ Test ansible connection:
 
     # on NODE_DEV
     export ANSIBLE_HOST_KEY_CHECKING=False		# to avoid  WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!
-    											# or clear the contents of ~/.ssh/known_hosts
+    				# or clear the contents of ~/.ssh/known_hosts
     ansible -m ping cluster
 
 Generate etcd keys:
