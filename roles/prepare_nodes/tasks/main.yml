@@ -1,0 +1,22 @@
+- name: Install basic utils
+  apt:
+    name:
+    - htop
+    - iotop
+    - sysstat
+    - nano
+    state: latest
+
+- name: Install gnupg
+  apt:
+    name: gnupg
+    state: present
+    update_cache: yes
+
+- name: Ensure the locale exists
+  locale_gen:
+    name: en_US.UTF-8
+    state: present
+
+- name: Setup default locale
+  command: localectl set-locale LANG=en_US.UTF-8

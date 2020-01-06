@@ -1,0 +1,13 @@
+- hosts: cluster
+  tasks: []
+
+- name: Install basic soft
+  hosts: cluster
+  become: yes
+  roles:
+    - prepare_nodes
+
+- name: Install etcd
+  hosts: etcd
+  roles:
+    - role: etcd

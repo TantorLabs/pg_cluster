@@ -1,0 +1,88 @@
+---
+- name: Collect facts
+  set_fact:
+    cacheable: yes
+    etcd_listen_public: '{{ "0.0.0.0" if etcd_iface_public == "all" else ansible_default_ipv4.address if etcd_iface_public == "default" else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"] }}'
+    etcd_listen_cluster: '{{ "0.0.0.0" if etcd_iface_cluster == "all" else ansible_default_ipv4.address if etcd_iface_cluster == "default" else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"] }}'
+    etcd_address_public:  '{{ ansible_fqdn if not etcd_use_ips | bool else ansible_default_ipv4.address if etcd_iface_public  is in [ "all", "default" ] else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"] }}'
+    etcd_address_cluster: '{{ ansible_fqdn if not etcd_use_ips | bool else ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ] else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"] }}'
+
+- debug: var=etcd_address_cluster verbosity=0
+
+- name: create etcd group
+  become: yes
+  become_user: root
+  group:
+    name: '{{ etcd_group }}'
+    state: present
+
+- name: create etcd user
+  become: yes
+  become_user: root
+  user:
+    name: '{{ etcd_user }}'
+    group: '{{ etcd_group }}'
+    home: '{{ etcd_data_dir }}'
+    state: present
+
+- name: create dirs...
+  become: yes
+  become_user: root
+  file:
+    state: directory
+    path: '{{ item }}'
+    owner: '{{ etcd_user }}'
+    group: '{{ etcd_group }}'
+    mode: 0755
+  with_items:
+    - /etc/etcd
+    - '{{ etcd_cluster_pki_dir }}'
+
+- include_tasks: pki.yml
+  when: etcd_secure | bool
+
+- name: Downloading official etcd release
+  get_url:
+    url: "https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    mode: 0755
+  register: get_etcd
+
+- name: Unzip downloaded file
+  unarchive:
+    src: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: "/etc/etcd/"
+    remote_src: yes
+    owner: '{{ etcd_user }}'
+    group: '{{ etcd_group }}'
+    creates: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64/etcd"
+
+- name: Copy etcd binaries to destination directory
+  copy:
+    src: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: 0755
+    owner: '{{ etcd_user }}'
+    group: '{{ etcd_group }}'
+    remote_src: yes
+  with_items:
+    - etcd
+    - etcdctl
+
+- name: install etcd.service configuration
+  become: yes
+  become_user: root
+  with_items:
+    - f: etcd.conf
+      d: /etc/etcd
+  template:
+    src: '{{ item.f }}.j2'
+    dest: '{{ item.d }}/{{ item.f }}'
+    owner: '{{ etcd_user }}'
+    group: '{{ etcd_group }}'
+    mode: 0644
+  notify:
+  - restart etcd masters
+  - restart etcd members
+
+- include_tasks: '{{ etcd_init_system }}.yml'
