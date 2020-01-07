@@ -4,7 +4,7 @@ PostgreSQL HA cluster on Patroni
 
 ### Requirements
 
-- ansible 2.9
+- Ansible 2.9
 - Ubuntu 18.04 (bionic)
 
 ### Installation
@@ -84,6 +84,11 @@ Deploy cluster:
 
     ansible-playbook pg-cluster.yaml
 
+Deploy specific role:
+
+    ansible-playbook pg-cluster.yaml --tags "postgres"
+	# prepare_nodes, etcd, pgbouncer, haproxy
+
 Check etcd status:
 
     # on NODE_1
@@ -102,3 +107,4 @@ https://koudingspawn.de/setup-an-etcd-cluster/
 https://coreos.com/os/docs/latest/generate-self-signed-certificates.html  
 https://github.com/portworx/cfssl-certs  
 https://github.com/andrewrothstein/ansible-etcd-cluster  
+https://github.com/kostiantyn-nemchenko/ansible-role-patroni  
