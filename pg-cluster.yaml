@@ -1,21 +1,21 @@
-- hosts: cluster
+- hosts: inv_cluster
   tasks: []
 
 - name: Install basic soft
-  hosts: cluster
+  hosts: inv_cluster
   become: yes
   tags: prepare_nodes
   roles:
     - prepare_nodes
 
 - name: Install etcd
-  hosts: etcd
+  hosts: inv_etcd
   tags: etcd
   roles:
     - role: etcd
 
 - name: Install PostgreSQL
-  hosts: pg
+  hosts: inv_pg
   become: yes
   tags: postgres
   vars_files:
@@ -23,3 +23,14 @@
     - 'vars/main.yml'
   roles:
     - postgres
+
+- name: Install Patroni
+  hosts: inv_pg
+  become: yes
+  tags: patroni
+  vars_files:
+    - 'defaults/main.yml'
+    - 'vars/main.yml'
+  roles:
+    - patroni
+

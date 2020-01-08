@@ -37,7 +37,7 @@ Configure python on cluster nodes:
 Configure inventory file:
 
     cat > /etc/ansible/hosts << EOL
-    cluster:
+    inv_cluster:
       hosts:
         NODE_1:
           ansible_ssh_host: 185.246.65.116
@@ -45,13 +45,13 @@ Configure inventory file:
           ansible_ssh_host: 185.246.65.118
         NODE_3:
           ansible_ssh_host: 185.246.65.119
-    pg:
+    inv_pg:
       hosts:
         NODE_1_PG:
           ansible_ssh_host: 185.246.65.116
         NODE_2_PG:
           ansible_ssh_host: 185.246.65.118
-    etcd:
+    inv_etcd:
       hosts:
         NODE_1:
           ansible_ssh_host: 185.246.65.116
@@ -65,8 +65,10 @@ Test ansible connection:
 
     # on NODE_DEV
     export ANSIBLE_HOST_KEY_CHECKING=False		# to avoid  WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!
-						# or clear the contents of ~/.ssh/known_hosts
-    ansible -m ping cluster
+    # or clear the contents of known_hosts
+    > ~/.ssh/known_hosts
+    # test connection
+    ansible -m ping inv_cluster
 
 Generate etcd keys:
 

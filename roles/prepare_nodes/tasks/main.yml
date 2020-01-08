@@ -1,3 +1,9 @@
+- name: Update system
+  become: true
+  apt:
+    update_cache: yes
+    upgrade: 'yes'
+
 - name: Install basic utils
   apt:
     name:

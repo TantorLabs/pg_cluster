@@ -1,5 +1,5 @@
 ---
-- name: Collect facts
+- name: Collect facts for etcd
   set_fact:
     cacheable: yes
     etcd_listen_public: '{{ "0.0.0.0" if etcd_iface_public == "all" else ansible_default_ipv4.address if etcd_iface_public == "default" else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"] }}'
@@ -9,14 +9,14 @@
 
 - debug: var=etcd_address_cluster verbosity=0
 
-- name: create etcd group
+- name: Create etcd group
   become: yes
   become_user: root
   group:
     name: '{{ etcd_group }}'
     state: present
 
-- name: create etcd user
+- name: Create etcd user
   become: yes
   become_user: root
   user:
@@ -25,7 +25,7 @@
     home: '{{ etcd_data_dir }}'
     state: present
 
-- name: create dirs...
+- name: Create dirs
   become: yes
   become_user: root
   file:
@@ -69,7 +69,7 @@
     - etcd
     - etcdctl
 
-- name: install etcd.service configuration
+- name: Install etcd.service configuration
   become: yes
   become_user: root
   with_items:

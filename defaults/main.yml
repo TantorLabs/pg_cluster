@@ -10,8 +10,8 @@ patroni_system_group: postgres
 patroni_exec_start_pre: "/bin/mkdir -m 2750 -p /var/run/postgresql/{{ patroni_pg_version }}-main.pg_stat_tmp"
 
 patroni_pip_packages:
-  - { name: "setuptools",                 state: "latest",  umask: "0022", executable: "pip3" }
-  - { name: "patroni[{{ patroni_dcs }}]", state: "present", umask: "0022", executable: "pip3" }
+  - { name: "setuptools", state: "latest",  umask: "0022", executable: "pip3" }
+  - { name: "patroni[etcd]", state: "present", umask: "0022", executable: "pip3" }
 
 patroni_replication_username: replicator
 patroni_replication_password: repuserpasswd
@@ -44,12 +44,10 @@ patroni_restapi_keyfile: ""
 patroni_restapi_username: ""
 patroni_restapi_password: ""
 
-patroni_dcs: etcd
-patroni_dcs_exists: true
-
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#etcd
 patroni_etcd_host: ""
-patroni_etcd_hosts: 127.0.0.1:2379
+patroni_etcd_hosts: ""
+# "{% for host in groups[inv_etcd] %}{{ hostvars[host]['ansible_fqdn'] }}={{ etcd_scheme }}{{ hostvars[host]['ansible_default_ipv4'].address }}:{{ etcd_port_peer }}{% if not loop.last %},{% endif %}{% endfor %}"
 patroni_etcd_use_proxies: false
 patroni_etcd_url: ""
 patroni_etcd_proxy: ""

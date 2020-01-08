@@ -1,0 +1,114 @@
+- name: Add patroni group
+  group:
+    name: "{{ patroni_system_group }}"
+    state: present
+
+- name: Add patroni user
+  user:
+    name: "{{ patroni_system_user }}"
+    group: "{{ patroni_system_group }}"
+    system: yes
+
+- name: Install watchdog
+  package:
+    name: watchdog
+    update_cache: yes
+
+- name: Make kernel watchdog device available for patroni
+  template:
+    src: patroni-watchdog.service.j2
+    dest: /etc/systemd/system/patroni-watchdog.service
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - restart patroni-watchdog
+
+# Dirty hack. See https://bugs.launchpad.net/ubuntu/+source/watchdog/+bug/1448924
+- name: Enable watchdog daemon to start on boot
+  file:
+    src: /lib/systemd/system/watchdog.service
+    dest: /etc/systemd/system/multi-user.target.wants/watchdog.service
+    state: link
+  when: ansible_distribution in ('Ubuntu', 'Debian') and
+        ansible_distribution_release in ('xenial', 'jessie')
+
+- name: Fix ImportError No module named pkg_resources remove package
+  apt: name=python-pkg-resources state=absent
+  run_once: true
+
+- name: Fix ImportError No module named pkg_resources install package
+  apt: name=python-pkg-resources state=present update_cache=yes
+  run_once: true
+
+- name: Install system packages for patroni
+  package:
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    update_cache: yes
+  with_items:
+    - "{{ patroni_system_packages }}"
+
+- name: Install pip packages for patroni
+  pip:
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    umask: "{{ item.umask }}"
+    executable: "{{ item.executable }}"
+  with_items:
+    - "{{ patroni_pip_packages }}"
+
+- name: Create patroni config directory
+  file:
+    path: "{{ patroni_config_dir }}"
+    state: directory
+    owner: "{{ patroni_system_user }}"
+    group: "{{ patroni_system_group }}"
+    mode: 0750
+
+- name: Create patroni log directory
+  file:
+    path: "{{ patroni_log_dir }}"
+    state: directory
+    owner: "{{ patroni_system_user }}"
+    group: "{{ patroni_system_group }}"
+    mode: 0750
+  when: patroni_log_destination |d('stderr', true) != 'stderr'
+
+- name: Prepare callback scripts
+  copy:
+    src: "callbacks/{{ item.event }}"
+    dest: "{{ item.script }}"
+    owner: "{{ patroni_system_user }}"
+    group: "{{ patroni_system_group }}"
+    mode: 0750
+    backup: yes
+  with_items:
+    - "{{ patroni_pg_callbacks }}"
+  when: not( (item.script is none) or (item.script | trim | length == 0) )
+
+- name: Create patroni unit file
+  template:
+    src: patroni.service.j2
+    dest: /etc/systemd/system/patroni.service
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Create patroni configuration file
+  template:
+    src: patroni.yml.j2
+    dest: "{{ patroni_config_dir }}/{{ patroni_name|default(inventory_hostname) }}.yml"
+    owner: "{{ patroni_system_user }}"
+    group: "{{ patroni_system_group }}"
+    mode: 0600
+  notify:
+    - restart patroni
+
+- name: Ensure patroni is running
+  systemd:
+    name: patroni.service
+    state: started
+    daemon_reload: yes
+    enabled: yes
+  tags: [patroni]
