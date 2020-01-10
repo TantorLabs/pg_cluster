@@ -52,9 +52,7 @@ etcd:
 {% if patroni_etcd_srv |d(None, true) %}
   srv: {{ patroni_etcd_srv }}
 {% endif %}
-{% if patroni_etcd_protocol |d(None, true) %}
-  protocol: {{ patroni_etcd_protocol }}
-{% endif %}
+  protocol: https
 {% if patroni_etcd_username |d(None, true) %}
   username: {{ patroni_etcd_username }}
 {% endif %}

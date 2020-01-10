@@ -52,7 +52,6 @@ patroni_etcd_use_proxies: false
 patroni_etcd_url: ""
 patroni_etcd_proxy: ""
 patroni_etcd_srv: ""
-patroni_etcd_protocol: http
 patroni_etcd_username: ""
 patroni_etcd_password: ""
 patroni_etcd_cacert: ""

@@ -107,6 +107,7 @@ Check etcd status:
 
 https://koudingspawn.de/setup-an-etcd-cluster/  
 https://coreos.com/os/docs/latest/generate-self-signed-certificates.html  
+https://sadique.io/blog/2016/11/11/setting-up-a-secure-etcd-cluster-behind-a-proxy/  
 https://github.com/portworx/cfssl-certs  
 https://github.com/andrewrothstein/ansible-etcd-cluster  
 https://github.com/kostiantyn-nemchenko/ansible-role-patroni  
