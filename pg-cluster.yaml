@@ -30,6 +30,7 @@
   become: yes
   tags: patroni
   vars_files:
+    - 'roles/etcd/vars/main.yml'
     - 'roles/etcd/defaults/main.yml'
     - 'defaults/main.yml'
     - 'vars/main.yml'

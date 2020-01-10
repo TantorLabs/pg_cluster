@@ -105,6 +105,26 @@
   notify:
     - restart patroni
 
+- name: Copy keys/certs from etcd
+  become: yes
+  become_user: root
+  with_items:
+    - f: '{{ etcd_pki_key_src }}'
+      d: /etc/patroni
+      m: '0400'
+    - f: '{{ etcd_pki_cert_src }}'
+      d: /etc/patroni
+      m: '0600'
+    - f: '{{ etcd_pki_ca_cert_src }}'
+      d: /etc/patroni
+      m: '0600'
+  copy:
+    src: '{{ item.f }}'
+    dest: '{{ item.d }}'
+    owner: postgres
+    group: postgres
+    mode: '{{ item.m }}'
+
 - name: Ensure patroni is running
   systemd:
     name: patroni.service

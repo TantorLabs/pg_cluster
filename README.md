@@ -47,9 +47,9 @@ Configure inventory file:
           ansible_ssh_host: 185.246.65.119
     inv_pg:
       hosts:
-        NODE_1_PG:
+        NODE_1:
           ansible_ssh_host: 185.246.65.116
-        NODE_2_PG:
+        NODE_2:
           ansible_ssh_host: 185.246.65.118
     inv_etcd:
       hosts:
