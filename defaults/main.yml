@@ -59,6 +59,9 @@ patroni_etcd_cert: "/etc/patroni/{{ inventory_hostname }}.pem"
 patroni_etcd_key: "/etc/patroni/{{ inventory_hostname }}-key.pem"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#bootstrap-configuration
+# dcs (Dynamic Configuration settings): This section will be written into /<namespace>/<scope>/config of the
+# given configuration store after initializing of new cluster
+
 patroni_bootstrap_dcs_ttl: 30
 patroni_bootstrap_dcs_loop_wait: 10
 patroni_bootstrap_dcs_retry_timeout: 10
@@ -94,12 +97,8 @@ patroni_bootstrap_dcs_pg_recovery_conf: []
 #  - { option: "standby_mode",    value: "on" }
 #  - { option: "restore_command", value: "cp ../wal_archive/%f %p" }
 
-patroni_bootstrap_dcs_pg_pg_hba: []
-#  - { type: "host", database: "all",         user: "all",                                address: "0.0.0.0/0", method: "ident", options: "map=omicron" }
-#  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
-
-patroni_bootstrap_dcs_pg_pg_ident: []
-#  - { mapname: "omicron", sysuser: "robert", pguser: "bob" }
+patroni_bootstrap_dcs_pg_hba:
+  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
 
 patroni_bootstrap_dcs_slots: []
 #  - { name: "permanent_physical_1", type: "physical" }

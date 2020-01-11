@@ -109,6 +109,9 @@ Check etcd status:
 
     ... ls --recursive --sort -p /service
 
+	... get /service/main/config # main is "patroni_scope" var
+
+
 ### How to
 
 Manual start patroni:
