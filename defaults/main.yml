@@ -190,3 +190,9 @@ patroni_tags:
 # HAproxy
 haproxy_postgresql_port_rewritten: 15432
 haproxy_postgresql_port_readonly: 15433
+haproxy_pool_postgresql_port_rewritten: 16432
+haproxy_pool_postgresql_port_readonly: 16433
+
+# PGBouncer
+pgbouncer_listen_port: 6432
+pgbouncer_log_directory: "/var/log/pgbouncer"

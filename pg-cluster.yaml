@@ -47,3 +47,14 @@
     - 'defaults/main.yml'
   roles:
     - haproxy
+
+- name: Install PGBouncer
+  hosts: inv_pg
+  become: yes
+  tags: pgbouncer
+  vars_files:
+    - 'roles/etcd/vars/main.yml'
+    - 'roles/etcd/defaults/main.yml'
+    - 'defaults/main.yml'
+  roles:
+    - pgbouncer    

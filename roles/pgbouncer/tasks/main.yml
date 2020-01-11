@@ -1,0 +1,32 @@
+- name: install pgbouncer
+  apt:
+    pkg: pgbouncer
+    state: present
+    update_cache: yes
+
+- name: template config files pgbouncer
+  template:
+    src: pgbouncer.ini.j2
+    dest: /etc/pgbouncer/pgbouncer.ini
+    backup: yes
+    owner: postgres
+    group: postgres
+    mode: 0600
+
+- name: Create log directory
+  file:
+    path: "{{ pgbouncer_log_directory }}"
+    state: directory
+    owner: postgres
+
+- name: Create pid directory
+  file:
+    path: "/var/run/pgbouncer"
+    state: directory
+    owner: postgres
+
+- name: Restarted pgbouncer
+  service:
+    name: pgbouncer
+    enabled: yes
+    state: restarted

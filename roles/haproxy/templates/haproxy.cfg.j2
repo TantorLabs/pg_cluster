@@ -45,3 +45,25 @@ backend slave
     {% for host in groups['inv_pg'] %}
     server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:5432 maxconn 3000 check port 8008
     {% endfor %}
+
+frontend  ft_master_pool
+    bind *:{{ haproxy_pool_postgresql_port_rewritten }}
+    default_backend             master_pool
+backend master_pool
+    option httpchk GET /master
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    {% for host in groups['inv_pg'] %}
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ pgbouncer_listen_port }} maxconn 3000 check port 8008
+    {% endfor %}
+frontend  ft_slave_pool
+    bind *:{{ haproxy_pool_postgresql_port_readonly }}
+    mode tcp
+    default_backend             slave_pool
+backend slave_pool
+    option httpchk GET /replica
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    {% for host in groups['inv_pg'] %}
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ pgbouncer_listen_port }} maxconn 3000 check port 8008
+    {% endfor %}    
