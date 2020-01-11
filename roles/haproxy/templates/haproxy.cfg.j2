@@ -1,0 +1,47 @@
+global
+    log         127.0.0.1 local2
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     1000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+defaults
+    mode                    tcp
+    log                     global
+    retries                 2
+    timeout queue           1m
+    timeout connect         4s
+    timeout client          30m
+    timeout server          30m
+    timeout check           1s
+    maxconn                 1000
+listen stats
+mode http
+bind *:7000
+stats enable
+stats uri /
+
+frontend  ft_master
+    bind *:{{ haproxy_postgresql_port_rewritten }}
+    default_backend             master
+backend master
+    option httpchk GET /master
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    {% for host in groups['inv_pg'] %}
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:5432 maxconn 3000 check port 8008
+    {% endfor %}
+
+frontend  ft_slave
+    bind *:{{ haproxy_postgresql_port_readonly }}
+    mode tcp
+    default_backend             slave
+backend slave
+    option httpchk GET /replica
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    {% for host in groups['inv_pg'] %}
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:5432 maxconn 3000 check port 8008
+    {% endfor %}
