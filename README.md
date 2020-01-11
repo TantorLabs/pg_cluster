@@ -103,6 +103,12 @@ Check etcd status:
     # or
     ... --debug member list
 
+    ... --version
+    >> etcdctl version: 3.3.18
+    API version: 2
+
+    ... ls --recursive --sort -p /service
+
 ### Links
 
 https://koudingspawn.de/setup-an-etcd-cluster/  
