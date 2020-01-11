@@ -46,8 +46,7 @@ patroni_restapi_password: ""
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#etcd
 patroni_etcd_host: ""
-patroni_etcd_hosts_tmp: "{{ groups['inv_etcd'] | map('extract', hostvars, ['ansible_ssh_host']) | join(',') }}"
-patroni_etcd_hosts: "{% for host in groups['inv_etcd'] %}{{ hostvars[host]['ansible_default_ipv4'].address }}:{{ etcd_port_peer }}{% if not loop.last %},{% endif %}{% endfor %}"
+patroni_etcd_hosts: "{% for host in groups['inv_etcd'] %}{{ hostvars[host]['ansible_default_ipv4'].address }}:{{ etcd_port_client }}{% if not loop.last %},{% endif %}{% endfor %}"
 patroni_etcd_use_proxies: false
 patroni_etcd_url: ""
 patroni_etcd_proxy: ""

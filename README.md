@@ -109,9 +109,17 @@ Check etcd status:
 
     ... ls --recursive --sort -p /service
 
+### How to
+
+Manual start patroni:
+
+    ps -ef | grep "bin/patroni" | grep -v grep | awk '{print $2}' | xargs kill
+    su -l postgres -c "/usr/bin/python3 /usr/local/bin/patroni /etc/patroni/NODE_1.yml"
+
 ### Links
 
 https://koudingspawn.de/setup-an-etcd-cluster/  
+https://lzone.de/cheat-sheet/etcd  
 https://coreos.com/os/docs/latest/generate-self-signed-certificates.html  
 https://sadique.io/blog/2016/11/11/setting-up-a-secure-etcd-cluster-behind-a-proxy/  
 https://github.com/portworx/cfssl-certs  
