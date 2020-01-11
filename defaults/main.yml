@@ -119,7 +119,7 @@ patroni_bootstrap_initdb:
 
 patroni_bootstrap_pg_hba: []
 #  - { type: "host", database: "all",         user: "all",                                address: "0.0.0.0/0", method: "ident", options: "map=omicron" }
-#  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
+  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
 
 patroni_bootstrap_post_bootstrap: "" #TODO
 patroni_bootstrap_post_init: "" #TODO
