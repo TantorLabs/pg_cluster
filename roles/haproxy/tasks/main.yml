@@ -1,0 +1,17 @@
+- name: Installing HAproxy
+  apt:
+    name: haproxy
+    state: latest
+    update_cache: true
+
+- name: Create systemd unit file HAproxy
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: 0644
+
+- name: Restarted HAproxy
+  service:
+    name: haproxy
+    enabled: yes
+    state: restarted

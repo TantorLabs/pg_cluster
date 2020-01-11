@@ -116,9 +116,10 @@ patroni_bootstrap_initdb:
   - { option: "encoding", value: "UTF8" }
   - { option: "data-checksums" }
 
-patroni_bootstrap_pg_hba: []
+patroni_bootstrap_pg_hba:
 #  - { type: "host", database: "all",         user: "all",                                address: "0.0.0.0/0", method: "ident", options: "map=omicron" }
-#  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
+  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
+  - { type: "host", database: "all", user: "all", address: "0.0.0.0/0", method: "md5" }
 
 patroni_bootstrap_post_bootstrap: "" #TODO
 patroni_bootstrap_post_init: "" #TODO
@@ -184,3 +185,13 @@ patroni_tags:
   - { name: "clonefrom",     value: "false" }
   - { name: "nosync",        value: "false" }
   - { name: "replicatefrom", value: "" }
+
+# HAproxy
+haproxy_postgresql_port_rewritten: 15432
+haproxy_postgresql_port_readonly: 15433
+haproxy_pool_postgresql_port_rewritten: 16432
+haproxy_pool_postgresql_port_readonly: 16433
+
+# PGBouncer
+pgbouncer_listen_port: 6432
+pgbouncer_log_directory: "/var/log/pgbouncer"
