@@ -83,6 +83,6 @@
     mode: 0644
   notify:
   - restart etcd masters
-  - restart etcd members
+#  - restart etcd members
 
 - include_tasks: '{{ etcd_init_system }}.yml'
