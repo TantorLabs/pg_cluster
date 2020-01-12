@@ -139,6 +139,37 @@ Reinstall patroni cluster:
     ansible-playbook pg-cluster.yaml --tags "patroni"
 
 
+### Cluster management
+
+Patroni includes a command called "patronictl" which can be used to control the cluster. Let`s check the status of the cluster:
+
+    patronictl -c /etc/patroni/NODE_1.yml list
+    >>
+    +---------+--------+----------------+--------+---------+----+-----------+
+    | Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
+    +---------+--------+----------------+--------+---------+----+-----------+
+    |   main  | NODE_1 | 185.246.65.116 |        | running |  1 |         0 |
+    |   main  | NODE_2 | 185.246.65.118 | Leader | running |  1 |           |
+    +---------+--------+----------------+--------+---------+----+-----------+
+
+`patronictl -c /etc/patroni/NODE_1.yml edit-config` should be used only to manage global cluster configuration.
+It should not contain any node-specific settings like `connect_address`, `listen`, `data_dir` and so on.
+
+Update DCS pg_hba settings:
+
+    cat > pg_hba.conf << EOL
+    host replication replicator 0.0.0.0/0 md5
+    local all all  trust
+    host all all 127.0.0.1/32 trust
+    host all all localhost trust
+    EOL
+
+    cat pg_hba.conf | jq -R -s 'split("\n") | .[0:-1] | {"postgresql": {"pg_hba": .}}' | \
+    patronictl -c /etc/patroni/NODE_1.yml edit-config --apply - --force main
+
+    patronictl -c /etc/patroni/NODE_1.yml show-config
+
+
 ### Links
 
 https://koudingspawn.de/setup-an-etcd-cluster/  
