@@ -134,6 +134,7 @@ Reinstall patroni cluster:
     rm -rf /etc/patroni && \
     etcdctl "${e_host[@]}" rm /service/main --recursive
     etcdctl "${e_host[@]}" rmdir /service/main
+    # on deployment node
     ansible-playbook pg-cluster.yaml --tags "postgres"
     ansible-playbook pg-cluster.yaml --tags "patroni"
 
