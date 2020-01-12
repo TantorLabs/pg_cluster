@@ -91,6 +91,8 @@ Deploy specific role:
     ansible-playbook pg-cluster.yaml --tags "postgres"
 	# prepare_nodes, etcd, pgbouncer, haproxy
 
+### How to
+
 Work with etcd:
 
     # on NODE_1
@@ -118,9 +120,6 @@ Work with etcd:
 
     # cleanup patroni cluster configuration
     etcdctl "${e_host[@]}" rm /service/main --recursive
-
-
-### How to
 
 Manual start patroni:
 
