@@ -7,6 +7,63 @@ PostgreSQL HA cluster on Patroni
 - Ansible 2.9
 - Ubuntu 18.04 (bionic)
 
+### Project structure
+
+    |-- defaults
+    |   `-- main.yml				# Default settings for: patroni, haproxy, pgbouncer
+    |-- pg-cluster.yaml			# Main playbook
+    |-- pki-dir				# Certificates generated using ssl-gen.sh
+    |   |-- ca-key.pem
+    |   |-- ca.pem
+    |   |-- ...
+    |-- README.md
+    |-- roles
+    |   |-- etcd					# v3.3.18
+    |   |   |-- defaults
+    |   |   |   `-- main.yml
+    |   |   |-- handlers
+    |   |   |   `-- main.yml
+    |   |   |-- tasks
+    |   |   |   |-- main.yml
+    |   |   |   |-- pki.yml
+    |   |   |   `-- systemd.yml
+    |   |   |-- templates
+    |   |   |   |-- etcd.conf.j2
+    |   |   |   `-- etcd.service.j2
+    |   |   `-- vars
+    |   |       `-- main.yml
+    |   |-- haproxy					# v1.8.8
+    |   |   |-- tasks
+    |   |   |   `-- main.yml
+    |   |   `-- templates
+    |   |       `-- haproxy.cfg.j2
+    |   |-- patroni					# v1.6.3
+    |   |   |-- handlers
+    |   |   |   `-- main.yml
+    |   |   |-- tasks
+    |   |   |   `-- main.yml
+    |   |   `-- templates
+    |   |       |-- patroni.service.j2
+    |   |       |-- patroni-watchdog.service.j2
+    |   |       `-- patroni.yml.j2
+    |   |-- pgbouncer				# v1.12.0
+    |   |   |-- tasks
+    |   |   |   `-- main.yml
+    |   |   `-- templates
+    |   |       `-- pgbouncer.ini.j2
+    |   |-- postgres				# v12.1
+    |   |   `-- tasks
+    |   |       `-- main.yml
+    |   `-- prepare_nodes			# Role for installing basic utils
+    |       `-- tasks
+    |           `-- main.yml
+    |-- tools
+    |   |-- etcd
+    |   |-- etcd.conf
+    |   `-- ssl-gen.sh
+    `-- vars
+        `-- main.yml		# Repo and modules for patroni and postgres
+
 ### Installation
 
 Prepare deployment node:
@@ -129,11 +186,17 @@ Manual start patroni:
 Reinstall patroni cluster (for the playbook debugging purposes only):
 
     # on each node
-    ps -ef | grep -we "patroni\|postgres" | grep -v grep | awk '{print $2}' | xargs kill -9 > /dev/null 2> /dev/null && \
+    node_n=NODE_1
+    e_host=(--endpoints https://185.246.65.116:2379 \
+        --ca-file=/var/lib/etcd/pg-cluster.pki/ca.pem \
+        --cert-file=/var/lib/etcd/pg-cluster.pki/$node_n.pem \
+        --key-file=/var/lib/etcd/pg-cluster.pki/$node_n-key.pem \
+    )
+    ps -ef | grep -we "patroni\|postgres" | grep -v grep | awk '{print $2}' | xargs kill -9 || true && \
     rm -rf /var/lib/postgresql/12/main && \
     rm -rf /etc/patroni && \
     etcdctl "${e_host[@]}" rm /service/main --recursive
-    etcdctl "${e_host[@]}" rmdir /service/main
+    # etcdctl "${e_host[@]}" rmdir /service/main
     # on deployment node
     ansible-playbook pg-cluster.yaml --tags "postgres"
     ansible-playbook pg-cluster.yaml --tags "patroni"
@@ -141,7 +204,7 @@ Reinstall patroni cluster (for the playbook debugging purposes only):
 
 ### Cluster management
 
-Patroni includes a command called "patronictl" which can be used to control the cluster. Let`s check the status of the cluster:
+Patroni includes a command called `patronictl` which can be used to control the cluster. Let`s check the status of the cluster:
 
     patronictl -c /etc/patroni/NODE_1.yml list
     >>
@@ -155,7 +218,7 @@ Patroni includes a command called "patronictl" which can be used to control the 
 `patronictl -c /etc/patroni/NODE_1.yml edit-config` should be used only to manage global cluster configuration.
 It should not contain any node-specific settings like `connect_address`, `listen`, `data_dir` and so on.
 
-Update DCS pg_hba settings:
+Update DCS `pg_hba` settings:
 
     cat > pg_hba.conf << EOL
     host replication replicator 0.0.0.0/0 md5
@@ -168,6 +231,29 @@ Update DCS pg_hba settings:
     patronictl -c /etc/patroni/NODE_1.yml edit-config --apply - --force main
 
     patronictl -c /etc/patroni/NODE_1.yml show-config
+
+Change `postgresql.conf` settings:
+
+    cat > postgresql.conf << EOL
+      "postgresql": {
+        "parameters": {
+          "max_connections" : 101,
+          "max_locks_per_transaction": 64,
+          "max_prepared_transactions": 0,
+          "max_replication_slots": 10,
+          "max_wal_senders": 10,
+          "max_worker_processes": 8,
+          "track_commit_timestamp": false,
+          "wal_keep_segments": 8,
+          "wal_level": "replica",
+          "wal_log_hints": true
+        }
+      }
+    EOL
+
+    cat postgresql.conf | patronictl -c /etc/patroni/NODE_1.yml edit-config --apply - --force main
+    patronictl -c /etc/patroni/NODE_1.yml list
+    patronictl -c /etc/patroni/NODE_1.yml restart main
 
 
 ### Links
