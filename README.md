@@ -126,13 +126,16 @@ Manual start patroni:
     ps -ef | grep "bin/patroni" | grep -v grep | awk '{print $2}' | xargs kill
     su -l postgres -c "/usr/bin/python3 /usr/local/bin/patroni /etc/patroni/NODE_1.yml"
 
-Drop patroni cluster:
+Reinstall patroni cluster:
 
     # on each node
     ps -ef | grep -we "patroni\|postgres" | grep -v grep | awk '{print $2}' | xargs kill -9 > /dev/null 2> /dev/null && \
     rm -rf /var/lib/postgresql/12/main && \
     rm -rf /etc/patroni && \
     etcdctl "${e_host[@]}" rm /service/main --recursive
+    etcdctl "${e_host[@]}" rmdir /service/main
+    ansible-playbook pg-cluster.yaml --tags "postgres"
+    ansible-playbook pg-cluster.yaml --tags "patroni"
 
 
 ### Links

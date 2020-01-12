@@ -99,6 +99,9 @@ patroni_bootstrap_dcs_pg_recovery_conf: []
 
 patroni_bootstrap_dcs_pg_hba:
   - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
+  - { type: "local", database: "all", user: "all", address: "", method: "trust" }
+  - { type: "host", database: "all", user: "all", address: "127.0.0.1/32", method: "trust" }
+  - { type: "host", database: "all", user: "all", address: "localhost", method: "trust" }
 
 patroni_bootstrap_dcs_slots: []
 #  - { name: "permanent_physical_1", type: "physical" }
