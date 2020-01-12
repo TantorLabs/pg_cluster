@@ -9,6 +9,14 @@
     group: "{{ patroni_system_group }}"
     system: yes
 
+- name: Create udev rule for watchdog
+  copy:
+    content: 'KERNEL=="{{ patroni_watchdog_device |basename }}", OWNER="{{ patroni_system_user }}", GROUP="{{ patroni_system_group }}", MODE="0600"'
+    dest: /etc/udev/rules.d/60-watchdog.rules
+    owner: root
+    group: root
+    mode: 0644
+
 - name: Install watchdog
   package:
     name: watchdog
@@ -32,12 +40,6 @@
     state: link
   when: ansible_distribution in ('Ubuntu', 'Debian') and
         ansible_distribution_release in ('xenial', 'jessie')
-
-# https://github.com/zalando/patroni/blob/master/docs/watchdog.rst
-# - name: Chown postgres path to the watchdog device
-  # file:
-    # path: "{{ patroni_watchdog_device }}"
-    # owner: postgres
 
 - name: Fix ImportError No module named pkg_resources remove package
   apt: name=python-pkg-resources state=absent
