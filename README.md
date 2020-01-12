@@ -126,7 +126,7 @@ Manual start patroni:
     ps -ef | grep "bin/patroni" | grep -v grep | awk '{print $2}' | xargs kill
     su -l postgres -c "/usr/bin/python3 /usr/local/bin/patroni /etc/patroni/NODE_1.yml"
 
-Reinstall patroni cluster:
+Reinstall patroni cluster (for the playbook debugging purposes only):
 
     # on each node
     ps -ef | grep -we "patroni\|postgres" | grep -v grep | awk '{print $2}' | xargs kill -9 > /dev/null 2> /dev/null && \
