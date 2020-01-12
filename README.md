@@ -91,25 +91,33 @@ Deploy specific role:
     ansible-playbook pg-cluster.yaml --tags "postgres"
 	# prepare_nodes, etcd, pgbouncer, haproxy
 
-Check etcd status:
+Work with etcd:
 
     # on NODE_1
-    etcdctl --endpoints https://185.246.65.116:2379 \
-    --ca-file=/var/lib/etcd/pg-cluster.pki/ca.pem \
-    --cert-file=/var/lib/etcd/pg-cluster.pki/NODE_1.pem \
-    --key-file=/var/lib/etcd/pg-cluster.pki/NODE_1-key.pem \
-    --debug cluster-health
+    e_host=(--endpoints https://185.246.65.116:2379 \
+        --ca-file=/var/lib/etcd/pg-cluster.pki/ca.pem \
+        --cert-file=/var/lib/etcd/pg-cluster.pki/NODE_1.pem \
+        --key-file=/var/lib/etcd/pg-cluster.pki/NODE_1-key.pem \
+    )
 
-    # or
-    ... --debug member list
+    etcdctl "${e_host[@]}" --debug cluster-health
 
-    ... --version
+    # list etcd members
+    etcdctl "${e_host[@]}" --debug member list
+
+    # check version
+    etcdctl "${e_host[@]}" --version
     >> etcdctl version: 3.3.18
-    API version: 2
+    >> API version: 2
 
-    ... ls --recursive --sort -p /service
+    # show all directories
+    etcdctl "${e_host[@]}" ls --recursive --sort -p /service
 
-	... get /service/main/config # main is "patroni_scope" var
+    # get key value ("main" is "patroni_scope")
+    etcdctl "${e_host[@]}" get /service/main/config
+
+    # cleanup patroni cluster configuration
+    etcdctl "${e_host[@]}" rm /service/main --recursive
 
 
 ### How to
