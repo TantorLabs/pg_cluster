@@ -92,6 +92,14 @@ patroni_bootstrap_dcs_pg_parameters:
   - { option: "max_wal_senders",           value: "10" }
   - { option: "max_replication_slots",     value: "10" }
   - { option: "wal_keep_segments",         value: "8" }
+  - { option: "logging_collector",         value: "on" }
+  - { option: "log_destination",           value: "csvlog" }
+  - { option: "log_directory",             value: "pg_log" }
+  - { option: "log_min_messages",          value: "warning" }
+  - { option: "log_min_error_statement",   value: "error" }
+  - { option: "log_min_duration_statement",value: "0" }
+  - { option: "log_duration",              value: "off" }
+  - { option: "log_statement",             value: "all " }
 
 patroni_bootstrap_dcs_pg_recovery_conf: []
 #  - { option: "standby_mode",    value: "on" }

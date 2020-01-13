@@ -201,6 +201,12 @@ Reinstall patroni cluster (for the playbook debugging purposes only):
     ansible-playbook pg-cluster.yaml --tags "postgres"
     ansible-playbook pg-cluster.yaml --tags "patroni"
 
+Manual create user:
+
+    # create user
+    su - postgres -c "psql -A -t -d postgres -c \"CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'repuserpasswd'\""
+    # check user
+    su - postgres -c "psql -A -t -d postgres -c \"select * from pg_roles where rolname = 'replicator'\""
 
 ### Cluster management
 
