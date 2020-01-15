@@ -140,3 +140,12 @@
     daemon_reload: yes
     enabled: yes
   tags: [patroni]
+
+- wait_for:
+    path: /var/run/postgresql/.s.PGSQL.5432
+
+- name: Create replication user
+  become: yes
+  become_user: root
+  command: su - postgres -c "psql -A -t -d postgres -c \"CREATE ROLE {{ patroni_replication_username }} WITH REPLICATION LOGIN PASSWORD '{{ patroni_replication_password }}'\""
+  ignore_errors: yes
