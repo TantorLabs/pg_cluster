@@ -148,6 +148,10 @@ Deploy specific role:
     ansible-playbook pg-cluster.yaml --tags "postgres"
 	# prepare_nodes, etcd, pgbouncer, haproxy
 
+After `CREATE DATABASE db_x` to allow the pgbouncer connections run:
+
+    su - postgres -c "psql -A -t -d db_x -f /etc/pgbouncer/pgbouncer_prepare.sql"
+
 ### How to
 
 Work with etcd:

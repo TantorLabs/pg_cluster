@@ -206,3 +206,6 @@ haproxy_pool_postgresql_port_readonly: 16433
 # PGBouncer
 pgbouncer_listen_port: 6432
 pgbouncer_log_directory: "/var/log/pgbouncer"
+pgbouncer_auth_user: pgbouncer
+pgbouncer_auth_user_passw: pgbouncer819mQ
+pgbouncer_incoming_hosts: "{% for host in groups['inv_cluster'] %}{{ hostvars[host]['ansible_default_ipv4'].address }}{% if not loop.last %},{% endif %}{% endfor %}"
