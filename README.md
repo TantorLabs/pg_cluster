@@ -266,6 +266,39 @@ Change `postgresql.conf` settings:
     patronictl -c /etc/patroni/NODE_1.yml restart main
 
 
+Make switchover
+
+    patronictl -c /etc/patroni/NODE_1.yml switchover
+    >>
+        Master [NODE_2]:
+        Candidate ['NODE_1'] []: NODE_1
+        When should the switchover take place (e.g. 2020-01-21T02:39 )  [now]:
+        Current cluster topology
+        +---------+--------+----------------+--------+---------+----+-----------+
+        | Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
+        +---------+--------+----------------+--------+---------+----+-----------+
+        |   main  | NODE_1 | 185.246.65.116 |        | running |  2 |         0 |
+        |   main  | NODE_2 | 185.246.65.118 | Leader | running |  2 |           |
+        +---------+--------+----------------+--------+---------+----+-----------+
+        Are you sure you want to switchover cluster main, demoting current master NODE_2? [y/N]: y
+        2020-01-21 01:39:31.25652 Successfully switched over to "NODE_1"
+        +---------+--------+----------------+--------+---------+----+-----------+
+        | Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
+        +---------+--------+----------------+--------+---------+----+-----------+
+        |   main  | NODE_1 | 185.246.65.116 | Leader | running |  2 |           |
+        |   main  | NODE_2 | 185.246.65.118 |        | stopped |    |   unknown |
+        +---------+--------+----------------+--------+---------+----+-----------+
+
+    patronictl -c /etc/patroni/NODE_1.yml list
+    >>
+        +---------+--------+----------------+--------+---------+----+-----------+
+        | Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
+        +---------+--------+----------------+--------+---------+----+-----------+
+        |   main  | NODE_1 | 185.246.65.116 | Leader | running |  3 |           |
+        |   main  | NODE_2 | 185.246.65.118 |        | running |  3 |         0 |
+        +---------+--------+----------------+--------+---------+----+-----------+
+
+
 ### Links
 
 https://koudingspawn.de/setup-an-etcd-cluster/  
