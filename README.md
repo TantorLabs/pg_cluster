@@ -266,7 +266,7 @@ Change `postgresql.conf` settings:
     patronictl -c /etc/patroni/NODE_1.yml restart main
 
 
-Make switchover
+Make `switchover`:
 
     patronictl -c /etc/patroni/NODE_1.yml switchover
     >>
