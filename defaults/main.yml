@@ -24,7 +24,7 @@ patroni_namespace: /service/
 patroni_name: "{{ inventory_hostname }}"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#log
-patroni_log_destination: stderr
+patroni_log_destination: log
 patroni_log_level: INFO
 patroni_log_format: "%(asctime)s %(levelname)s: %(message)s"
 patroni_log_dateformat: ""
@@ -97,7 +97,7 @@ patroni_bootstrap_dcs_pg_parameters:
   - { option: "log_directory",             value: "pg_log" }
   - { option: "log_min_messages",          value: "warning" }
   - { option: "log_min_error_statement",   value: "error" }
-  - { option: "log_min_duration_statement",value: "0" }
+  - { option: "log_min_duration_statement",value: "1000" }
   - { option: "log_duration",              value: "off" }
   - { option: "log_statement",             value: "all " }
 
