@@ -142,7 +142,7 @@
   tags: [patroni]
 
 - wait_for:
-    path: /var/run/postgresql/.s.PGSQL.5432
+    path: /var/run/postgresql/.s.PGSQL.{{ patroni_pg_port }}
 
 - name: Create replication user
   become: yes
