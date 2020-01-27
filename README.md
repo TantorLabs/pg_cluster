@@ -219,120 +219,132 @@ etcdctl "${e_host[@]}" rm /service/main --recursive
 
 Manual start patroni:
 
-    ps -ef | grep "bin/patroni" | grep -v grep | awk '{print $2}' | xargs kill
-    su -l postgres -c "/usr/bin/python3 /usr/local/bin/patroni /etc/patroni/NODE_1.yml"
+```bash
+ps -ef | grep "bin/patroni" | grep -v grep | awk '{print $2}' | xargs kill
+su -l postgres -c "/usr/bin/python3 /usr/local/bin/patroni /etc/patroni/NODE_1.yml"
+```
 
 Reinstall patroni cluster (for the playbook debugging purposes only):
 
-    # on each node
-    node_n=NODE_1
-    e_host=(--endpoints https://185.246.65.116:2379 \
-        --ca-file=/var/lib/etcd/pg-cluster.pki/ca.pem \
-        --cert-file=/var/lib/etcd/pg-cluster.pki/$node_n.pem \
-        --key-file=/var/lib/etcd/pg-cluster.pki/$node_n-key.pem \
-    )
-    ps -ef | grep -we "patroni\|postgres" | grep -v grep | awk '{print $2}' | xargs kill -9 || true && \
-    rm -rf /var/lib/postgresql/12/main && \
-    rm -rf /etc/patroni && \
-    etcdctl "${e_host[@]}" rm /service/main --recursive
-    # etcdctl "${e_host[@]}" rmdir /service/main
-    # on deployment node
-    ansible-playbook pg-cluster.yaml --tags "postgres"
-    ansible-playbook pg-cluster.yaml --tags "patroni"
+```bash
+# on each node
+node_n=NODE_1
+e_host=(--endpoints https://185.246.65.116:2379 \
+	--ca-file=/var/lib/etcd/pg-cluster.pki/ca.pem \
+	--cert-file=/var/lib/etcd/pg-cluster.pki/$node_n.pem \
+	--key-file=/var/lib/etcd/pg-cluster.pki/$node_n-key.pem \
+)
+ps -ef | grep -we "patroni\|postgres" | grep -v grep | awk '{print $2}' | xargs kill -9 || true && \
+rm -rf /var/lib/postgresql/12/main && \
+rm -rf /etc/patroni && \
+etcdctl "${e_host[@]}" rm /service/main --recursive
+# etcdctl "${e_host[@]}" rmdir /service/main
+# on deployment node
+ansible-playbook pg-cluster.yaml --tags "postgres"
+ansible-playbook pg-cluster.yaml --tags "patroni"
+```
 
 Manual create user:
 
-    # create user
-    su - postgres -c "psql -A -t -d postgres -c \"CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'repuserpasswd'\""
-    # check user
-    su - postgres -c "psql -A -t -d postgres -c \"select * from pg_roles where rolname = 'replicator'\""
+```bash
+# create user
+su - postgres -c "psql -A -t -d postgres -c \"CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'repuserpasswd'\""
+# check user
+su - postgres -c "psql -A -t -d postgres -c \"select * from pg_roles where rolname = 'replicator'\""
+```
 
 ### Cluster management
 
 Patroni includes a command called `patronictl` which can be used to control the cluster. Let`s check the status of the cluster:
 
-    patronictl -c /etc/patroni/NODE_1.yml list
-    >>
-    +---------+--------+----------------+--------+---------+----+-----------+
-    | Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
-    +---------+--------+----------------+--------+---------+----+-----------+
-    |   main  | NODE_1 | 185.246.65.116 |        | running |  1 |         0 |
-    |   main  | NODE_2 | 185.246.65.118 | Leader | running |  1 |           |
-    +---------+--------+----------------+--------+---------+----+-----------+
+```bash
+patronictl -c /etc/patroni/NODE_1.yml list
+>>
++---------+--------+----------------+--------+---------+----+-----------+
+| Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
++---------+--------+----------------+--------+---------+----+-----------+
+|   main  | NODE_1 | 185.246.65.116 |        | running |  1 |         0 |
+|   main  | NODE_2 | 185.246.65.118 | Leader | running |  1 |           |
++---------+--------+----------------+--------+---------+----+-----------+
+```
 
 `patronictl -c /etc/patroni/NODE_1.yml edit-config` should be used only to manage global cluster configuration.
 It should not contain any node-specific settings like `connect_address`, `listen`, `data_dir` and so on.
 
 Update DCS `pg_hba` settings:
 
-    cat > pg_hba.conf << EOL
-    host replication replicator 0.0.0.0/0 md5
-    local all all  trust
-    host all all 127.0.0.1/32 trust
-    host all all localhost trust
-    EOL
+```bash
+cat > pg_hba.conf << EOL
+host replication replicator 0.0.0.0/0 md5
+local all all  trust
+host all all 127.0.0.1/32 trust
+host all all localhost trust
+EOL
 
-    cat pg_hba.conf | jq -R -s 'split("\n") | .[0:-1] | {"postgresql": {"pg_hba": .}}' | \
-    patronictl -c /etc/patroni/NODE_1.yml edit-config --apply - --force main
+cat pg_hba.conf | jq -R -s 'split("\n") | .[0:-1] | {"postgresql": {"pg_hba": .}}' | \
+patronictl -c /etc/patroni/NODE_1.yml edit-config --apply - --force main
 
-    patronictl -c /etc/patroni/NODE_1.yml show-config
+patronictl -c /etc/patroni/NODE_1.yml show-config
+```
 
 Change `postgresql.conf` settings:
 
-    cat > postgresql.conf << EOL
-      "postgresql": {
-        "parameters": {
-          "max_connections" : 101,
-          "max_locks_per_transaction": 64,
-          "max_prepared_transactions": 0,
-          "max_replication_slots": 10,
-          "max_wal_senders": 10,
-          "max_worker_processes": 8,
-          "track_commit_timestamp": false,
-          "wal_keep_segments": 8,
-          "wal_level": "replica",
-          "wal_log_hints": true
-        }
-      }
-    EOL
+```bash
+cat > postgresql.conf << EOL
+  "postgresql": {
+	"parameters": {
+	  "max_connections" : 101,
+	  "max_locks_per_transaction": 64,
+	  "max_prepared_transactions": 0,
+	  "max_replication_slots": 10,
+	  "max_wal_senders": 10,
+	  "max_worker_processes": 8,
+	  "track_commit_timestamp": false,
+	  "wal_keep_segments": 8,
+	  "wal_level": "replica",
+	  "wal_log_hints": true
+	}
+  }
+EOL
 
-    cat postgresql.conf | patronictl -c /etc/patroni/NODE_1.yml edit-config --apply - --force main
-    patronictl -c /etc/patroni/NODE_1.yml list
-    patronictl -c /etc/patroni/NODE_1.yml restart main
-
+cat postgresql.conf | patronictl -c /etc/patroni/NODE_1.yml edit-config --apply - --force main
+patronictl -c /etc/patroni/NODE_1.yml list
+patronictl -c /etc/patroni/NODE_1.yml restart main
+```
 
 Make `switchover`:
 
-    patronictl -c /etc/patroni/NODE_1.yml switchover
-    >>
-        Master [NODE_2]:
-        Candidate ['NODE_1'] []: NODE_1
-        When should the switchover take place (e.g. 2020-01-21T02:39 )  [now]:
-        Current cluster topology
-        +---------+--------+----------------+--------+---------+----+-----------+
-        | Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
-        +---------+--------+----------------+--------+---------+----+-----------+
-        |   main  | NODE_1 | 185.246.65.116 |        | running |  2 |         0 |
-        |   main  | NODE_2 | 185.246.65.118 | Leader | running |  2 |           |
-        +---------+--------+----------------+--------+---------+----+-----------+
-        Are you sure you want to switchover cluster main, demoting current master NODE_2? [y/N]: y
-        2020-01-21 01:39:31.25652 Successfully switched over to "NODE_1"
-        +---------+--------+----------------+--------+---------+----+-----------+
-        | Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
-        +---------+--------+----------------+--------+---------+----+-----------+
-        |   main  | NODE_1 | 185.246.65.116 | Leader | running |  2 |           |
-        |   main  | NODE_2 | 185.246.65.118 |        | stopped |    |   unknown |
-        +---------+--------+----------------+--------+---------+----+-----------+
+```bash
+patronictl -c /etc/patroni/NODE_1.yml switchover
+>>
+	Master [NODE_2]:
+	Candidate ['NODE_1'] []: NODE_1
+	When should the switchover take place (e.g. 2020-01-21T02:39 )  [now]:
+	Current cluster topology
+	+---------+--------+----------------+--------+---------+----+-----------+
+	| Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
+	+---------+--------+----------------+--------+---------+----+-----------+
+	|   main  | NODE_1 | 185.246.65.116 |        | running |  2 |         0 |
+	|   main  | NODE_2 | 185.246.65.118 | Leader | running |  2 |           |
+	+---------+--------+----------------+--------+---------+----+-----------+
+	Are you sure you want to switchover cluster main, demoting current master NODE_2? [y/N]: y
+	2020-01-21 01:39:31.25652 Successfully switched over to "NODE_1"
+	+---------+--------+----------------+--------+---------+----+-----------+
+	| Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
+	+---------+--------+----------------+--------+---------+----+-----------+
+	|   main  | NODE_1 | 185.246.65.116 | Leader | running |  2 |           |
+	|   main  | NODE_2 | 185.246.65.118 |        | stopped |    |   unknown |
+	+---------+--------+----------------+--------+---------+----+-----------+
 
-    patronictl -c /etc/patroni/NODE_1.yml list
-    >>
-        +---------+--------+----------------+--------+---------+----+-----------+
-        | Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
-        +---------+--------+----------------+--------+---------+----+-----------+
-        |   main  | NODE_1 | 185.246.65.116 | Leader | running |  3 |           |
-        |   main  | NODE_2 | 185.246.65.118 |        | running |  3 |         0 |
-        +---------+--------+----------------+--------+---------+----+-----------+
-
+patronictl -c /etc/patroni/NODE_1.yml list
+>>
+	+---------+--------+----------------+--------+---------+----+-----------+
+	| Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB |
+	+---------+--------+----------------+--------+---------+----+-----------+
+	|   main  | NODE_1 | 185.246.65.116 | Leader | running |  3 |           |
+	|   main  | NODE_2 | 185.246.65.118 |        | running |  3 |         0 |
+	+---------+--------+----------------+--------+---------+----+-----------+
+```
 
 ### Links
 
