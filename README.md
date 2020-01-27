@@ -82,15 +82,17 @@ Failback - restore failed `Primary` in `Secondary` role
 
 Prepare deployment node:
 
-    sudo apt-get update
-    sudo apt-get upgrade -y
-    sudo apt-get install -y golang-cfssl
-    sudo apt-get install python tree -y
-    sudo apt install software-properties-common
-    sudo apt-add-repository --yes --update ppa:ansible/ansible
-    sudo apt install ansible
-    ansible --version
-    >> ansible 2.9.2
+```bash
+sudo apt-get update
+sudo apt-get upgrade -y
+sudo apt-get install -y golang-cfssl
+sudo apt-get install python tree -y
+sudo apt install software-properties-common
+sudo apt-add-repository --yes --update ppa:ansible/ansible
+sudo apt install ansible
+ansible --version
+>> ansible 2.9.2
+```
 
 Create ssh-key for ansible:
 
