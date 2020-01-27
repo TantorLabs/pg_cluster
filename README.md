@@ -7,6 +7,14 @@ PostgreSQL HA cluster on Patroni
 - Ansible 2.9
 - Ubuntu 18.04 (bionic)
 
+### Terminology
+
+Promote - change role of PostgreSQL instance `Secondary -> Primary`
+Demote - change role of PostgreSQL instance `Primary -> Secondary`
+Failover - promote `Secondary` when `Primary` is failed
+Swithover - swap roles (manual process)
+Failback - restore failed `Primary` in `Secondary` role
+
 ### Project structure
 
     |-- defaults
@@ -47,10 +55,13 @@ PostgreSQL HA cluster on Patroni
     |   |       |-- patroni-watchdog.service.j2
     |   |       `-- patroni.yml.j2
     |   |-- pgbouncer				# v1.12.0
+    |   |   |-- sql
+    |   |   |   `-- pgbouncer_prepare.sql	# CREATE SCHEMA pgbouncer and FUNCTION pgbouncer.get_auth
     |   |   |-- tasks
     |   |   |   `-- main.yml
     |   |   `-- templates
-    |   |       `-- pgbouncer.ini.j2
+    |   |       |-- pgbouncer.ini.j2
+    |   |       `-- pgbouncer.service.j2
     |   |-- postgres				# v12.1
     |   |   `-- tasks
     |   |       `-- main.yml
@@ -63,6 +74,9 @@ PostgreSQL HA cluster on Patroni
     |   `-- ssl-gen.sh
     `-- vars
         `-- main.yml		# Repo and modules for patroni and postgres
+
+![Architecture](pg_cluster.png)
+
 
 ### Installation
 
