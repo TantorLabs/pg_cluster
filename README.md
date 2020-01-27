@@ -1,6 +1,6 @@
 # pg_cluster
 
-PostgreSQL HA cluster on Patroni
+PostgreSQL high availability cluster on Patroni
 
 ### Terminology
 
