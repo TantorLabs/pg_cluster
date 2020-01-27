@@ -9,11 +9,11 @@ PostgreSQL HA cluster on Patroni
 
 ### Terminology
 
-Promote - change role of PostgreSQL instance `Secondary -> Primary`
-Demote - change role of PostgreSQL instance `Primary -> Secondary`
-Failover - promote `Secondary` when `Primary` is failed
-Swithover - swap roles (manual process)
-Failback - restore failed `Primary` in `Secondary` role
+Promote - change role of PostgreSQL instance `Secondary -> Primary`  
+Demote - change role of PostgreSQL instance `Primary -> Secondary`  
+Failover - promote `Secondary` when `Primary` is failed  
+Swithover - swap roles (manual process)  
+Failback - restore failed `Primary` in `Secondary` role  
 
 ### Project structure
 
