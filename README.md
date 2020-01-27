@@ -17,63 +17,65 @@ Failback - restore failed `Primary` in `Secondary` role
 
 ### Project structure
 
-    |-- defaults
-    |   `-- main.yml				# Default settings for: patroni, haproxy, pgbouncer
-    |-- pg-cluster.yaml			# Main playbook
-    |-- pki-dir				# Certificates generated using ssl-gen.sh
-    |   |-- ca-key.pem
-    |   |-- ca.pem
-    |   |-- ...
-    |-- README.md
-    |-- roles
-    |   |-- etcd					# v3.3.18
-    |   |   |-- defaults
-    |   |   |   `-- main.yml
-    |   |   |-- handlers
-    |   |   |   `-- main.yml
-    |   |   |-- tasks
-    |   |   |   |-- main.yml
-    |   |   |   |-- pki.yml
-    |   |   |   `-- systemd.yml
-    |   |   |-- templates
-    |   |   |   |-- etcd.conf.j2
-    |   |   |   `-- etcd.service.j2
-    |   |   `-- vars
-    |   |       `-- main.yml
-    |   |-- haproxy					# v1.8.8
-    |   |   |-- tasks
-    |   |   |   `-- main.yml
-    |   |   `-- templates
-    |   |       `-- haproxy.cfg.j2
-    |   |-- patroni					# v1.6.3
-    |   |   |-- handlers
-    |   |   |   `-- main.yml
-    |   |   |-- tasks
-    |   |   |   `-- main.yml
-    |   |   `-- templates
-    |   |       |-- patroni.service.j2
-    |   |       |-- patroni-watchdog.service.j2
-    |   |       `-- patroni.yml.j2
-    |   |-- pgbouncer				# v1.12.0
-    |   |   |-- sql
-    |   |   |   `-- pgbouncer_prepare.sql	# CREATE SCHEMA pgbouncer and FUNCTION pgbouncer.get_auth
-    |   |   |-- tasks
-    |   |   |   `-- main.yml
-    |   |   `-- templates
-    |   |       |-- pgbouncer.ini.j2
-    |   |       `-- pgbouncer.service.j2
-    |   |-- postgres				# v12.1
-    |   |   `-- tasks
-    |   |       `-- main.yml
-    |   `-- prepare_nodes			# Role for installing basic utils
-    |       `-- tasks
-    |           `-- main.yml
-    |-- tools
-    |   |-- etcd
-    |   |-- etcd.conf
-    |   `-- ssl-gen.sh
-    `-- vars
-        `-- main.yml		# Repo and modules for patroni and postgres
+```bash
+|-- defaults
+|   `-- main.yml				# Default settings for: patroni, haproxy, pgbouncer
+|-- pg-cluster.yaml			# Main playbook
+|-- pki-dir				# Certificates generated using ssl-gen.sh
+|   |-- ca-key.pem
+|   |-- ca.pem
+|   |-- ...
+|-- README.md
+|-- roles
+|   |-- etcd					# v3.3.18
+|   |   |-- defaults
+|   |   |   `-- main.yml
+|   |   |-- handlers
+|   |   |   `-- main.yml
+|   |   |-- tasks
+|   |   |   |-- main.yml
+|   |   |   |-- pki.yml
+|   |   |   `-- systemd.yml
+|   |   |-- templates
+|   |   |   |-- etcd.conf.j2
+|   |   |   `-- etcd.service.j2
+|   |   `-- vars
+|   |       `-- main.yml
+|   |-- haproxy					# v1.8.8
+|   |   |-- tasks
+|   |   |   `-- main.yml
+|   |   `-- templates
+|   |       `-- haproxy.cfg.j2
+|   |-- patroni					# v1.6.3
+|   |   |-- handlers
+|   |   |   `-- main.yml
+|   |   |-- tasks
+|   |   |   `-- main.yml
+|   |   `-- templates
+|   |       |-- patroni.service.j2
+|   |       |-- patroni-watchdog.service.j2
+|   |       `-- patroni.yml.j2
+|   |-- pgbouncer				# v1.12.0
+|   |   |-- sql
+|   |   |   `-- pgbouncer_prepare.sql	# CREATE SCHEMA pgbouncer and FUNCTION pgbouncer.get_auth
+|   |   |-- tasks
+|   |   |   `-- main.yml
+|   |   `-- templates
+|   |       |-- pgbouncer.ini.j2
+|   |       `-- pgbouncer.service.j2
+|   |-- postgres				# v12.1
+|   |   `-- tasks
+|   |       `-- main.yml
+|   `-- prepare_nodes			# Role for installing basic utils
+|       `-- tasks
+|           `-- main.yml
+|-- tools
+|   |-- etcd
+|   |-- etcd.conf
+|   `-- ssl-gen.sh
+`-- vars
+	`-- main.yml		# Repo and modules for patroni and postgres
+```
 
 ![Architecture](pg_cluster.png)
 
@@ -106,35 +108,38 @@ EOL
 
 Configure python on cluster nodes:
 
-    ln -s /usr/bin/python3 /usr/bin/python
-
+```bash
+ln -s /usr/bin/python3 /usr/bin/python
+```
 
 Configure inventory file:
 
-    cat > /etc/ansible/hosts << EOL
-    inv_cluster:
-      hosts:
-        NODE_1:
-          ansible_ssh_host: 185.246.65.116
-        NODE_2:
-          ansible_ssh_host: 185.246.65.118
-        NODE_3:
-          ansible_ssh_host: 185.246.65.119
-    inv_pg:
-      hosts:
-        NODE_1:
-          ansible_ssh_host: 185.246.65.116
-        NODE_2:
-          ansible_ssh_host: 185.246.65.118
-    inv_etcd:
-      hosts:
-        NODE_1:
-          ansible_ssh_host: 185.246.65.116
-        NODE_2:
-          ansible_ssh_host: 185.246.65.118
-        NODE_3:
-          ansible_ssh_host: 185.246.65.119
-    EOL
+```bash
+cat > /etc/ansible/hosts << EOL
+inv_cluster:
+  hosts:
+	NODE_1:
+	  ansible_ssh_host: 185.246.65.116
+	NODE_2:
+	  ansible_ssh_host: 185.246.65.118
+	NODE_3:
+	  ansible_ssh_host: 185.246.65.119
+inv_pg:
+  hosts:
+	NODE_1:
+	  ansible_ssh_host: 185.246.65.116
+	NODE_2:
+	  ansible_ssh_host: 185.246.65.118
+inv_etcd:
+  hosts:
+	NODE_1:
+	  ansible_ssh_host: 185.246.65.116
+	NODE_2:
+	  ansible_ssh_host: 185.246.65.118
+	NODE_3:
+	  ansible_ssh_host: 185.246.65.119
+EOL
+```
 
 Test ansible connection:
 
@@ -149,58 +154,68 @@ ansible -m ping inv_cluster
 
 Generate etcd keys:
 
-    cd tools
-    # format of etcd.conf: <external-DNS>,<external-IP>,<AWS-internal-DNS>,<AWS-internal-IP>
-    cat > etcd.conf << EOL
-    NODE_1,185.246.65.116,NODE_1,185.246.65.116
-    NODE_2,185.246.65.118,NODE_2,185.246.65.118
-    NODE_3,185.246.65.119,NODE_3,185.246.65.119
-    EOL
-    ./ssl-gen.sh etcd.conf
-	cd ..
+```bash
+cd tools
+# format of etcd.conf: <external-DNS>,<external-IP>,<AWS-internal-DNS>,<AWS-internal-IP>
+cat > etcd.conf << EOL
+NODE_1,185.246.65.116,NODE_1,185.246.65.116
+NODE_2,185.246.65.118,NODE_2,185.246.65.118
+NODE_3,185.246.65.119,NODE_3,185.246.65.119
+EOL
+./ssl-gen.sh etcd.conf
+cd ..
+```
 
 Deploy cluster:
 
-    ansible-playbook pg-cluster.yaml
+```bash
+ansible-playbook pg-cluster.yaml
+```
 
 Deploy specific role:
 
-    ansible-playbook pg-cluster.yaml --tags "postgres"
-	# prepare_nodes, etcd, pgbouncer, haproxy
+```bash
+ansible-playbook pg-cluster.yaml --tags "postgres"
+# prepare_nodes, etcd, pgbouncer, haproxy
+```
 
 After `CREATE DATABASE db_x` to allow the pgbouncer connections run:
 
-    su - postgres -c "psql -A -t -d db_x -f /etc/pgbouncer/pgbouncer_prepare.sql"
+```bash
+su - postgres -c "psql -A -t -d db_x -f /etc/pgbouncer/pgbouncer_prepare.sql"
+```
 
 ### How to
 
 Work with etcd:
 
-    # on NODE_1
-    e_host=(--endpoints https://185.246.65.116:2379 \
-        --ca-file=/var/lib/etcd/pg-cluster.pki/ca.pem \
-        --cert-file=/var/lib/etcd/pg-cluster.pki/NODE_1.pem \
-        --key-file=/var/lib/etcd/pg-cluster.pki/NODE_1-key.pem \
-    )
+```bash
+# on NODE_1
+e_host=(--endpoints https://185.246.65.116:2379 \
+	--ca-file=/var/lib/etcd/pg-cluster.pki/ca.pem \
+	--cert-file=/var/lib/etcd/pg-cluster.pki/NODE_1.pem \
+	--key-file=/var/lib/etcd/pg-cluster.pki/NODE_1-key.pem \
+)
 
-    etcdctl "${e_host[@]}" --debug cluster-health
+etcdctl "${e_host[@]}" --debug cluster-health
 
-    # list etcd members
-    etcdctl "${e_host[@]}" --debug member list
+# list etcd members
+etcdctl "${e_host[@]}" --debug member list
 
-    # check version
-    etcdctl "${e_host[@]}" --version
-    >> etcdctl version: 3.3.18
-    >> API version: 2
+# check version
+etcdctl "${e_host[@]}" --version
+>> etcdctl version: 3.3.18
+>> API version: 2
 
-    # show all directories
-    etcdctl "${e_host[@]}" ls --recursive --sort -p /service
+# show all directories
+etcdctl "${e_host[@]}" ls --recursive --sort -p /service
 
-    # get key value ("main" is "patroni_scope")
-    etcdctl "${e_host[@]}" get /service/main/config
+# get key value ("main" is "patroni_scope")
+etcdctl "${e_host[@]}" get /service/main/config
 
-    # cleanup patroni cluster configuration
-    etcdctl "${e_host[@]}" rm /service/main --recursive
+# cleanup patroni cluster configuration
+etcdctl "${e_host[@]}" rm /service/main --recursive
+```
 
 Manual start patroni:
 
