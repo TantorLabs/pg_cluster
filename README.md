@@ -17,7 +17,7 @@ Failback - restore failed `Primary` in `Secondary` role
 
 ### Project structure
 
-```sql
+```
 |-- defaults
 |   `-- main.yml				# Default settings for: patroni, haproxy, pgbouncer
 |-- pg-cluster.yaml			# Main playbook
