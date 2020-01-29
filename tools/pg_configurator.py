@@ -832,6 +832,7 @@ class PGConfigurator:
 
 class OutputFormat(BasicEnum, Enum):
     JSON = 'json'
+    PATRONI_JSON = 'patroni-json'
     CONF = 'conf'
 
 
@@ -907,7 +908,7 @@ if __name__ == "__main__":
         "--pg-version",
         help="PostgreSQL version, (default: %(default)s)",
         type=str,
-        choices=list(["9.6", "10", "11"]),
+        choices=list(["9.6", "10", "11", "12"]),
         default=mca["pg_version"]
     )
     parser.add_argument(
@@ -1062,6 +1063,14 @@ if __name__ == "__main__":
 
     if args.output_format == OutputFormat.JSON:
         out_conf = json.dumps(conf, indent=4)
+
+    if args.output_format == OutputFormat.PATRONI_JSON:
+        patroni_conf = {
+            "postgresql": {
+                "parameters": conf
+            }
+		}
+        out_conf = json.dumps(patroni_conf, indent=4)
 
     if args.output_file_name is not None:
         if os.path.exists(args.output_file_name):

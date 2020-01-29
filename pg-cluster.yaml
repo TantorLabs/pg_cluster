@@ -37,6 +37,16 @@
   roles:
     - patroni
 
+- name: Configure PostgreSQL
+  hosts: inv_pg
+  become: yes
+  tags: configure_pg
+  vars_files:
+    - 'defaults/main.yml'
+    - 'vars/main.yml'
+  roles:
+    - configure_pg
+
 - name: Install PGBouncer
   hosts: inv_pg
   become: yes

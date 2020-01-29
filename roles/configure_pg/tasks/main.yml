@@ -1,0 +1,27 @@
+- name: Upload pg_configurator.py
+  become: yes
+  become_user: root
+  with_items:
+    - f: "{{ playbook_dir + '/tools/pg_configurator.py' }}"
+      d: '/etc/patroni'
+      m: '0400'
+  copy:
+    src: '{{ item.f }}'
+    dest: '{{ item.d }}'
+    owner: root
+    group: root
+    mode: '{{ item.m }}'
+
+- name: Create json configuration
+  become: yes
+  become_user: root
+  command: |
+    python3.6 /etc/patroni/pg_configurator.py \
+    --db-cpu=4 \
+    --db-ram=4Gi \
+    --db-disk-type=SSD \
+    --db-duty=mixed \
+    --pg-version=12 \
+    --output-format=patroni-json \
+    --common-conf \
+    --output-file-name=/etc/patroni/postgresql.json
