@@ -2,6 +2,7 @@
 
 patroni_pg_version: 12
 patroni_pg_exists: false
+patroni_pg_port: 5432
 
 patroni_config_dir: /etc/patroni
 patroni_system_user: postgres
@@ -83,6 +84,7 @@ patroni_bootstrap_dcs_pg_use_pg_rewind: false
 patroni_bootstrap_dcs_pg_use_slots: true
 patroni_bootstrap_dcs_pg_parameters:
   - { option: "max_connections",           value: "100" }
+  - { option: "port",                      value: "{{ patroni_pg_port }}" }
   - { option: "max_locks_per_transaction", value: "64" }
   - { option: "max_worker_processes",      value: "8" }
   - { option: "max_prepared_transactions", value: "0" }
@@ -140,8 +142,8 @@ patroni_bootstrap_users:
   - { name: "{{ patroni_replication_username }}", password: "{{ patroni_replication_password }}", options: ['replication'] }
 
 patroni_pg_use_unix_socket: true
-patroni_pg_listen: 0.0.0.0:5432
-patroni_pg_connect_address: "{{ ansible_host }}:5432"
+patroni_pg_listen: "0.0.0.0:{{ patroni_pg_port }}"
+patroni_pg_connect_address: "{{ ansible_host }}:{{ patroni_pg_port }}"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#postgresql
 patroni_pg_authentication:

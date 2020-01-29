@@ -31,7 +31,7 @@ backend master
     http-check expect status 200
     default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
-    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:5432 maxconn 3000 check port 8008
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ patroni_pg_port }} maxconn 3000 check port 8008
     {% endfor %}
 
 frontend  ft_slave
@@ -43,7 +43,7 @@ backend slave
     http-check expect status 200
     default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
-    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:5432 maxconn 3000 check port 8008
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ patroni_pg_port }} maxconn 3000 check port 8008
     {% endfor %}
 
 frontend  ft_master_pool

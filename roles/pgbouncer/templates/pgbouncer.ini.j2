@@ -1,5 +1,5 @@
 [databases]
-* = host=127.0.0.1 port=5432 auth_user={{ pgbouncer_auth_user }}
+* = host=127.0.0.1 port={{ patroni_pg_port }} auth_user={{ pgbouncer_auth_user }}
 
 [pgbouncer]
 logfile = {{ pgbouncer_log_directory }}/pgbouncer.log
