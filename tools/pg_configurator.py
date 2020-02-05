@@ -1065,11 +1065,13 @@ if __name__ == "__main__":
         out_conf = json.dumps(conf, indent=4)
 
     if args.output_format == OutputFormat.PATRONI_JSON:
+        for key, val in conf.items():
+            conf[key] = val.strip("'")
         patroni_conf = {
             "postgresql": {
                 "parameters": conf
             }
-		}
+        }
         out_conf = json.dumps(patroni_conf, indent=4)
 
     if args.output_file_name is not None:
