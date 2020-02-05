@@ -12,16 +12,18 @@
     group: root
     mode: '{{ item.m }}'
 
+#- debug: var=pg_conf_db_dbg verbosity=0
+
 - name: Create json configuration
   become: yes
   become_user: root
   command: |
     python3.6 /etc/patroni/pg_configurator.py \
-    --db-cpu=4 \
-    --db-ram=4Gi \
-    --db-disk-type=SSD \
-    --db-duty=mixed \
-    --pg-version=12 \
+    --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
+    --db-ram="{{ pg_conf_db_ram }}" \
+    --db-disk-type="{{ pg_conf_db_disk_type }}" \
+    --db-duty="{{ pg_conf_db_duty }}" \
+    --pg-version="{{ patroni_pg_version }}" \
     --output-format=patroni-json \
     --common-conf \
     --output-file-name=/etc/patroni/postgresql.json

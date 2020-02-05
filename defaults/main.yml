@@ -211,3 +211,10 @@ pgbouncer_log_directory: "/var/log/pgbouncer"
 pgbouncer_auth_user: pgbouncer
 pgbouncer_auth_user_passw: pgbouncer819mQ
 pgbouncer_incoming_hosts: "{% for host in groups['inv_cluster'] %}{{ hostvars[host]['ansible_default_ipv4'].address }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+# Peformance parameters
+#pg_conf_db_dbg: "{{ hostvars[inventory_hostname] }}"
+pg_conf_db_cpu: "{{ hostvars[inventory_hostname]['ansible_processor_count'] }}"
+pg_conf_db_ram: "{{ hostvars[inventory_hostname]['ansible_memtotal_mb'] }}Mi"
+pg_conf_db_disk_type: SSD
+pg_conf_db_duty: mixed
