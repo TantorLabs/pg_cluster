@@ -392,7 +392,7 @@ systemctl stop patroni
 su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl start -D /var/lib/postgresql/12/main"
 ```
 
-To manual run of pg_basebackup use:
+To manual run of `pg_basebackup` use:
 
 ```bash
 rm -rf /var/lib/postgresql/12/main/*
