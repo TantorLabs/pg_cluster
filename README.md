@@ -346,6 +346,60 @@ patronictl -c /etc/patroni/NODE_1.yml list
 	+---------+--------+----------------+--------+---------+----+-----------+
 ```
 
+## Issue: secondary does not start
+
+```bash
+# NODE_1
+patronictl -c /etc/patroni/NODE_1.yml list
+>>
+	+---------+--------+----------------+--------+--------------+----+-----------+-----------------+
+	| Cluster | Member |      Host      |  Role  |    State     | TL | Lag in MB | Pending restart |
+	+---------+--------+----------------+--------+--------------+----+-----------+-----------------+
+	|   main  | NODE_1 | 185.246.65.116 | Leader |   running    | 16 |           |        *        |
+	|   main  | NODE_2 | 185.246.65.118 |        | start failed |    |   unknown |        *        |
+	+---------+--------+----------------+--------+--------------+----+-----------+-----------------+
+
+# NODE_2
+systemctl stop patroni
+su -l postgres -c "/usr/bin/python3 /usr/local/bin/patroni /etc/patroni/NODE_1.yml"
+>>
+	/var/run/postgresql:5432 - rejecting connections
+	/var/run/postgresql:5432 - no response
+
+# in pg_log
+>>
+	2020-02-06 23:34:58.926 MSK,,,7167,,5e3c7872.1bff,3,,2020-02-06 23:34:58 MSK,,0,FATAL,XX000,"requested timeline 2 is not a child of this server's history","Latest checkpoint is at 0/3000028 on timeline 1, but in the history of the requested timeline, the server forked off from that timeline at 0/3000000.",,,,,,,,""
+	2020-02-06 23:34:58.928 MSK,,,7165,,5e3c7872.1bfd,2,,2020-02-06 23:34:58 MSK,,0,LOG,00000,"startup process (PID 7167) exited with exit code 1",,,,,,,,,""
+	2020-02-06 23:34:58.928 MSK,,,7165,,5e3c7872.1bfd,3,,2020-02-06 23:34:58 MSK,,0,LOG,00000,"aborting startup due to startup process failure",,,,,,,,,""
+	2020-02-06 23:34:58.937 MSK,,,7165,,5e3c7872.1bfd,4,,2020-02-06 23:34:58 MSK,,0,LOG,00000,"database system is shut down",,,,,,,,,""
+
+patronictl -c /etc/patroni/NODE_2.yml reinit --force main NODE_2
+
+# NODE_1
+patronictl -c /etc/patroni/NODE_1.yml list
++---------+--------+----------------+--------+---------+----+-----------+-----------------+
+| Cluster | Member |      Host      |  Role  |  State  | TL | Lag in MB | Pending restart |
++---------+--------+----------------+--------+---------+----+-----------+-----------------+
+|   main  | NODE_1 | 185.246.65.116 | Leader | running | 16 |           |        *        |
+|   main  | NODE_2 | 185.246.65.118 |        | running | 16 |         0 |        *        |
++---------+--------+----------------+--------+---------+----+-----------+-----------------+
+```
+
+To manual start of PostgreSQL use:
+
+```bash
+systemctl stop patroni
+su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl start -D /var/lib/postgresql/12/main"
+```
+
+To manual run of pg_basebackup use:
+
+```bash
+rm -rf /var/lib/postgresql/12/main/*
+su - postgres -c "/usr/lib/postgresql/12/bin/pg_basebackup --pgdata=/var/lib/postgresql/12/main -X stream --dbname=dbname=postgres user=replicator host=185.246.65.116 port=5432"
+```
+
+
 ### Links
 
 https://koudingspawn.de/setup-an-etcd-cluster/  
