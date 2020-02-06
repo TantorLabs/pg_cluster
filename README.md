@@ -2,7 +2,7 @@
 
 PostgreSQL high availability cluster on Patroni
 
-### Terminology
+## Terminology
 
 **Promote** - change role of PostgreSQL instance `Secondary -> Primary`  
 **Demote** - change role of PostgreSQL instance `Primary -> Secondary`  
@@ -10,12 +10,12 @@ PostgreSQL high availability cluster on Patroni
 **Swithover** - swap roles (manual process)  
 **Failback** - restore failed `Primary` in `Secondary` role  
 
-### Requirements
+## Requirements
 
 - Ansible 2.9
 - Ubuntu 18.04 (bionic)
 
-### Project structure
+## Project structure
 
 ```
 |-- defaults
@@ -80,7 +80,7 @@ PostgreSQL high availability cluster on Patroni
 ![Architecture](pg_cluster.png)
 
 
-### Installation
+## Installation
 
 Prepare deployment node:
 
@@ -185,7 +185,7 @@ After `CREATE DATABASE db_x` to allow the pgbouncer connections run:
 su - postgres -c "psql -A -t -d db_x -f /etc/pgbouncer/pgbouncer_prepare.sql"
 ```
 
-### How to
+## How to
 
 Work with etcd:
 
@@ -253,7 +253,7 @@ su - postgres -c "psql -A -t -d postgres -c \"CREATE ROLE replicator WITH REPLIC
 su - postgres -c "psql -A -t -d postgres -c \"select * from pg_roles where rolname = 'replicator'\""
 ```
 
-### Cluster management
+## Cluster management
 
 Patroni includes a command called `patronictl` which can be used to control the cluster. Let`s check the status of the cluster:
 
@@ -346,7 +346,7 @@ patronictl -c /etc/patroni/NODE_1.yml list
 	+---------+--------+----------------+--------+---------+----+-----------+
 ```
 
-## Issue: secondary does not start
+### Issue: secondary does not start
 
 ```bash
 # NODE_1
