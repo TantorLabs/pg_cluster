@@ -361,7 +361,7 @@ patronictl -c /etc/patroni/NODE_1.yml list
 
 # NODE_2
 systemctl stop patroni
-su -l postgres -c "/usr/bin/python3 /usr/local/bin/patroni /etc/patroni/NODE_1.yml"
+su -l postgres -c "/usr/bin/python3 /usr/local/bin/patroni /etc/patroni/NODE_2.yml"
 >>
 	/var/run/postgresql:5432 - rejecting connections
 	/var/run/postgresql:5432 - no response
