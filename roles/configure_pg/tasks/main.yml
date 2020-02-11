@@ -28,14 +28,14 @@
     --common-conf \
     --output-file-name=/etc/patroni/postgresql.json
 
-- name: Apply json configuration
-  become: yes
-  become_user: root
-  command: |
-    patronictl -c /etc/patroni/"{{ inventory_hostname }}".yml edit-config --apply /etc/patroni/postgresql.json --force "{{ patroni_scope }}"
+# - name: Apply json configuration
+  # become: yes
+  # become_user: root
+  # command: |
+    # patronictl -c /etc/patroni/"{{ inventory_hostname }}".yml edit-config --apply /etc/patroni/postgresql.json --force "{{ patroni_scope }}"
 
-- name: Restart PostgreSQL
-  become: yes
-  become_user: root
-  command: |
-    patronictl -c /etc/patroni/"{{ inventory_hostname }}".yml restart "{{ patroni_scope }}" "{{ inventory_hostname }}" --force
+# - name: Restart PostgreSQL
+  # become: yes
+  # become_user: root
+  # command: |
+    # patronictl -c /etc/patroni/"{{ inventory_hostname }}".yml restart "{{ patroni_scope }}" "{{ inventory_hostname }}" --force

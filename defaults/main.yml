@@ -1,5 +1,4 @@
 ---
-
 patroni_pg_version: 12
 patroni_pg_exists: false
 patroni_pg_port: 5432
@@ -12,7 +11,7 @@ patroni_exec_start_pre: "/bin/mkdir -m 2750 -p /var/run/postgresql/{{ patroni_pg
 
 patroni_pip_packages:
   - { name: "setuptools", state: "latest",  umask: "0022", executable: "pip3" }
-  - { name: "patroni[etcd]", state: "present", umask: "0022", executable: "pip3" }
+  - { name: "patroni[etcd]==1.6.4", state: "present", umask: "0022", executable: "pip3" }
 
 patroni_replication_username: replicator
 patroni_replication_password: repuserpasswd
@@ -38,7 +37,7 @@ patroni_log_loggers:
   - { module: "urllib3",            level: "DEBUG" }
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#rest-api
-patroni_restapi_listen: 0.0.0.0:8008
+patroni_restapi_listen: 127.0.0.1:8008
 patroni_restapi_connect_address: "{{ ansible_host }}:8008"
 patroni_restapi_certfile: ""
 patroni_restapi_keyfile: ""
