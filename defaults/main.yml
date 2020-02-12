@@ -41,8 +41,8 @@ patroni_restapi_listen: 127.0.0.1:8008
 patroni_restapi_connect_address: "{{ ansible_host }}:8008"
 patroni_restapi_certfile: ""
 patroni_restapi_keyfile: ""
-patroni_restapi_username: ""
-patroni_restapi_password: ""
+patroni_restapi_username: "test_user"
+patroni_restapi_password: "test_pass"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#etcd
 patroni_etcd_host: ""
@@ -203,6 +203,7 @@ haproxy_postgresql_port_rewritten: 15432
 haproxy_postgresql_port_readonly: 15433
 haproxy_pool_postgresql_port_rewritten: 16432
 haproxy_pool_postgresql_port_readonly: 16433
+haproxy_patroni_auth: "{{ patroni_restapi_username }}:{{ patroni_restapi_password }}"
 
 # PGBouncer
 pgbouncer_listen_port: 6432

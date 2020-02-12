@@ -27,7 +27,9 @@ frontend  ft_master
     bind *:{{ haproxy_postgresql_port_rewritten }}
     default_backend             master
 backend master
-    option httpchk GET /master
+    option httpchk GET /master {% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
+                                HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
+                               {% endif %}
     http-check expect status 200
     default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
@@ -39,7 +41,9 @@ frontend  ft_slave
     mode tcp
     default_backend             slave
 backend slave
-    option httpchk GET /replica
+    option httpchk GET /replica {% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
+                                 HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
+                                {% endif %}
     http-check expect status 200
     default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
@@ -50,7 +54,9 @@ frontend  ft_master_pool
     bind *:{{ haproxy_pool_postgresql_port_rewritten }}
     default_backend             master_pool
 backend master_pool
-    option httpchk GET /master
+    option httpchk GET /master {% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
+                                HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
+                               {% endif %}
     http-check expect status 200
     default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
@@ -61,7 +67,9 @@ frontend  ft_slave_pool
     mode tcp
     default_backend             slave_pool
 backend slave_pool
-    option httpchk GET /replica
+    option httpchk GET /replica {% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
+                                 HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
+                                {% endif %}
     http-check expect status 200
     default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
