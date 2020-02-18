@@ -22,6 +22,7 @@ mode http
 bind *:7000
 stats enable
 stats uri /
+stats auth {{ haproxy_stat_user }}:{{ haproxy_stat_password }}
 
 frontend  ft_master
     bind *:{{ haproxy_postgresql_port_rewritten }}
