@@ -1,0 +1,45 @@
+- name: Upload pg_configurator.py
+  become: yes
+  become_user: root
+  with_items:
+    - f: "{{ playbook_dir + '/tools/pg_configurator.py' }}"
+      d: '/etc/patroni'
+      m: '0400'
+  copy:
+    src: '{{ item.f }}'
+    dest: '{{ item.d }}'
+    owner: root
+    group: root
+    mode: '{{ item.m }}'
+
+#- debug: var=pg_conf_db_dbg verbosity=0
+
+- name: Create json configuration
+  become: yes
+  become_user: root
+  command: |
+    python3.6 /etc/patroni/pg_configurator.py \
+    --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
+    --db-ram="{{ pg_conf_db_ram }}" \
+    --db-disk-type="{{ pg_conf_db_disk_type }}" \
+    --db-duty="{{ pg_conf_db_duty }}" \
+    --pg-version="{{ patroni_pg_version }}" \
+    --output-format=patroni-json \
+    --min-conns=200 \
+    --max-conns=200 \
+    --common-conf \
+    --output-file-name=/etc/patroni/postgresql.json
+
+- name: Apply json configuration
+  become: yes
+  become_user: root
+  shell: |
+    if [ "$(su - postgres -c "psql -A -t -d postgres -c \"select pg_is_in_recovery()\"")" = 'f' ]; then
+        sleep 5
+        patronictl -c /etc/patroni/"{{ inventory_hostname }}".yml edit-config --apply /etc/patroni/postgresql.json --force "{{ patroni_scope }}"
+        patronictl -c /etc/patroni/"{{ inventory_hostname }}".yml restart "{{ patroni_scope }}" "{{ inventory_hostname }}" --force
+    fi
+    if [ "$(su - postgres -c "psql -A -t -d postgres -c \"select pg_is_in_recovery()\"")" = 't' ]; then
+        sleep 10
+        patronictl -c /etc/patroni/"{{ inventory_hostname }}".yml restart "{{ patroni_scope }}" "{{ inventory_hostname }}" --force
+    fi

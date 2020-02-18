@@ -1,0 +1,25 @@
+---
+etcd_version: v3.3.18
+etcd_user: etcd
+etcd_group: etcd
+etcd_install_dir: /usr/local/bin
+etcd_data_dir: /var/lib/etcd
+
+etcd_master_group_name: inv_etcd
+
+etcd_secure: True
+etcd_pki_dir: "{{ playbook_dir + '/pki-dir' }}"
+etcd_pki_key_suffix: -key.pem
+etcd_pki_cert_suffix: .pem
+
+etcd_use_ips: True
+etcd_iface_public: '{{ etcd_network_iface | default("all") }}'
+etcd_iface_cluster: '{{ etcd_network_iface | default("default") }}'
+etcd_port_client: 2379
+etcd_port_peer: 2380
+
+etcd_cluster_name: pg-cluster
+etcd_initial_cluster_token: d8bf8cc6-5158-11e6-8f13-3b32f4935bde
+
+etcd_init_system: systemd
+etcd_launch: True

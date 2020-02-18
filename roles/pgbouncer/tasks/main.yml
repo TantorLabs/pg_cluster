@@ -1,0 +1,89 @@
+- name: Install pgbouncer
+  apt:
+    pkg: pgbouncer
+    state: present
+    update_cache: yes
+
+- name: Write pgbouncer.ini
+  template:
+    src: pgbouncer.ini.j2
+    dest: /etc/pgbouncer/pgbouncer.ini
+    backup: yes
+    owner: postgres
+    group: postgres
+    mode: 0600
+
+- name: Create log directory
+  file:
+    path: "{{ pgbouncer_log_directory }}"
+    state: directory
+    owner: postgres
+
+- name: Create pid directory
+  file:
+    path: "/var/run/pgbouncer"
+    state: directory
+    owner: postgres
+
+- name: Create pgbouncer user in DB
+  become: yes
+  become_user: root
+  command: |
+    su - postgres -c "psql -A -t -d postgres -c \"
+    do \\$\\$
+    begin
+    if not pg_is_in_recovery() and
+        not exists(select 1 from pg_roles where rolname = '{{ pgbouncer_auth_user }}') then
+      CREATE USER {{ pgbouncer_auth_user }} WITH PASSWORD '{{ pgbouncer_auth_user_passw }}';
+    end if;
+    end\\$\\$
+    \""
+  ignore_errors: yes
+
+- name: Create userlist.txt
+  become: yes
+  become_user: root
+  command: |
+    su - postgres -c "psql -A -t -d postgres -c \"
+     COPY (SELECT usename, passwd
+            FROM pg_shadow
+           WHERE usename='pgbouncer')
+              TO '/etc/pgbouncer/userlist.txt'
+            WITH (FORMAT CSV, DELIMITER ' ', FORCE_QUOTE *)
+    \""
+  ignore_errors: yes
+
+- name: Upload pgbouncer_prepare.sql
+  become: yes
+  become_user: root
+  with_items:
+    - f: "{{ playbook_dir + '/roles/pgbouncer/sql/pgbouncer_prepare.sql' }}"
+      d: '/etc/pgbouncer'
+      m: '0400'
+  copy:
+    src: '{{ item.f }}'
+    dest: '{{ item.d }}'
+    owner: postgres
+    group: postgres
+    mode: '{{ item.m }}'
+
+- name: Create pgbouncer namespace
+  become: yes
+  become_user: root
+  command: su - postgres -c "psql -A -t -d postgres -f /etc/pgbouncer/pgbouncer_prepare.sql"
+  ignore_errors: yes
+
+- name: Create pgbouncer unit file
+  template:
+    src: pgbouncer.service.j2
+    dest: /etc/systemd/system/pgbouncer.service
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Restart pgbouncer.service
+  systemd:
+    name: pgbouncer.service
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

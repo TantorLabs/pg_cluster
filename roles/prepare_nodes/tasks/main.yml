@@ -1,0 +1,38 @@
+- name: Update system
+  become: true
+  apt:
+    update_cache: yes
+    upgrade: 'yes'
+
+- name: Install basic utils
+  apt:
+    name:
+    - htop
+    - iotop
+    - sysstat
+    - nano
+    - net-tools
+    state: latest
+
+- name: Install gnupg
+  apt:
+    name: gnupg
+    state: present
+    update_cache: yes
+
+- name: Ensure the locale exists
+  locale_gen:
+    name: en_US.UTF-8
+    state: present
+
+- name: Setup default locale
+  command: localectl set-locale LANG=en_US.UTF-8
+
+- name: Set nofile for postgres
+  become: yes
+  become_user: root
+  shell: |
+    cat >> /etc/security/limits.conf << EOL
+    postgres soft    nofile   65536
+    postgres hard    nofile   100000
+    EOL

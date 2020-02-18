@@ -1,0 +1,70 @@
+- hosts: inv_cluster
+  tasks: []
+
+- name: Install basic soft
+  hosts: inv_cluster
+  become: yes
+  tags: prepare_nodes
+  roles:
+    - prepare_nodes
+
+- name: Install etcd
+  hosts: inv_etcd
+  tags: etcd
+  roles:
+    - role: etcd
+
+- name: Install PostgreSQL
+  hosts: inv_pg
+  become: yes
+  tags: postgres
+  vars_files:
+    - 'roles/etcd/defaults/main.yml'
+    - 'defaults/main.yml'
+    - 'vars/main.yml'
+  roles:
+    - postgres
+
+- name: Install Patroni
+  hosts: inv_pg
+  become: yes
+  tags: patroni
+  vars_files:
+    - 'roles/etcd/vars/main.yml'
+    - 'roles/etcd/defaults/main.yml'
+    - 'defaults/main.yml'
+    - 'vars/main.yml'
+  roles:
+    - patroni
+
+- name: Install PGBouncer
+  hosts: inv_pg
+  become: yes
+  tags: pgbouncer
+  vars_files:
+    - 'roles/etcd/vars/main.yml'
+    - 'roles/etcd/defaults/main.yml'
+    - 'defaults/main.yml'
+  roles:
+    - pgbouncer
+
+- name: Install Haproxy
+  hosts: inv_pg
+  become: yes
+  tags: haproxy
+  vars_files:
+    - 'roles/etcd/vars/main.yml'
+    - 'roles/etcd/defaults/main.yml'
+    - 'defaults/main.yml'
+  roles:
+    - haproxy
+
+- name: Configure PostgreSQL
+  hosts: inv_pg
+  become: yes
+  tags: configure_pg
+  vars_files:
+    - 'defaults/main.yml'
+    - 'vars/main.yml'
+  roles:
+    - configure_pg

@@ -1,0 +1,273 @@
+#jinja2: lstrip_blocks: True
+scope: {{ patroni_scope |d('main', true) }}
+namespace: {{ patroni_namespace |d('/service/', true) }}
+name: {{ patroni_name |d(inventory_hostname, true) }}
+
+{% if patroni_log_destination |d('stderr', true) != 'stderr' %}
+log:
+  level: {{ patroni_log_level |upper }}
+  format: {{ patroni_log_format |quote }}
+  dateformat: {{ patroni_log_dateformat |quote }}
+  max_queue_size: {{ patroni_log_max_queue_size |int }}
+  dir: {{ patroni_log_dir }}
+  file_num: {{ patroni_log_file_num |int }}
+  file_size: {{ patroni_log_file_size |int }}
+{% if patroni_log_loggers |d([], true) |length > 0 %}
+  loggers:
+  {% for logger in patroni_log_loggers %}
+    {{ logger.module }}: {{ logger.level |upper }}
+  {% endfor %}
+{% endif %}
+
+{% endif %}
+restapi:
+  listen: {{ patroni_restapi_listen |d('0.0.0.0:8008', true) }}
+  connect_address: {{ patroni_restapi_connect_address |d(ansible_host + ':8008', true) }}
+{% if patroni_restapi_certfile |d(None, true) and patroni_restapi_keyfile |d(None, true) %}
+  certfile: {{ patroni_restapi_certfile }}
+  keyfile: {{ patroni_restapi_keyfile }}
+{% endif %}
+{% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
+  authentication:
+    username: {{ patroni_restapi_username }}
+    password: {{ patroni_restapi_password }}
+{% endif %}
+
+etcd:
+{% if patroni_etcd_host |d(None, true) %}
+  host: {{ patroni_etcd_host }}
+{% endif %}
+{% if patroni_etcd_hosts |d(None, true) %}
+  hosts: {{ patroni_etcd_hosts }}
+{% endif %}
+{% if patroni_etcd_use_proxies |d(false, true) %}
+  use_proxies: {{ patroni_etcd_use_proxies |lower }}
+{% endif %}
+{% if patroni_etcd_url |d(None, true) %}
+  url: {{ patroni_etcd_url }}
+{% endif %}
+{% if patroni_etcd_proxy |d(None, true) %}
+  proxy: {{ patroni_etcd_proxy }}
+{% endif %}
+{% if patroni_etcd_srv |d(None, true) %}
+  srv: {{ patroni_etcd_srv }}
+{% endif %}
+{% if patroni_etcd_protocol |d(None, true) %}
+  protocol: {{ patroni_etcd_protocol }}
+{% endif %}
+{% if patroni_etcd_username |d(None, true) %}
+  username: {{ patroni_etcd_username }}
+{% endif %}
+{% if patroni_etcd_password |d(None, true) %}
+  password: {{ patroni_etcd_password }}
+{% endif %}
+{% if patroni_etcd_cacert |d(None, true) %}
+  cacert: {{ patroni_etcd_cacert }}
+{% endif %}
+{% if patroni_etcd_cert |d(None, true) %}
+  cert: {{ patroni_etcd_cert }}
+{% endif %}
+{% if patroni_etcd_key |d(None, true) %}
+  key: {{ patroni_etcd_key }}
+{% endif %}
+
+bootstrap:
+  dcs:
+    ttl: {{ patroni_bootstrap_dcs_ttl |d(30, true) |int }}
+    loop_wait: {{ patroni_bootstrap_dcs_loop_wait |d(10, true) |int }}
+    retry_timeout: {{ patroni_bootstrap_dcs_retry_timeout |d(10, true) |int }}
+    maximum_lag_on_failover: {{ patroni_bootstrap_dcs_maximum_lag_on_failover |d(1048576, true) |int }}
+    master_start_timeout: {{ patroni_bootstrap_dcs_master_start_timeout |d(300, true) |int }}
+    synchronous_mode: {{ patroni_bootstrap_dcs_synchronous_mode |d(false, true) |lower }}
+    synchronous_mode_strict: {{ patroni_bootstrap_dcs_synchronous_mode_strict |d(false, true) |lower }}
+    check_timeline: {{ patroni_bootstrap_dcs_check_timeline |d(false, true) |lower }}
+  {% if patroni_bootstrap_dcs_standby_cluster |map(attribute='value') |join() |trim |length > 0 %}
+    standby_cluster:
+    {% for item in patroni_bootstrap_dcs_standby_cluster %}
+      {{ item.option }}: {{ item.value }}
+    {% endfor %}
+  {% endif %}
+    postgresql:
+      use_pg_rewind: {{ patroni_bootstrap_dcs_pg_use_pg_rewind |string |d(true, true) |replace(None, true) |lower }}
+      use_slots: {{ patroni_bootstrap_dcs_pg_use_slots |string |d(true, true) |replace(None, true) |lower }}
+    {% if patroni_bootstrap_dcs_pg_parameters |d([], true) |length > 0 %}
+      parameters:
+      {% for guc in patroni_bootstrap_dcs_pg_parameters %}
+        {{ guc.option }}: {{ guc.value }}
+      {% endfor %}
+    {% endif %}
+    {% if patroni_bootstrap_dcs_pg_recovery_conf |d([], true) |length > 0 %}
+      recovery_conf:
+      {% for item in patroni_bootstrap_dcs_pg_recovery_conf %}
+        {{ item.option }}: {{ item.value }}
+      {% endfor %}
+    {% endif %}
+    {% if patroni_bootstrap_dcs_pg_hba |d([], true) |length > 0 %}
+      pg_hba:
+      {% for client in patroni_bootstrap_dcs_pg_hba %}
+        - {{ client.type }} {{ client.database }} {{ client.user }} {{ client.address |d(None) }} {{ client.method }} {{ client.options |d(None) }}
+      {% endfor %}
+	  {% for host in groups['inv_pg'] %}
+        - host all all {{ hostvars[host]['ansible_default_ipv4'].address }}/32 md5
+      {% endfor %}
+    {% endif %}
+  {% if patroni_bootstrap_dcs_slots |d([], true) |length > 0 %}
+    slots:
+    {% for slot in patroni_bootstrap_dcs_slots %}
+      {{ slot.name }}:
+        type: {{ slot.type }}
+      {% if slot.type == 'logical' %}
+        database: {{ slot.database }}
+        plugin: {{ slot.plugin }}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% if patroni_bootstrap_method_name |d(None, true) and patroni_bootstrap_method_command |d(None, true) %}
+  method: {{ patroni_bootstrap_method_name }}
+  {{ patroni_bootstrap_method_name }}:
+    command: {{ patroni_bootstrap_method_command }}
+    keep_existing_recovery_conf: {{ patroni_bootstrap_method_keep_existing_recovery_conf |d(false, true) |lower }}
+  {% if patroni_bootstrap_method_recovery_conf |d([], true) |length > 0 %}
+    recovery_conf:
+    {% for item in patroni_bootstrap_method_recovery_conf %}
+      {{ item.option }}: {{ item.value }}
+    {% endfor %}
+  {% endif %}
+{% endif %}
+{% if patroni_bootstrap_initdb |d([], true) |length > 0 %}
+  initdb:
+  {% for item in patroni_bootstrap_initdb %}
+    {% if item.value is undefined %}
+    - {{ item.option }}
+    {% else %}
+    - {{ item.option }}: {{ item.value }}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% if patroni_bootstrap_pg_hba |d([], true) |length > 0 %}
+  pg_hba:
+  {% for client in patroni_bootstrap_pg_hba %}
+    - {{ client.type }} {{ client.database }} {{ client.user }} {{ client.address |d(None) }} {{ client.method }} {{ client.options |d(None) }}
+  {% endfor %}
+{% endif %}
+{% if patroni_bootstrap_post_bootstrap |d(None, true) %}
+  post_bootstrap: {{ patroni_bootstrap_post_bootstrap }}
+{% endif %}
+{% if patroni_bootstrap_post_init |d(None, true) %}
+  post_init: {{ patroni_bootstrap_post_init }}
+{% endif %}
+{% if patroni_bootstrap_users |d([], true) |length > 0 %}
+  users:
+  {% for user in patroni_bootstrap_users %}
+    {{ user.name }}:
+      password: {{ user.password }}
+    {% if user.options |d([], true) |length > 0 %}
+      options:
+      {% for option in user.options %}
+        - {{ option }}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+postgresql:
+  use_unix_socket: {{ patroni_pg_use_unix_socket |string |d(true, true) |replace(None, true) |lower }}
+  listen: {{ patroni_pg_listen |d('0.0.0.0:5432', true) }}
+  connect_address: {{ patroni_pg_connect_address |d(ansible_host + ':5432', true) }}
+{% if patroni_pg_data_dir |d(None, true) %}
+  data_dir: {{ patroni_pg_data_dir }}
+{% endif %}
+{% if patroni_pg_bin_dir |d(None, true) %}
+  bin_dir: {{ patroni_pg_bin_dir }}
+{% endif %}
+{% if patroni_pg_config_dir |d(None, true) %}
+  config_dir: {{ patroni_pg_config_dir }}
+{% endif %}
+{% if patroni_pg_pgpass |d(None, true) %}
+  pgpass: {{ patroni_pg_pgpass }}
+{% endif %}
+{% if patroni_pg_authentication |d([], true) |length > 0 %}
+  authentication:
+  {% for role in patroni_pg_authentication %}
+    {{ role.type }}:
+      username: {{ role.username }}
+      password: {{ role.password }}
+  {% endfor %}
+{% endif %}
+{% if patroni_pg_callbacks |map(attribute='script') |join() |trim |length > 0 %}
+  callbacks:
+  {% for callback in patroni_pg_callbacks %}
+    {% if callback.script |d(None, true) %}
+    {{ callback.event }}: {{ callback.script }}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+  create_replica_methods:
+  {% for create_replica_method in patroni_pg_create_replica_methods |d(['basebackup'], true) %}
+    - {{ create_replica_method }}
+  {% endfor %}
+{% for create_replica_method in patroni_pg_create_replica_methods |d(['basebackup'], true) %}
+  {% if (vars['patroni_pg_' + create_replica_method]) |d([], true) |length > 0 %}
+  {{ create_replica_method }}:
+{% for item in vars['patroni_pg_' + create_replica_method] %}
+  {% if item.value is undefined %}
+    {{ item.option }}
+  {% else %}
+    {{ item.option }}: {{ item.value }}
+  {% endif %}
+{% endfor %}
+  {% endif %}
+{% endfor %}
+{% if patroni_pg_recovery_conf |d([], true) |length > 0 %}
+  recovery_conf:
+  {% for item in patroni_pg_recovery_conf %}
+    {{ item.option }}: {{ item.value }}
+  {% endfor %}
+{% endif %}
+{% if patroni_pg_custom_conf |d(None, true) %}
+  custom_conf: {{ patroni_pg_custom_conf }}
+{% endif %}
+{% if patroni_pg_parameters |d([], true) |length > 0 %}
+  parameters:
+  {% for guc in patroni_pg_parameters %}
+    {{ guc.option }}: {{ guc.value }}
+  {% endfor %}
+{% endif %}
+{% if patroni_pg_hba |d([], true) |length > 0 %}
+  pg_hba:
+  {% for client in patroni_pg_hba %}
+    - {{ client.type }} {{ client.database }} {{ client.user }} {{ client.address |d(None) }} {{ client.method }} {{ client.options |d(None) }}
+  {% endfor %}
+{% endif %}
+{% if patroni_pg_ident |d([], true) |length > 0 %}
+  pg_ident:
+  {% for map in patroni_pg_ident %}
+    - {{ map.mapname }} {{ map.sysuser }} {{ map.pguser }}
+  {% endfor %}
+{% endif %}
+  pg_ctl_timeout: {{ patroni_pg_ctl_timeout |d(60, true) |int }}
+{% if patroni_bootstrap_dcs_pg_use_pg_rewind |bool %}
+  {% if patroni_superuser_username |d(None, true) and patroni_superuser_password |d(None, true) %}
+  pg_rewind:
+    username: {{ patroni_superuser_username }}
+    password: {{ patroni_superuser_password }}
+  {% endif %}
+  remove_data_directory_on_rewind_failure: {{ patroni_pg_remove_data_directory_on_rewind_failure |d(false, true) |lower }}
+  remove_data_directory_on_diverged_timelines: {{ patroni_pg_remove_data_directory_on_diverged_timelines |d(false, true) |lower }}
+{% endif %}
+
+watchdog:
+  mode: {{ patroni_watchdog_mode |d('automatic', true) |lower }}
+{% if patroni_watchdog_mode |d('automatic', true) |lower in ('automatic', 'required') %}
+  device: {{ patroni_watchdog_device |d('/dev/watchdog', true) }}
+  safety_margin: {{ patroni_watchdog_safety_margin |d(5, true) |int }}
+{% endif %}
+
+{% if patroni_tags |d([], true) |length > 0 %}
+tags:
+  {% for tag in patroni_tags %}
+    {% if tag.value |d(None, true) %}
+    {{ tag.name }}: {{ tag.value }}
+    {% endif %}
+  {% endfor %}
+{% endif %}

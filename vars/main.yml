@@ -1,0 +1,22 @@
+---
+# vars file for pg_cluster
+
+pg_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+pg_apt_repo: "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main"
+
+patroni_pg_data_dir: "/var/lib/postgresql/{{ patroni_pg_version }}/{{ patroni_scope }}"
+patroni_pg_config_dir: "/var/lib/postgresql/{{ patroni_pg_version }}/{{ patroni_scope }}"
+patroni_pg_bin_dir: "/usr/lib/postgresql/{{ patroni_pg_version }}/bin"
+patroni_pg_pgpass: /var/lib/postgresql/.pgpass
+patroni_bin_dir: /usr/local/bin
+
+patroni_pg_packages:
+  - { name: "postgresql-{{ patroni_pg_version }}",            state: "present" }
+  - { name: "postgresql-client-{{ patroni_pg_version }}",     state: "present" }
+  - { name: "postgresql-contrib-{{ patroni_pg_version }}",    state: "present" }
+  - { name: "postgresql-server-dev-{{ patroni_pg_version }}", state: "present" }
+
+patroni_system_packages:
+  - { name: "python3-psycopg2", state: "present" }
+  - { name: "python3-pip",      state: "present" }
+  - { name: "jq",               state: "present" }
