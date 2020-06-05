@@ -12,6 +12,7 @@
     - sysstat
     - nano
     - net-tools
+    - less
     state: latest
 
 - name: Install gnupg
