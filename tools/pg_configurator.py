@@ -609,7 +609,13 @@ class PGConfigurator:
                 {
                     "__parent": "11"                                                # inheritance
                 }
+            ],
+            "15": [
+                {
+                    "__parent": "12"                                                # inheritance
+                }
             ]
+
         }
 
         common_alg_set = {
@@ -750,6 +756,11 @@ class PGConfigurator:
             "12": [
                 {
                     "__parent": "11"
+                }
+            ],
+            "15": [
+                {
+                    "__parent": "12"
                 }
             ]
         }
@@ -908,7 +919,7 @@ if __name__ == "__main__":
         "--pg-version",
         help="PostgreSQL version, (default: %(default)s)",
         type=str,
-        choices=list(["9.6", "10", "11", "12"]),
+        choices=list(["9.6", "10", "11", "12", "15"]),
         default=mca["pg_version"]
     )
     parser.add_argument(

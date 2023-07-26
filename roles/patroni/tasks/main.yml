@@ -1,3 +1,10 @@
+- name: Configure patroni repository key
+  apt_key:
+    url: "{{ patroni_apt_key_url }}"
+- name: Configure patroni repository
+  apt_repository:
+    repo: "{{ patroni_apt_repo }}"
+
 - name: Add patroni group
   group:
     name: "{{ patroni_system_group }}"
@@ -19,7 +26,7 @@
 
 - name: Install watchdog
   package:
-    name: watchdog
+    name: freeipmi-bmc-watchdog
     update_cache: yes
 
 - name: Make kernel watchdog device available for patroni
@@ -51,20 +58,9 @@
 
 - name: Install system packages for patroni
   package:
-    name: "{{ item.name }}"
-    state: "{{ item.state }}"
+    name: patroni
+    state: present
     update_cache: yes
-  with_items:
-    - "{{ patroni_system_packages }}"
-
-- name: Install pip packages for patroni
-  pip:
-    name: "{{ item.name }}"
-    state: "{{ item.state }}"
-    umask: "{{ item.umask }}"
-    executable: "{{ item.executable }}"
-  with_items:
-    - "{{ patroni_pip_packages }}"
 
 - name: Create patroni config directory
   file:

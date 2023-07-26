@@ -10,6 +10,7 @@
 
 - name: Install etcd
   hosts: inv_etcd
+  become: yes
   tags: etcd
   roles:
     - role: etcd
