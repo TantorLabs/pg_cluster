@@ -60,6 +60,17 @@
   roles:
     - haproxy
 
+- name: Install Keepalived
+  hosts: inv_pg
+  become: yes
+  tags: keepalived
+  vars_files:
+    - 'roles/etcd/vars/main.yml'
+    - 'roles/etcd/defaults/main.yml'
+    - 'defaults/main.yml'
+  roles:
+    - keepalived
+
 - name: Configure PostgreSQL
   hosts: inv_pg
   become: yes
