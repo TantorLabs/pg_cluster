@@ -12,7 +12,7 @@ adduser pg-lab
 **Сгенерировать SSH ключи и загрузить на узлы кластера:**
 
 ssh-keygen -t rsa -b 4096 -C "pg-lab" -f /home/pg-lab/pg_lab_ansible -q -N ""
-cat /home/pg-lab/pg_lab_ansible.pub >> ~/.ssh/authorized_keys
+cat /home/pg-lab/pg_lab_ansible.pub >> home/pg-lab/.ssh/authorized_keys
 scp /home/pg-lab/pg_lab_ansible.pub pg-lab@ip_узла:~/.ssh/authorized_keys (повторить для каждого узла)
 
 **Прописать на каждом узле кластера параметры подключения для пользователя pg-lab:**
