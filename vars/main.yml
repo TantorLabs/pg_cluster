@@ -5,6 +5,11 @@ pg_apt_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
 pg_apt_repo: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
 patroni_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
 patroni_apt_repo: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"
+pg_yum_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
+pg_yum_repo: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
+patroni_yum_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+patroni_yum_repo: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"
+
 
 
 patroni_pg_data_dir: "/var/lib/postgresql/tantor-se-server-{{ patroni_pg_version }}/{{ patroni_scope }}"
