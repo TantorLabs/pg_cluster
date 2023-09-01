@@ -20,7 +20,7 @@ cd pg_cluster
 ssh-keygen -t rsa -b 4096 -C "pg-lab" -f /home/pg-lab/pg_lab_ansible -q -N ""
 
 
-cat /home/pg-lab/pg_lab_ansible.pub >> home/pg-lab/.ssh/authorized_keys
+cat /home/pg-lab/pg_lab_ansible.pub >> /home/pg-lab/.ssh/authorized_keys
 
 
  ssh-copy-id -i /home/pg-lab/pg_lab_ansible.pub pg-lab@ip_узла  (повторить для каждого узла)
