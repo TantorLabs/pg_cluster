@@ -4,6 +4,10 @@
 
 adduser pg-lab
 
+**Установить git**
+
+apt install git
+
 **Скачать проект:**
 
 git clone -b astra-tantor https://github.com/TantorLabs/pg_cluster
