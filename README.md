@@ -26,7 +26,7 @@ cat /home/pg-lab/pg_lab_ansible.pub >> /home/pg-lab/.ssh/authorized_keys
  ssh-copy-id -i /home/pg-lab/pg_lab_ansible.pub pg-lab@ip_узла  (повторить для каждого узла)
 
 
-**Прописать на каждом узле кластера параметры подключения для пользователя pg-lab:**
+**Прописать параметры подключения для пользователя pg-lab:**
 
 cat >> $HOME/.ssh/config << EOL
 Host 192.168.56.*
@@ -47,7 +47,7 @@ EOL
 ssh pg-lab@ip_узла
 
 
-**В файле defaults/main.yml в строке pg_apt_repo: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main" заменить USERNAME:PASSWORD на имя пользователя и пароль для доступа к репозиторию Tantor DB.**
+**В файле vars/main.yml в строке pg_apt_repo: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main" заменить USERNAME:PASSWORD на имя пользователя и пароль для доступа к репозиторию Tantor DB.**
 
 
 
@@ -64,7 +64,9 @@ ssh pg-lab@ip_узла
 В файл /etc/apt/sources.list дописать строку deb http://ppa.launchpad.net/ansible/ansible/ubuntu bionic main
 
 apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 93C4A3FD7BB9C367
+
 apt update
+
 apt install -t bionic ansible
 
 
