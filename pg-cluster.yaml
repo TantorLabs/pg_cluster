@@ -61,7 +61,7 @@
     - haproxy
 
 - name: Install Keepalived
-  hosts: inv_pg
+  hosts: inv_keepalived
   become: yes
   tags: keepalived
   vars_files:
