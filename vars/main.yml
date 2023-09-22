@@ -2,7 +2,7 @@
 # vars file for pg_cluster
 
 pg_apt_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
-pg_apt_repo: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
+pg_apt_repo: "deb [arch=amd64] https://USERNAME:PASS@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
 patroni_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
 patroni_apt_repo: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"
 pg_yum_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
