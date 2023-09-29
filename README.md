@@ -4,7 +4,7 @@
 
 adduser pg-lab
 
-**Установить git**
+**Установить git:**
 
 apt install git
 
