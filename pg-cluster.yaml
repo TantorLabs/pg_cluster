@@ -10,6 +10,7 @@
 
 - name: Install etcd
   hosts: inv_etcd
+  become: yes
   tags: etcd
   roles:
     - role: etcd
@@ -58,6 +59,18 @@
     - 'defaults/main.yml'
   roles:
     - haproxy
+
+- name: Install Keepalived
+  hosts: inv_pg
+  become: yes
+  tags: keepalived
+  vars_files:
+    - 'roles/etcd/vars/main.yml'
+    - 'roles/etcd/defaults/main.yml'
+    - 'defaults/main.yml'
+    - 'vars/main.yml'
+  roles:
+    - keepalived
 
 - name: Configure PostgreSQL
   hosts: inv_pg

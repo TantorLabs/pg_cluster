@@ -1,0 +1,26 @@
+[all:children]
+inv_cluster
+inv_etcd
+inv_pg
+inv_keepalived
+ 
+[inv_cluster]
+pg-cluster-01 ansible_host=10.128.0.115 ansible_user=pg-lab
+pg-cluster-02 ansible_host=10.128.0.129 ansible_user=pg-lab
+pg-cluster-03 ansible_host=10.128.0.131 ansible_user=pg-lab
+ 
+[inv_etcd]
+pg-cluster-01 ansible_host=10.128.0.115 ansible_user=pg-lab
+pg-cluster-02 ansible_host=10.128.0.129 ansible_user=pg-lab
+pg-cluster-03 ansible_host=10.128.0.131 ansible_user=pg-lab
+ 
+[inv_pg]
+pg-cluster-01 ansible_host=10.128.0.115 ansible_user=pg-lab
+pg-cluster-02 ansible_host=10.128.0.129 ansible_user=pg-lab
+pg-cluster-03 ansible_host=10.128.0.131 ansible_user=pg-lab
+
+[inv_keepalived]
+pg-cluster-01 ansible_host=10.128.0.115 ansible_user=pg-lab
+pg-cluster-02 ansible_host=10.128.0.129 ansible_user=pg-lab
+pg-cluster-03 ansible_host=10.128.0.131 ansible_user=pg-lab
+

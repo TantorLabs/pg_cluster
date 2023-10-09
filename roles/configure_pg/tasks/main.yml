@@ -18,7 +18,7 @@
   become: yes
   become_user: root
   command: |
-    python3.6 /etc/patroni/pg_configurator.py \
+    python3.7 /etc/patroni/pg_configurator.py \
     --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
     --db-ram="{{ pg_conf_db_ram }}" \
     --db-disk-type="{{ pg_conf_db_disk_type }}" \

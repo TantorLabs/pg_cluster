@@ -1,5 +1,5 @@
 ---
-patroni_pg_version: 12
+patroni_pg_version: 15
 patroni_pg_exists: false
 patroni_pg_port: 5432
 
@@ -45,18 +45,18 @@ patroni_restapi_username: "test_user"
 patroni_restapi_password: "test_pass"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#etcd
-patroni_etcd_host: ""
-patroni_etcd_hosts: "{% for host in groups['inv_etcd'] %}{{ hostvars[host]['ansible_default_ipv4'].address }}:{{ etcd_port_client }}{% if not loop.last %},{% endif %}{% endfor %}"
-patroni_etcd_use_proxies: false
-patroni_etcd_url: ""
-patroni_etcd_proxy: ""
-patroni_etcd_srv: ""
-patroni_etcd_protocol: https
-patroni_etcd_username: ""
-patroni_etcd_password: ""
-patroni_etcd_cacert: "/etc/patroni/ca.pem"
-patroni_etcd_cert: "/etc/patroni/{{ inventory_hostname }}.pem"
-patroni_etcd_key: "/etc/patroni/{{ inventory_hostname }}-key.pem"
+patroni_etcd3_host: ""
+patroni_etcd3_hosts: "{% for host in groups['inv_etcd'] %}{{ hostvars[host]['ansible_default_ipv4'].address }}:{{ etcd_port_client }}{% if not loop.last %},{% endif %}{% endfor %}"
+patroni_etcd3_use_proxies: false
+patroni_etcd3_url: ""
+patroni_etcd3_proxy: ""
+patroni_etcd3_srv: ""
+patroni_etcd3_protocol: https
+patroni_etcd3_username: ""
+patroni_etcd3_password: ""
+patroni_etcd3_cacert: "/etc/patroni/ca.pem"
+patroni_etcd3_cert: "/etc/patroni/{{ inventory_hostname }}.pem"
+patroni_etcd3_key: "/etc/patroni/{{ inventory_hostname }}-key.pem"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#bootstrap-configuration
 # dcs (Dynamic Configuration settings): This section will be written into /<namespace>/<scope>/config of the
