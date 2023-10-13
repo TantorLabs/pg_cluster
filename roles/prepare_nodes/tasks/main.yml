@@ -15,13 +15,22 @@
       - gnupg
     state: present
 
-- name: Ensure the locale exists
-  locale_gen:
-    name: en_US.UTF-8
-    state: present
+- name: Define needed locales (for example, can be set in vars or inventory)
+  set_fact:
+    system_settings_locales:
+      - en_US.UTF-8
 
-- name: Setup default locale
-  command: localectl set-locale LANG=en_US.UTF-8
+- name: Check existing locales
+  shell: "locale -a | grep -i {{ item | regex_replace('-', '') | quote }}"
+  register: found_locales
+  changed_when: false
+  failed_when: false
+  loop: "{{ system_settings_locales }}"
+
+- name: Create missing locales
+  command: "localedef -i {{ item.item | regex_replace('(.*)\\..*', '\\1') | quote }} -f {{ item.item | regex_replace('.*\\.(.*)', '\\1') | quote }} {{ item.item | quote }}"
+  when: item.rc != 0
+  loop: "{{ found_locales.results }}"
 
 - name: Set nofile for postgres
   become: yes
