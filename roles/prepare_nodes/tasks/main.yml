@@ -1,25 +1,19 @@
-- name: Update system
-  become: true
-  apt:
-    update_cache: yes
-    upgrade: 'yes'
-
-- name: Install basic utils
-  apt:
-    name:
-    - htop
-    - iotop
-    - sysstat
-    - nano
-    - net-tools
-    - less
+- name: Upgrade all packages
+  ansible.builtin.yum:
+    name: '*'
     state: latest
 
-- name: Install gnupg
-  apt:
-    name: gnupg
+- name: Install basic packages
+  ansible.builtin.yum:
+    name:
+      - htop
+      - iotop
+      - sysstat
+      - nano
+      - net-tools
+      - less
+      - gnupg
     state: present
-    update_cache: yes
 
 - name: Ensure the locale exists
   locale_gen:

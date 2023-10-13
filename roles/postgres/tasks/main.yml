@@ -21,13 +21,13 @@
         regexp: ^#?create_main_cluster.*$
   when: ansible_os_family == "Debian" and not patroni_pg_exists
 
-- name: Configure postgresql repository key
-  apt_key:
-    url: "{{ pg_apt_key_url }}"
-
-- name: Configure postgresql repository
-  apt_repository:
-    repo: "{{ pg_apt_repo }}"
+- name: Add Tantor rpm repository
+  ansible.builtin.yum_repository:
+    name: tantor
+    description: Tantor RPM repo
+    file: external_repos
+    baseurl: https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/centos-7
+    gpgcheck: no
 
 - name: Install postgresql packages
   package:

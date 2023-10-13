@@ -1,8 +1,7 @@
-- name: Install pgbouncer
-  apt:
-    pkg: pgbouncer
-    state: present
-    update_cache: yes
+- name: Install the latest version of pgbouncer
+  ansible.builtin.yum:
+    name: pgbouncer
+    state: latest
 
 - name: Write pgbouncer.ini
   template:
