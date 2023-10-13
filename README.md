@@ -45,7 +45,7 @@ ssh pg-lab@ip_узла
 
 **Установить Ansible:**
 
-yum install bionic ansible
+yum install ansible
 
 **Запустить плейбук:**
 
