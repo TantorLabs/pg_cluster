@@ -43,10 +43,13 @@ ssh pg-lab@ip_узла
 
 cd tools
 
-cat > etcd.conf << EOL
+cat etcd.conf
+
+
 pg-cluster-01,ip_первого_узла,pg-cluster-01,ip_первого_узла
 pg-cluster-02,ip_второго_узла,pg-cluster-02,ip_второго_узла
 pg-cluster-03,ip_третьего_узла,pg-cluster-03,ip_третьего_узла
+
 
 ./ssl-gen.sh etcd.conf
 
