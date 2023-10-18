@@ -24,13 +24,13 @@ cat /home/pg-lab/pg_lab_ansible.pub >> /home/pg-lab/.ssh/authorized_keys
 
 **Прописать параметры подключения для пользователя pg-lab:**
 
-cat >> $HOME/.ssh/config << EOL
-Host 192.168.56.*
-     Port 22
-     User pg-lab
-     PreferredAuthentications publickey
-     StrictHostKeyChecking no
-     IdentityFile /home/pg-lab/pg_lab_ansible
+cat >> $HOME/.ssh/config << EOL  
+Host 192.168.56.*  
+     Port 22  
+     User pg-lab  
+     PreferredAuthentications publickey  
+     StrictHostKeyChecking no  
+     IdentityFile /home/pg-lab/pg_lab_ansible  
 EOL
 
 **Прописать на каждом узле кластера возможность выполнения sudo для пользователя pg-lab без ввода пароля.**
@@ -46,9 +46,9 @@ cd tools
 cat etcd.conf
 
 
-pg-cluster-01,ip_первого_узла,pg-cluster-01,ip_первого_узла
-pg-cluster-02,ip_второго_узла,pg-cluster-02,ip_второго_узла
-pg-cluster-03,ip_третьего_узла,pg-cluster-03,ip_третьего_узла
+pg-cluster-01,ip_первого_узла,pg-cluster-01,ip_первого_узла  
+pg-cluster-02,ip_второго_узла,pg-cluster-02,ip_второго_узла  
+pg-cluster-03,ip_третьего_узла,pg-cluster-03,ip_третьего_узла  
 
 
 ./ssl-gen.sh etcd.conf
