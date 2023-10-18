@@ -39,6 +39,17 @@ EOL
 
 ssh pg-lab@ip_узла
 
+**Сгенерировать ключи для etcd:**
+
+cd tools
+
+cat > etcd.conf << EOL
+pg-cluster-01,ip_первого_узла,pg-cluster-01,ip_первого_узла
+pg-cluster-02,ip_второго_узла,pg-cluster-02,ip_второго_узла
+pg-cluster-03,ip_третьего_узла,pg-cluster-03,ip_третьего_узла
+
+./ssl-gen.sh etcd.conf
+
 **В файле vars/main.yml в строке pg_apt_repo: "deb [arch=amd64] <https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7> smolensk main" заменить USERNAME:PASSWORD на имя пользователя и пароль для доступа к репозиторию Tantor DB.**
 
 **В файле defaults/main.yml в строке cluster_vip: "10.128.0.199" заменить ip на ip, который будет использоваться keepalived для выделенного виртуального адреса.**
