@@ -13,6 +13,11 @@
       - net-tools
       - less
       - gnupg
+      - lipbq
+      - python3-cdiff
+      - python3-psutil
+      - python3-psycopg2
+      - python3-ydiff
     state: present
 
 - name: Define needed locales (for example, can be set in vars or inventory)
