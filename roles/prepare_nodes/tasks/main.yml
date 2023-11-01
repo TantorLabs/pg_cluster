@@ -18,6 +18,7 @@
       - python3-psutil
       - python3-psycopg2
       - python3-ydiff
+      - python3-pyyaml
     state: present
 
 - name: Define needed locales (for example, can be set in vars or inventory)
