@@ -13,7 +13,7 @@
       - net-tools
       - less
       - gnupg
-      - lipbq
+      - libpq
       - python3-cdiff
       - python3-psutil
       - python3-psycopg2
