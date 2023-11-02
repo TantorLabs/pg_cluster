@@ -3,27 +3,97 @@ global_defs {
    enable_script_security
    script_user root
 }
- 
+
+vrrp_script chk_patroni_leader {
+    script "timeout 3 /opt/keepalived/scripts/chk_patroni_leader.sh"
+    interval 5
+    fall 1
+    rise 1
+}
+vrrp_script chk_patroni_sync {
+    script "timeout 3 /opt/keepalived/scripts/chk_patroni_sync.sh"
+    interval 5
+    fall 1
+    rise 1
+}
+vrrp_script chk_patroni_async {
+    script "timeout 3 /opt/keepalived/scripts/chk_patroni_async.sh"
+    interval 5
+    fall 1
+    rise 1
+}
+
 vrrp_script haproxy_check {
    script "/usr/libexec/keepalived/haproxy_check.sh"
    interval 2
    weight 2
 }
  
-vrrp_instance VI_1 {
-   interface {{ vip_interface }}
-   virtual_router_id {{ cluster_vip.split('.')[3] | int }}
-   priority  100
-   advert_int 2
-   state  BACKUP
-   virtual_ipaddress {
-       {{ cluster_vip  }}
-   }
-   track_script {
-       haproxy_check
-   }
-   authentication {
-      auth_type PASS
-      auth_pass 1ce24b6e
-   }
+vrrp_instance pgcluster_1 {
+    interface {{ vip_interface }}
+    state MASTER
+    priority 255
+    virtual_router_id 10
+    authentication {
+        auth_type PASS
+        auth_pass password
+    }
+    virtual_ipaddress {
+        {{ cluster_vip_1  }}
+    }
+    unicast_src_ip {{ ansible_host }}
+    unicast_peer {
+        {{ keepalived_ip_1 }}
+        {{ keepalived_ip_2 }}
+        {{ keepalived_ip_3 }}
+    }
+    track_script {
+        chk_patroni_leader
+    }
+}   
+vrrp_instance pgcluster_2 {
+    interface {{ vip_interface }}
+    state BACKUP
+    priority 150
+    virtual_router_id 11
+    authentication {
+        auth_type PASS
+        auth_pass password
+    }
+    virtual_ipaddress {
+        {{ cluster_vip_2  }}
+    }
+    unicast_src_ip {{ ansible_host }}
+    unicast_peer {
+        {{ keepalived_ip_1 }}
+        {{ keepalived_ip_2 }}
+        {{ keepalived_ip_3 }}
+    }
+    track_script {
+        chk_patroni_sync
+    }
+
+}
+vrrp_instance pgcluster_3 {
+    interface {{ vip_interface }}
+    state BACKUP
+    priority 100
+    virtual_router_id 12
+    authentication {
+        auth_type PASS
+        auth_pass password
+    }
+    virtual_ipaddress {
+        {{ cluster_vip_3  }}
+    }
+    unicast_src_ip {{ ansible_host }}
+    unicast_peer {
+        {{ keepalived_ip_1 }}
+        {{ keepalived_ip_2 }}
+        {{ keepalived_ip_3 }}
+    }
+    track_script {
+        chk_patroni_async
+    }
+
 }
