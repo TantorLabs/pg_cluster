@@ -38,6 +38,21 @@
   when: add_balancer is not defined or not add_balancer|bool
   tags: keepalived_conf, keepalived
 
+- name: Generate check scripts for keepalived
+  become: yes
+  with_items:
+    - f: check_scripts/chk_patroni_async.sh
+      d: /opt/keepalived/scripts
+    - f: check_scripts/chk_patroni_leader.sh
+      d: /opt/keepalived/scripts
+    - f: check_scripts/chk_patroni_sync.sh
+      d: /opt/keepalived/scripts
+  copy:
+    src: '{{ item.f }}'
+    dest: '{{ item.d }}'
+    owner: root
+    group: root
+
 - block:  # for add_balancer.yml
     - name: "Fetch keepalived.conf conf file from {{ groups.balancers[0] }}"
       run_once: true

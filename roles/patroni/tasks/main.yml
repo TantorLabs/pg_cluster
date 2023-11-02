@@ -9,6 +9,14 @@
     group: "{{ patroni_system_group }}"
     system: yes
 
+name: Add Patroni rpm repository
+  ansible.builtin.yum_repository:
+    name: tantor
+    description: Tantor RPM repo
+    file: external_repos
+    baseurl: https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/centos-7
+    gpgcheck: no    
+
 - name: Create udev rule for watchdog
   copy:
     content: 'KERNEL=="{{ patroni_watchdog_device |basename }}", OWNER="{{ patroni_system_user }}", GROUP="{{ patroni_system_group }}", MODE="0600"'
