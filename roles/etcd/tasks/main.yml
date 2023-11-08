@@ -43,7 +43,7 @@
 
 - name: Downloading official etcd release
   get_url:
-    url: "https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
     dest: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
     mode: 0755
   register: get_etcd
