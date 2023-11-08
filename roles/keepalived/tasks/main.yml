@@ -47,7 +47,7 @@
       d: /opt/keepalived/scripts
     - f: check_scripts/chk_patroni_sync.sh
       d: /opt/keepalived/scripts
-  copy:
+  ansible.builtin.template:
     src: '{{ item.f }}'
     dest: '{{ item.d }}'
     owner: root

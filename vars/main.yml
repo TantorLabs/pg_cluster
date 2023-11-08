@@ -22,5 +22,7 @@ patroni_system_packages:
   - { name: "jq",               state: "present" }
 
 # Cluster variables
-cluster_vip: "10.128.0.199"  # ip address for client access to databases in the cluster (optional)
+cluster_vip_1: "10.128.0.197"
+cluster_vip_2: "10.128.0.198"
+cluster_vip_3: "10.128.0.199"  # ip address for client access to databases in the cluster (optional)
 vip_interface: "{{ ansible_default_ipv4.interface }}"  # interface name (ex. "ens32")

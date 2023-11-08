@@ -13,6 +13,7 @@
     - nano
     - net-tools
     - less
+    - jq
     state: latest
 
 - name: Install gnupg
@@ -23,11 +24,11 @@
 
 - name: Ensure the locale exists
   locale_gen:
-    name: en_US.UTF-8
+    name: ru_RU.UTF-8
     state: present
 
 - name: Setup default locale
-  command: localectl set-locale LANG=en_US.UTF-8
+  command: localectl set-locale LANG=ru_RU.UTF-8
 
 - name: Set nofile for postgres
   become: yes
