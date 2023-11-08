@@ -8,9 +8,9 @@
     state: restarted
   listen: "restart keepalived"
 
-- name: Wait for the cluster ip address (VIP) "{{ cluster_vip }}" is running
+- name: Wait for the cluster ip address (VIP) "{{ cluster_vip_1 }}" is running
   ansible.builtin.wait_for:
-    host: "{{ cluster_vip }}"
+    host: "{{ cluster_vip_1 }}"
     port: "{{ ansible_ssh_port | default(22) }}"
     state: started
     timeout: 60
