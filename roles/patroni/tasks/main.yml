@@ -48,6 +48,10 @@
   when: ansible_distribution in ('Ubuntu', 'Debian') and
         ansible_distribution_release in ('xenial', 'jessie')
 
+- name: Force systemd to reread configs
+  ansible.builtin.systemd:
+    daemon_reload: true
+
 - name: Install system packages for patroni
   package:
     name: patroni

@@ -38,6 +38,14 @@
   when: add_balancer is not defined or not add_balancer|bool
   tags: keepalived_conf, keepalived
 
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: /opt/keepalived/scripts
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
 - name: Generate check scripts for keepalived
   become: yes
   with_items:
