@@ -58,6 +58,7 @@
   ansible.builtin.template:
     src: '{{ item.f }}'
     dest: '{{ item.d }}'
+    mode: '0755'
     owner: root
     group: root
 
