@@ -1,5 +1,5 @@
 ---
-etcd_version: v3.5.0
+etcd_version: v3.5.7
 etcd_user: etcd
 etcd_group: etcd
 etcd_install_dir: /usr/local/bin
