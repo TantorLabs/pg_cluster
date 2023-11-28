@@ -12,7 +12,7 @@
 |   |-- ...
 |-- README.md
 |-- roles
-|   |-- etcd					# v3.3.18
+|   |-- etcd					# 
 |   |   |-- defaults
 |   |   |   `-- main.yml
 |   |   |-- handlers
@@ -26,12 +26,25 @@
 |   |   |   `-- etcd.service.j2
 |   |   `-- vars
 |   |       `-- main.yml
-|   |-- haproxy					# v1.8.8
+|   |-- haproxy					# 
 |   |   |-- tasks
 |   |   |   `-- main.yml
 |   |   `-- templates
 |   |       `-- haproxy.cfg.j2
-|   |-- patroni					# v1.6.4
+|   |--keepalived
+|   |   |-- check_scripts
+|   |   |   `-- chk_patroni_async.sh
+|   |   |   `-- chk_patroni_leader.sh
+|   |   |   `-- chk_patroni_sync.sh
+|   |   |-- handlers
+|   |   |   `-- main.yml 					# 
+|   |   |-- tasks
+|   |   |   `-- main.yml
+|   |   `-- templates
+|   |       `-- keepalived.conf.j2
+|   |   `-- vars
+|   |       `-- main.yml
+|   |-- patroni					# 
 |   |   |-- handlers
 |   |   |   `-- main.yml
 |   |   |-- tasks
@@ -40,7 +53,7 @@
 |   |       |-- patroni.service.j2
 |   |       |-- patroni-watchdog.service.j2
 |   |       `-- patroni.yml.j2
-|   |-- pgbouncer				# v1.12.0
+|   |-- pgbouncer				# 
 |   |   |-- sql
 |   |   |   `-- pgbouncer_prepare.sql	# CREATE SCHEMA pgbouncer and FUNCTION pgbouncer.get_auth
 |   |   |-- tasks
