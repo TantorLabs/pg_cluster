@@ -94,7 +94,7 @@ apt install git
 **Скачать проект:**
 
 ```bash
-git clone -b alt-tantor <https://github.com/TantorLabs/pg_cluster>
+git clone -b alt-tantor https://github.com/TantorLabs/pg_cluster
 
 cd pg_cluster
 ```
@@ -146,7 +146,7 @@ pg-cluster-03,ip_третьего_узла,pg-cluster-03,ip_третьего_у�
 ./ssl-gen.sh etcd.conf
 ```
 
-**В файле vars/main.yml в строке pg_apt_repo: "deb [arch=amd64] <https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7> smolensk main" заменить USERNAME:PASSWORD на имя пользователя и пароль для доступа к репозиторию Tantor DB.**
+**В файле vars/main.yml в строке pg_apt_repo: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main" заменить USERNAME:PASSWORD на имя пользователя и пароль для доступа к репозиторию Tantor DB.**
 
 **В файле defaults/main.yml в строке cluster_vip: "10.128.0.199" заменить ip на ip, который будет использоваться keepalived для выделенного виртуального адреса.**
 
@@ -154,7 +154,7 @@ pg-cluster-03,ip_третьего_узла,pg-cluster-03,ip_третьего_у�
 
 **Установить Ansible:**
 
-В файл /etc/apt/sources.list дописать строку deb <http://ppa.launchpad.net/ansible/ansible/ubuntu> bionic main
+В файл /etc/apt/sources.list дописать строку deb http://ppa.launchpad.net/ansible/ansible/ubuntu bionic main
 
 ```bash
 apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 93C4A3FD7BB9C367
