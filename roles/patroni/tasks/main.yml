@@ -26,7 +26,7 @@
 
 - name: Install watchdog
   package:
-    name: freeipmi-bmc-watchdog
+    name: watchdog
     update_cache: yes
 
 - name: Make kernel watchdog device available for patroni
