@@ -77,7 +77,7 @@
 
 ![Архитектура](pg_cluster.png)
 
-# Установка на Astra Linux 1.7
+# Установка на Alt Linux 10.2
 
 **На каждом из узлов кластера создать пользователя pg-lab:**
 
@@ -94,7 +94,7 @@ apt install git
 **Скачать проект:**
 
 ```bash
-git clone -b astra-tantor <https://github.com/TantorLabs/pg_cluster>
+git clone -b alt-tantor <https://github.com/TantorLabs/pg_cluster>
 
 cd pg_cluster
 ```
