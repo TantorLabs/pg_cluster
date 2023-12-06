@@ -1,9 +1,12 @@
 ---
 # vars file for pg_cluster
 
-pg_apt_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
-pg_apt_repo: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
+pg_astra_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
+pg_astra_repo: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
+pg_alt_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
 pg_alt_repo: "rpm https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/altlinux_p10 x86_64 tantor"
+pg_ubuntu_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
+pg_ubuntu_repo: "rpm https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/ubuntu-22.04 binary-amd64 main"
 patroni_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
 patroni_apt_repo: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"
 

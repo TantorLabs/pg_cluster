@@ -1,13 +1,13 @@
 ---
 
 - block:
-    - name: Configure postgresql repository key
+    - name: Configure Ubuntu postgresql repository key
       apt_key:
-        url: "{{ pg_apt_key_url }}"
+        url: "{{ pg_ubuntu_key_url }}"
 
     - name: Configure postgresql repository
       apt_repository:
-        repo: "{{ pg_apt_repo }}"
+        repo: "{{ pg_ubuntu_repo }}"
 
     - name: Ensure postgresql database-cluster manager package
       package:
@@ -19,15 +19,28 @@
         path: /etc/postgresql-common/createcluster.conf
         replace: create_main_cluster = false
         regexp: ^#?create_main_cluster.*$
-  when: ansible_os_family == "Debian" and not patroni_pg_exists
+  when: ansible_os_family == "Ubuntu" and not patroni_pg_exists
 
-- name: Configure postgresql repository key
-  apt_key:
-    url: "{{ pg_apt_key_url }}"
+- block:
+    - name: Configure Astra Linux postgresql repository key
+      apt_key:
+        url: "{{ pg_astra_key_url }}"
 
-- name: Configure postgresql repository
-  apt_repository:
-    repo: "{{ pg_apt_repo }}"
+    - name: Configure postgresql repository
+      apt_repository:
+        repo: "{{ pg_astra_repo }}"
+
+    - name: Ensure postgresql database-cluster manager package
+      package:
+        name: postgresql-common
+        update_cache: yes
+
+    - name: Disable initializing of a default postgresql cluster
+      replace:
+        path: /etc/postgresql-common/createcluster.conf
+        replace: create_main_cluster = false
+        regexp: ^#?create_main_cluster.*$
+  when: ansible_os_family == "Astra Linux" and not patroni_pg_exists
 
 - name: Install postgresql packages
   package:
