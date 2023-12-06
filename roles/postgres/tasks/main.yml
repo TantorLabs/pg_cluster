@@ -61,7 +61,7 @@
         path: /etc/postgresql-common/createcluster.conf
         replace: create_main_cluster = false
         regexp: ^#?create_main_cluster.*$
-  when: ansible_os_family == "Altlinux" and not patroni_pg_exists
+    when: ansible_os_family == "Altlinux" and not patroni_pg_exists
 
   - block:
     - name: Add RedOS rpm repository
