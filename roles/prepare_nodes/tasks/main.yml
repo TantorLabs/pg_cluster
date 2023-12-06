@@ -4,17 +4,45 @@
     update_cache: yes
     upgrade: 'yes'
 
-- name: Install basic utils
-  apt:
-    name:
-    - htop
-    - iotop
-    - sysstat
-    - nano
-    - net-tools
-    - less
-    - jq
+- block:
+  - name: Install basic packages yum
+    ansible.builtin.yum:
+      name:
+        - htop
+        - iotop
+        - sysstat
+        - nano
+        - net-tools
+        - less
+        - gnupg
+        - libpq
+        - python3-cdiff
+        - python3-psutil
+        - python3-psycopg2
+        - python3-ydiff
+        - python3-pyyaml
+      state: present
+  when: ansible_pkg_mgr == "yum"
+
+- block:
+  - name: Install basic packages apt
+    apt:
+      name:
+      - htop
+        - iotop
+        - sysstat
+        - nano
+        - net-tools
+        - less
+        - gnupg
+        - libpq
+        - python3-cdiff
+        - python3-psutil
+        - python3-psycopg2
+        - python3-ydiff
+        - python3-pyyaml
     state: latest
+  when: ansible_pkg_mgr == "apt"  
 
 - name: Install gnupg
   apt:
