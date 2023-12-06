@@ -24,6 +24,13 @@
     group: root
     mode: 0644
 
+- block:
+  - name: Install watchdog on Astra Linux
+    package:
+      name: freeipmi-bmc-watchdog
+      update_cache: yes
+  when: ansible_os_family == "Astra Linux"
+
 - name: Install watchdog
   package:
     name: watchdog
@@ -55,7 +62,7 @@
 - name: Install system packages for patroni
   package:
     name: patroni
-    state: present
+    state: latest
     update_cache: yes
 
 - name: Create patroni config directory
