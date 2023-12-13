@@ -1,0 +1,7 @@
+output/
+log/
+__pycache__/
+venv/
+.idea/*
+*.tar
+*.tar.gz

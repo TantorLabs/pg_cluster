@@ -27,7 +27,7 @@ class UnitConverter:
     #            milliseconds    seconds     minutes     hours       days
     # PG         ms              s           min         h           d
 
-    # https://en.wikipedia.org/wiki/Binary_prefix new
+    # https://en.wikipedia.org/wiki/Binary_prefix
     # Specific units of IEC 60027-2 A.2 and ISO/IEC 80000
 
     sys_std = [
