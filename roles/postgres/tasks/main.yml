@@ -4,60 +4,60 @@
     - name: Configure Ubuntu postgresql repository key
       apt_key:
         url: "{{ pg_ubuntu_key_url }}"
-    when: ansible_os_family == "Ubuntu"
+      when: ansible_os_family == "Ubuntu"
 
     - name: Configure postgresql repository
       apt_repository:
         repo: "{{ pg_ubuntu_repo }}"
-    when: ansible_os_family == "Ubuntu"
+      when: ansible_os_family == "Ubuntu"
 
     - name: Ensure postgresql database-cluster manager package
       package:
         name: postgresql-common
         update_cache: yes
-    when: ansible_os_family == "Ubuntu"
+      when: ansible_os_family == "Ubuntu"
 
-when: ansible_os_family == "Ubuntu" and not patroni_pg_exists
+  when: ansible_os_family == "Ubuntu" and not patroni_pg_exists
 
 - name: Configure repos Astra
   block:
     - name: Configure Astra Linux postgresql repository key
       apt_key:
         url: "{{ pg_astra_key_url }}"
-    when: ansible_os_family == "Astra Linux"
+      when: ansible_os_family == "Astra Linux"
 
     - name: Configure postgresql repository
       apt_repository:
         repo: "{{ pg_astra_repo }}"
-    when: ansible_os_family == "Astra Linux"
+      when: ansible_os_family == "Astra Linux"
 
     - name: Ensure postgresql database-cluster manager package
       package:
         name: postgresql-common
         update_cache: yes
-    when: ansible_os_family == "Astra Linux"
+      when: ansible_os_family == "Astra Linux"
 
-when: ansible_os_family == "Astra Linux" and not patroni_pg_exists
+  when: ansible_os_family == "Astra Linux" and not patroni_pg_exists
 
 - name: Configure repos Alt
   block:
     - name: Configure Alt Linux postgresql repository key
       apt_key:
         url: "{{ pg_alt_key_url }}"
-    when: ansible_os_family == "Astra Linux"    
+      when: ansible_os_family == "Astra Linux"    
 
     - name: Configure postgresql repository
       apt_repository:
         repo: "{{ pg_alt_repo }}"
-    when: ansible_os_family == "Astra Linux"    
+      when: ansible_os_family == "Astra Linux"    
 
     - name: Ensure postgresql database-cluster manager package
       package:
         name: postgresql-common
         update_cache: yes
-    when: ansible_os_family == "Astra Linux"    
+      when: ansible_os_family == "Astra Linux"    
   
-when: ansible_os_family == "Altlinux" and not patroni_pg_exists
+  when: ansible_os_family == "Altlinux" and not patroni_pg_exists
 
 - name: Configure repos RedOS
   block:
@@ -68,9 +68,9 @@ when: ansible_os_family == "Altlinux" and not patroni_pg_exists
         file: external_repos
         baseurl: https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/resdos-7.3
         gpgcheck: no
-    when: ansible_os_family == "REDOS"
+      when: ansible_os_family == "REDOS"
 
-when: ansible_os_family == "REDOS" and not patroni_pg_exists    
+  when: ansible_os_family == "REDOS" and not patroni_pg_exists    
 
 - name: Disable initializing of a default postgresql cluster
   replace:
