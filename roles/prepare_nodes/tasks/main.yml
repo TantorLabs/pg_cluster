@@ -1,8 +1,16 @@
-- name: Update system
+- name: Update system apt
   become: true
   apt:
     update_cache: yes
     upgrade: 'yes'
+  when: ansible_pkg_mgr == "apt"  
+
+- name: Update system yum
+  become: true
+  ansible.builtin.yum:
+    name: '*'
+    state: latest
+  when: ansible_pkg_mgr == "yum"  
 
 - block:
   - name: Install basic packages yum
