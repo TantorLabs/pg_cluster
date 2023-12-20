@@ -7,10 +7,10 @@
 
 - name: Update system yum
   become: true
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: '*'
     state: latest
-  when: ansible_pkg_mgr == "yum"  
+  when: ansible_pkg_mgr == "dnf"  
 
 - block:
   - name: Install basic packages yum

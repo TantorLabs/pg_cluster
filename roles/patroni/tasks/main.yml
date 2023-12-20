@@ -22,9 +22,9 @@
         file: external_repos
         baseurl: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
         gpgcheck: no
-      when: ansible_pkg_mgr == "yum"
+      when: ansible_pkg_mgr == "dnf"
 
-  when: ansible_pkg_mgr == "yum"
+  when: ansible_pkg_mgr == "dnf"
 
 - name: Add patroni group
   group:
