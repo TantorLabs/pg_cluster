@@ -1,5 +1,5 @@
 ---
-- name: Configure repos
+- name: Configure repos Ubuntu
   block:
     - name: Configure Ubuntu postgresql repository key
       apt_key:
@@ -15,6 +15,7 @@
         update_cache: yes
   when: ansible_os_family == "Ubuntu" and not patroni_pg_exists
 
+- name: Configure repos Astra
   block:
     - name: Configure Astra Linux postgresql repository key
       apt_key:
@@ -30,6 +31,7 @@
         update_cache: yes
   when: ansible_os_family == "Astra Linux" and not patroni_pg_exists
 
+- name: Configure repos Alt
   block:
     - name: Configure Alt Linux postgresql repository key
       apt_key:
@@ -45,6 +47,7 @@
         update_cache: yes
   when: ansible_os_family == "Altlinux" and not patroni_pg_exists
 
+- name: Configure repos RedOS
   block:
     - name: Add RedOS rpm repository
       ansible.builtin.yum_repository:
