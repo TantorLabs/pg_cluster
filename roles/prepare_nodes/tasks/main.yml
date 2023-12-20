@@ -24,6 +24,9 @@
         - less
         - gnupg
         - libpq
+        - ufw
+        - glibc-locale-source
+        - glibc-langpack-en
         - python3-cdiff
         - python3-psutil
         - python3-psycopg2
@@ -44,6 +47,7 @@
         - less
         - gnupg
         - libpq
+        - ufw
         - python3-cdiff
         - python3-psutil
         - python3-psycopg2
