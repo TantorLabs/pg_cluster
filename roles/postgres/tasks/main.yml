@@ -12,7 +12,7 @@
     package:
       name: postgresql-common
       update_cache: yes
-when: ansible_os_family == "Ubuntu" and not patroni_pg_exists
+  when: ansible_os_family == "Ubuntu" and not patroni_pg_exists
 
 - block:
   - name: Configure Astra Linux postgresql repository key
@@ -27,7 +27,7 @@ when: ansible_os_family == "Ubuntu" and not patroni_pg_exists
     package:
       name: postgresql-common
       update_cache: yes
-when: ansible_os_family == "Astra Linux" and not patroni_pg_exists
+  when: ansible_os_family == "Astra Linux" and not patroni_pg_exists
 
 - block:
   - name: Configure Alt Linux postgresql repository key
@@ -42,7 +42,7 @@ when: ansible_os_family == "Astra Linux" and not patroni_pg_exists
     package:
       name: postgresql-common
       update_cache: yes
-when: ansible_os_family == "Altlinux" and not patroni_pg_exists
+  when: ansible_os_family == "Altlinux" and not patroni_pg_exists
 
 - block:
   - name: Add RedOS rpm repository
