@@ -14,7 +14,7 @@
 
 - block:
   - name: Install basic packages yum
-    ansible.builtin.yum:
+    ansible.builtin.dnf:
       name:
         - htop
         - iotop
@@ -30,7 +30,7 @@
         - python3-ydiff
         - python3-pyyaml
       state: present
-  when: ansible_pkg_mgr == "yum"
+  when: ansible_pkg_mgr == "dnf"
 
 - block:
   - name: Install basic packages apt
@@ -51,12 +51,6 @@
         - python3-pyyaml
       state: latest
   when: ansible_pkg_mgr == "apt"  
-
-- name: Install gnupg
-  apt:
-    name: gnupg
-    state: present
-    update_cache: yes
 
 - name: Ensure the locale exists
   locale_gen:
