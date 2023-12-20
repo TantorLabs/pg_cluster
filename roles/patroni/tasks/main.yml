@@ -1,5 +1,5 @@
 
-- name: Add patroni apt repo:
+- name: Add patroni apt repo
   block:
     - name: Configure patroni apt repository key
       apt_key:
@@ -13,7 +13,7 @@
 
   when: ansible_pkg_mgr == "apt"
 
-- name: Add patroni rpm repo:
+- name: Add patroni rpm repo
   block:
     - name: Add patroni rpm repository
       ansible.builtin.yum_repository:
