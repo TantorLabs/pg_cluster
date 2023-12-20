@@ -1,20 +1,29 @@
-block:
-  - name: Configure patroni apt repository key
-    apt_key:
-      url: "{{ patroni_apt_key_url }}"
-  - name: Configure patroni apt repository
-    apt_repository:
-      repo: "{{ patroni_apt_repo }}"
+
+- name: Add patroni apt repo:
+  block:
+    - name: Configure patroni apt repository key
+      apt_key:
+        url: "{{ patroni_apt_key_url }}"
+      when: ansible_pkg_mgr == "apt  
+  
+    - name: Configure patroni apt repository
+      apt_repository:
+        repo: "{{ patroni_apt_repo }}"
+      when: ansible_pkg_mgr == "apt
+
   when: ansible_pkg_mgr == "apt"
 
-block:
-  - name: Add Tantor rpm repository
-    ansible.builtin.yum_repository:
-      name: tantor
-      description: Tantor RPM repo
-      file: external_repos
-      baseurl: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-      gpgcheck: no
+- name: Add patroni rpm repo:
+  block:
+    - name: Add patroni rpm repository
+      ansible.builtin.yum_repository:
+        name: tantor
+        description: Tantor RPM repo
+        file: external_repos
+        baseurl: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+        gpgcheck: no
+      when: ansible_pkg_mgr == "yum"
+
   when: ansible_pkg_mgr == "yum"
 
 - name: Add patroni group
