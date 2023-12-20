@@ -52,13 +52,35 @@
       state: latest
   when: ansible_pkg_mgr == "apt"  
 
-- name: Ensure the locale exists
+- name: Ensure the locale exists apt
   locale_gen:
     name: ru_RU.UTF-8
     state: present
+  when: ansible_pkg_mgr == "apt"  
 
-- name: Setup default locale
+- name: Setup default locale apt
   command: localectl set-locale LANG=ru_RU.UTF-8
+  when: ansible_pkg_mgr == "apt"
+
+- name: Define needed locales dnf
+  set_fact:
+    system_settings_locales:
+      - en_US.UTF-8
+  when: ansible_pkg_mgr == "dnf"    
+
+- name: Check existing locales dnf
+  shell: "locale -a | grep -i {{ item | regex_replace('-', '') | quote }}"
+  register: found_locales
+  changed_when: false
+  failed_when: false
+  loop: "{{ system_settings_locales }}"
+  when: ansible_pkg_mgr == "dnf"
+
+- name: Create missing locales dnf
+  command: "localedef -i {{ item.item | regex_replace('(.*)\\..*', '\\1') | quote }} -f {{ item.item | regex_replace('.*\\.(.*)', '\\1') | quote }} {{ item.item | quote }}"
+  when: item.rc != 0
+  loop: "{{ found_locales.results }}"
+  when: ansible_pkg_mgr == "dnf"  
 
 - name: Set nofile for postgres
   become: yes
