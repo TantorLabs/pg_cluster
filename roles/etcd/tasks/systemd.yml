@@ -18,6 +18,16 @@
   systemd:
     daemon_reload: yes
 
+- name: check etcd
+  shell: systemctl status etcd.service | grep Active | awk -v N=2 '{print $N}'
+  register: etcd_output
+
+- name: stop etcd if active
+  service:
+    name: etcd
+    state: stopped
+  when: etcd_output.stdout == 'active'
+
 - name: launching etcd...
   when: etcd_launch
   become: yes

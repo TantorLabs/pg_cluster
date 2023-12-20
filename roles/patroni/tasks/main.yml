@@ -94,6 +94,15 @@ block:
     mode: 0750
   when: patroni_log_destination |d('stderr', true) != 'stderr'
 
+  - name: Create /var/run/postgresql directory
+  file:
+    path: "/var/run/postgresql"
+    state: directory
+    owner: "{{ patroni_system_user }}"
+    group: "{{ patroni_system_group }}"
+    mode: 2755
+
+
 - name: Prepare callback scripts
   copy:
     src: "callbacks/{{ item.event }}"
@@ -105,6 +114,13 @@ block:
   with_items:
     - "{{ patroni_pg_callbacks }}"
   when: not( (item.script is none) or (item.script | trim | length == 0) )
+
+- name: Allow patroni_pg_port	# TODO from specific IPs
+  community.general.ufw:
+    port: '{{ patroni_pg_port }}'
+    rule: allow
+    delete: yes
+    proto: tcp
 
 - name: Create patroni unit file
   template:
@@ -144,6 +160,16 @@ block:
     group: postgres
     mode: '{{ item.m }}'
 
+- name: Check patroni
+  shell: systemctl status patroni.service | grep Active | awk -v N=2 '{print $N}'
+  register: patroni_output
+
+- name: Stop patroni if active
+  service:
+    name: patroni.service
+    state: stopped
+  path: '{{ patroni_pg_socket_file }}'
+
 - name: Ensure patroni is running
   systemd:
     name: patroni.service
@@ -160,3 +186,10 @@ block:
   become_user: root
   command: su - postgres -c "psql -A -t -d postgres -c \"CREATE ROLE {{ patroni_replication_username }} WITH REPLICATION LOGIN PASSWORD '{{ patroni_replication_password }}'\""
   ignore_errors: yes
+
+- name: Update replication user password
+  become: yes
+  become_user: root
+  command: su - postgres -c "psql -A -t -d postgres -c \"ALTER USER {{ patroni_replication_username }} WITH REPLICATION LOGIN PASSWORD '{{ patroni_replication_password }}'\""
+  ignore_errors: yes
+

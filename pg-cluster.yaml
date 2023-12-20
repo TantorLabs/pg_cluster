@@ -8,6 +8,13 @@
   roles:
     - prepare_nodes
 
+- name: Prepare /etc/hosts
+  hosts: inv_cluster
+  become: yes
+  tags: etc_hosts
+  roles:
+    - etc_hosts
+
 - name: Install etcd
   hosts: inv_etcd
   become: yes

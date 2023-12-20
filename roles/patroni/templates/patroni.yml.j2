@@ -108,7 +108,7 @@ bootstrap:
         - {{ client.type }} {{ client.database }} {{ client.user }} {{ client.address |d(None) }} {{ client.method }} {{ client.options |d(None) }}
       {% endfor %}
 	  {% for host in groups['inv_pg'] %}
-        - host all all {{ hostvars[host]['ansible_default_ipv4'].address }}/32 md5
+        - host all all {{ hostvars[host]['ansible_host'] }}/32 md5
       {% endfor %}
     {% endif %}
   {% if patroni_bootstrap_dcs_slots |d([], true) |length > 0 %}
