@@ -1,5 +1,4 @@
 ---
-
 - block:
   - name: Configure Ubuntu postgresql repository key
     apt_key:
