@@ -177,7 +177,7 @@
   service:
     name: patroni.service
     state: stopped
-  path: '{{ patroni_pg_socket_file }}'
+  when: patroni_output.stdout == 'active'
 
 - name: Ensure patroni is running
   systemd:
@@ -188,7 +188,7 @@
   tags: [patroni]
 
 - wait_for:
-    path: /var/run/postgresql/.s.PGSQL.{{ patroni_pg_port }}
+    path: '{{ patroni_pg_socket_file }}'
 
 - name: Create replication user
   become: yes
