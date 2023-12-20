@@ -103,7 +103,7 @@
     mode: 0750
   when: patroni_log_destination |d('stderr', true) != 'stderr'
 
-  - name: Create /var/run/postgresql directory
+- name: Create /var/run/postgresql directory
   file:
     path: "/var/run/postgresql"
     state: directory
