@@ -1,6 +1,6 @@
 ---
 - name: Configure repos
-  - block:
+  block:
     - name: Configure Ubuntu postgresql repository key
       apt_key:
         url: "{{ pg_ubuntu_key_url }}"
@@ -15,7 +15,7 @@
         update_cache: yes
   when: ansible_os_family == "Ubuntu" and not patroni_pg_exists
 
-  - block:
+  block:
     - name: Configure Astra Linux postgresql repository key
       apt_key:
         url: "{{ pg_astra_key_url }}"
@@ -30,7 +30,7 @@
         update_cache: yes
   when: ansible_os_family == "Astra Linux" and not patroni_pg_exists
 
-  - block:
+  block:
     - name: Configure Alt Linux postgresql repository key
       apt_key:
         url: "{{ pg_alt_key_url }}"
@@ -45,7 +45,7 @@
         update_cache: yes
   when: ansible_os_family == "Altlinux" and not patroni_pg_exists
 
-  - block:
+  block:
     - name: Add RedOS rpm repository
       ansible.builtin.yum_repository:
         name: tantor
