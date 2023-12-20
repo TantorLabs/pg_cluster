@@ -29,18 +29,18 @@
     apt:
       name:
       - htop
-        - iotop
-        - sysstat
-        - nano
-        - net-tools
-        - less
-        - gnupg
-        - libpq
-        - python3-cdiff
-        - python3-psutil
-        - python3-psycopg2
-        - python3-ydiff
-        - python3-pyyaml
+      - iotop
+      - sysstat
+      - nano
+      - net-tools
+      - less
+      - gnupg
+      - libpq
+      - python3-cdiff
+      - python3-psutil
+      - python3-psycopg2
+      - python3-ydiff
+      - python3-pyyaml
     state: latest
   when: ansible_pkg_mgr == "apt"  
 
