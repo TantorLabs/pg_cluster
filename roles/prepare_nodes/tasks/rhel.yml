@@ -1,0 +1,33 @@
+---
+
+- name: Install prerequisite packages (yum or dnf)
+  ansible.builtin.package:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - gpg
+      - telnet
+      - python3-pip
+      - python3-psycopg2
+      - python3-setuptools
+      - wget
+      - acl
+    state: present
+  when: ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
+
+
+- name: Add Tantor repository key (yum or dnf)
+  ansible.builtin.rpm_key:
+    key: "{{ nexus_key_url }}"
+    state: present
+
+
+- name: Block for REDos
+  block:
+    - name: Add Tantor repository for RedOS-7.3
+      ansible.builtin.yum_repository:
+        name: tantorlabs
+        description: Tantorlabs repository for RedOS 7.3
+        baseurl: "{{ nexus_dev_yum_redos_7_3 }}"
+      when: (ansible_facts['os_family'] == "RED")

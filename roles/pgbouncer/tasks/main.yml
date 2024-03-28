@@ -1,89 +1,143 @@
-- name: Install pgbouncer
-  apt:
-    pkg: pgbouncer
-    state: present
-    update_cache: yes
+---
 
-- name: Write pgbouncer.ini
-  template:
-    src: pgbouncer.ini.j2
-    dest: /etc/pgbouncer/pgbouncer.ini
-    backup: yes
+- name: Install pgbouncer
+  ansible.builtin.package:
+    name: pgbouncer-tantor-all
+    state: present
+    update_cache: true
+
+- name: Create conf directory
+  ansible.builtin.file:
+    path: "/opt/tantor/etc/pgbouncer"
+    state: directory
     owner: postgres
     group: postgres
-    mode: 0600
+    mode: "755"
 
-- name: Create log directory
-  file:
-    path: "{{ pgbouncer_log_directory }}"
+- name: Write pgbouncer.ini
+  ansible.builtin.template:
+    src: pgbouncer.ini.j2
+    dest: /opt/tantor/etc/pgbouncer/pgbouncer.ini
+    backup: true
+    owner: postgres
+    group: postgres
+    mode: "0755"
+
+- name: Create log and pid directories
+  ansible.builtin.file:
+    path: "{{ item }}"
     state: directory
     owner: postgres
+    group: postgres
+    mode: "0755"
+  with_items:
+    - "/opt/tantor/var/log/pgbouncer"
+    - "/var/run/pgbouncer-tantor"
 
-- name: Create pid directory
-  file:
-    path: "/var/run/pgbouncer"
-    state: directory
+- name: Check if postgresql node is in master state
+  ansible.builtin.command:
+    cmd: su - postgres -c "psql -A -t -d postgres -c \"SELECT pg_is_in_recovery();\""
+  changed_when: false
+  register: psql_node_status
+
+- name: Create pgbouncer role
+  community.postgresql.postgresql_user:
+    login_host: localhost
+    db: postgres
+    name: "{{ pgbouncer_auth_user }}"
+    password: "{{ pgbouncer_auth_user_passw }}"
+    encrypted: true
+    role_attr_flags: REPLICATION
+    state: present
+    port: "5432"
+  become: true
+  become_user: postgres
+  when: psql_node_status.stdout == 'f'
+
+# - name: Create userlist.txt
+#   become: true
+#   become_user: root
+#   ansible.builtin.command: |
+#     su - postgres -c "psql -A -t -d postgres -c \"
+#      COPY (SELECT usename, passwd
+#             FROM pg_shadow
+#            WHERE usename='pgbouncer')
+#               TO '/opt/tantor/etc/pgbouncer/userlist.txt'
+#             WITH (FORMAT CSV, DELIMITER ' ', FORCE_QUOTE *)
+#     \""
+#   # ignore_errors: true
+
+- name: Create userlist for PGbouncer
+  ansible.builtin.file:
+    path: /opt/tantor/etc/pgbouncer/userlist.txt
     owner: postgres
+    group: postgres
+    mode: "0644"
 
-- name: Create pgbouncer user in DB
-  become: yes
-  become_user: root
-  command: |
-    su - postgres -c "psql -A -t -d postgres -c \"
-    do \\$\\$
-    begin
-    if not pg_is_in_recovery() and
-        not exists(select 1 from pg_roles where rolname = '{{ pgbouncer_auth_user }}') then
-      CREATE USER {{ pgbouncer_auth_user }} WITH PASSWORD '{{ pgbouncer_auth_user_passw }}';
-    end if;
-    end\\$\\$
-    \""
-  ignore_errors: yes
+- name: Check if pgbouncer missing in /opt/tantor/etc/pgbouncer/userlist.txt file
+  ansible.builtin.lineinfile:
+    path: /opt/tantor/etc/pgbouncer/userlist.txt
+    regexp: '\"pgbouncer\"\s\"(?:md5\w+\"|SCRAM-SHA-256.*\")'
+    state: absent
+  check_mode: true
+  register: pgbouncer_userlist
+  changed_when: false
 
-- name: Create userlist.txt
-  become: yes
-  become_user: root
-  command: |
-    su - postgres -c "psql -A -t -d postgres -c \"
-     COPY (SELECT usename, passwd
-            FROM pg_shadow
-           WHERE usename='pgbouncer')
-              TO '/etc/pgbouncer/userlist.txt'
-            WITH (FORMAT CSV, DELIMITER ' ', FORCE_QUOTE *)
-    \""
-  ignore_errors: yes
+- name: Run query for creation of userlist.txt
+  community.postgresql.postgresql_query:
+    login_db: postgres
+    query: |
+      COPY (SELECT usename, passwd FROM pg_shadow WHERE usename='pgbouncer')
+      TO '/opt/tantor/etc/pgbouncer/userlist.txt'
+      WITH (FORMAT CSV, DELIMITER ' ', FORCE_QUOTE *)
+  when: ( groups['inv_cluster'] | length == 1  ) or (not pgbouncer_userlist.found)
+  become: true
+  become_user: postgres
+
+  # become: true
+  # become_user: root
+
+# - name: Move userlist to pgbouncer folder
+#   ansible.builtin.copy:
+#     remote_src: true
+#     src: /tmp/userlist.txt
+#     dest: /opt/tantor/etc/pgbouncer/userlist.txt
+#     mode: "0644"
+#     owner: postgres
+#     group: postgres
 
 - name: Upload pgbouncer_prepare.sql
-  become: yes
+  become: true
   become_user: root
   with_items:
     - f: "{{ playbook_dir + '/roles/pgbouncer/sql/pgbouncer_prepare.sql' }}"
-      d: '/etc/pgbouncer'
+      d: '/opt/tantor/etc/pgbouncer'
       m: '0400'
-  copy:
+  ansible.builtin.copy:
     src: '{{ item.f }}'
     dest: '{{ item.d }}'
     owner: postgres
     group: postgres
     mode: '{{ item.m }}'
 
+# - name: Create pgbouncer namespace
+#   become: true
+#   become_user: root
+#   ansible.builtin.command: su - postgres -c "psql -A -t -d postgres -f /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql"
+#   ignore_errors: true
+
 - name: Create pgbouncer namespace
-  become: yes
-  become_user: root
-  command: su - postgres -c "psql -A -t -d postgres -f /etc/pgbouncer/pgbouncer_prepare.sql"
-  ignore_errors: yes
+  community.postgresql.postgresql_script:
+    db: postgres
+    path: /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql
+  changed_when: false
+  when: psql_node_status.stdout == 'f'
 
 - name: Create pgbouncer unit file
-  template:
+  ansible.builtin.template:
     src: pgbouncer.service.j2
-    dest: /etc/systemd/system/pgbouncer.service
+    dest: /usr/lib/systemd/system/pgbouncer-tantor.service
     owner: root
     group: root
-    mode: 0644
-
-- name: Restart pgbouncer.service
-  systemd:
-    name: pgbouncer.service
-    state: restarted
-    daemon_reload: yes
-    enabled: yes
+    mode: "0644"
+  notify: Restart pgbouncer-tantor

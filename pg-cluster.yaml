@@ -1,83 +1,94 @@
-- hosts: inv_cluster
+- name: Tasks for group inv_cluster
+  hosts: inv_cluster
   tasks: []
 
 - name: Install basic soft
   hosts: inv_cluster
-  become: yes
+  become: true
   tags: prepare_nodes
+  vars_files:
+    - 'inventory/group_vars/prepare_nodes.yml'
   roles:
     - prepare_nodes
 
+- name: Generage SSL certs for etcd
+  hosts: localhost
+  connection: local
+  become: true
+  tags: etcd
+  roles:
+    - role: etcd-ssl
+
 - name: Install etcd
   hosts: inv_etcd
-  become: yes
+  become: true
   tags: etcd
+  vars_files:
+    - 'inventory/group_vars/etcd.yml'
   roles:
     - role: etcd
 
-- name: Install PostgreSQL
+- name: Install PostgreSQL Tantordb
   hosts: inv_pg
-  become: yes
-  tags: postgres
+  become: true
+  tags: postgres_tantordb
   vars_files:
-    - 'roles/etcd/defaults/main.yml'
-    - 'defaults/main.yml'
-    - 'vars/main.yml'
+    - 'inventory/group_vars/etcd.yml'
+    - 'inventory/group_vars/tantordb.yml'
   roles:
-    - postgres
+    - postgres_tantordb
+
+- name: Install PostgreSQL Classic
+  hosts: inv_pg
+  become: true
+  tags: postgres_classic
+  vars_files:
+    - 'inventory/group_vars/etcd.yml'
+    - 'inventory/group_vars/postgres_classic.yml'
+  roles:
+    - postgres_classic
 
 - name: Install Patroni
   hosts: inv_pg
-  become: yes
+  become: true
   tags: patroni
   vars_files:
-    - 'roles/etcd/vars/main.yml'
-    - 'roles/etcd/defaults/main.yml'
-    - 'defaults/main.yml'
-    - 'vars/main.yml'
+    - 'inventory/group_vars/etcd.yml'
+    - 'inventory/group_vars/patroni.yml'
+    - 'inventory/group_vars/tantordb.yml'
+    - 'inventory/group_vars/postgres_classic.yml'
   roles:
     - patroni
 
 - name: Install PGBouncer
   hosts: inv_pg
-  become: yes
+  become: true
   tags: pgbouncer
   vars_files:
-    - 'roles/etcd/vars/main.yml'
-    - 'roles/etcd/defaults/main.yml'
-    - 'defaults/main.yml'
+    - 'inventory/group_vars/pgbouncer.yml'
+    - 'inventory/group_vars/etcd.yml'
+    - 'inventory/group_vars/patroni.yml'
   roles:
     - pgbouncer
 
 - name: Install Haproxy
   hosts: inv_pg
-  become: yes
+  become: true
   tags: haproxy
   vars_files:
-    - 'roles/etcd/vars/main.yml'
-    - 'roles/etcd/defaults/main.yml'
-    - 'defaults/main.yml'
+    - 'inventory/group_vars/etcd.yml'
+    - 'inventory/group_vars/haproxy.yml'
+    - 'inventory/group_vars/patroni.yml'
+    - 'inventory/group_vars/pgbouncer.yml'
   roles:
     - haproxy
 
 - name: Install Keepalived
   hosts: inv_keepalived
-  become: yes
+  become: true
   tags: keepalived
   vars_files:
-    - 'roles/etcd/vars/main.yml'
-    - 'roles/etcd/defaults/main.yml'
-    - 'defaults/main.yml'
-    - 'vars/main.yml'
+    - 'inventory/group_vars/etcd.yml'
+    - 'inventory/group_vars/keepalived.yml'
   roles:
     - keepalived
-
-- name: Configure PostgreSQL
-  hosts: inv_pg
-  become: yes
-  tags: configure_pg
-  vars_files:
-    - 'defaults/main.yml'
-    - 'vars/main.yml'
-  roles:
-    - configure_pg

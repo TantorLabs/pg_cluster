@@ -1,0 +1,25 @@
+[all:children]
+inv_cluster
+inv_etcd
+inv_pg
+inv_keepalived
+ 
+[inv_cluster]
+<hostname1> ansible_host=<hostname1-ip_address> ansible_user=user_with_ssh_login_permissions
+<hostname2> ansible_host=<hostname2-ip_address> ansible_user=user_with_ssh_login_permissions
+<hostname3> ansible_host=<hostname3-ip_address> ansible_user=user_with_ssh_login_permissions
+ 
+[inv_etcd]
+<hostname1> ansible_host=<hostname1-ip_address> ansible_user=user_with_ssh_login_permissions
+<hostname2> ansible_host=<hostname2-ip_address> ansible_user=user_with_ssh_login_permissions
+<hostname3> ansible_host=<hostname3-ip_address> ansible_user=user_with_ssh_login_permissions
+ 
+[inv_pg]
+<hostname1> ansible_host=<hostname1-ip_address> ansible_user=user_with_ssh_login_permissions
+<hostname2> ansible_host=<hostname2-ip_address> ansible_user=user_with_ssh_login_permissions
+<hostname3> ansible_host=<hostname3-ip_address> ansible_user=user_with_ssh_login_permissions
+
+[inv_keepalived]
+<hostname1> ansible_host=<hostname1-ip_address> ansible_user=user_with_ssh_login_permissions
+<hostname2> ansible_host=<hostname2-ip_address> ansible_user=user_with_ssh_login_permissions
+<hostname3> ansible_host=<hostname3-ip_address> ansible_user=user_with_ssh_login_permissions

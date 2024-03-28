@@ -1,0 +1,8 @@
+---
+haproxy_postgresql_port_rewritten: 15432
+haproxy_postgresql_port_readonly: 15433
+haproxy_pool_postgresql_port_rewritten: 16432
+haproxy_pool_postgresql_port_readonly: 16433
+haproxy_patroni_auth: "{{ patroni_restapi_username }}:{{ patroni_restapi_password }}"
+haproxy_stat_user: admin
+haproxy_stat_password: admin

@@ -1,17 +1,12 @@
 - name: Installing HAproxy
-  apt:
-    name: haproxy
-    state: latest
+  ansible.builtin.package:
+    name: haproxy-tantor-all
+    state: present
     update_cache: true
 
-- name: Create systemd unit file HAproxy
-  template:
+- name: Create config file for haproxy
+  ansible.builtin.template:
     src: haproxy.cfg.j2
-    dest: /etc/haproxy/haproxy.cfg
-    mode: 0644
-
-- name: Restarted HAproxy
-  service:
-    name: haproxy
-    enabled: yes
-    state: restarted
+    dest: /opt/tantor/etc/haproxy/haproxy.cfg
+    mode: "0644"
+  notify: Restart HAproxy

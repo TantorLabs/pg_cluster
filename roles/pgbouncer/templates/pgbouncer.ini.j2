@@ -2,14 +2,14 @@
 * = host=127.0.0.1 port={{ patroni_pg_port }} auth_user={{ pgbouncer_auth_user }}
 
 [pgbouncer]
-logfile = {{ pgbouncer_log_directory }}/pgbouncer.log
-pidfile = /var/run/pgbouncer/pgbouncer.pid
+logfile = {{ pgbouncer_log_file }}
+pidfile = {{ pgbouncer_pid_file }}
 
 listen_addr = 127.0.0.1,{{ pgbouncer_incoming_hosts }}
 listen_port = {{ pgbouncer_listen_port }}
 
-auth_file = /etc/pgbouncer/userlist.txt
-auth_type = md5
+auth_file = /opt/tantor/etc/pgbouncer/userlist.txt
+auth_type = {% if major_version <= "13" %}md5{% elif major_version >= "14" %}scram-sha-256{%+ endif +%}
 auth_query = SELECT * FROM pgbouncer.get_auth($1)
 
 pool_mode = transaction

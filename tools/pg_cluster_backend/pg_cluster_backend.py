@@ -131,7 +131,7 @@ def init_test_tbls_and_data(db_conn):
         TABLESPACE = pg_default
         CONNECTION LIMIT = -1;
 
-    su - postgres -c "psql -A -t -d test_db -f /etc/pgbouncer/pgbouncer_prepare.sql"
+    su - postgres -c "psql -A -t -d test_db -f /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql"
     """
     db_conn.execute("""
     DO $$

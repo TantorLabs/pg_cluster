@@ -1,20 +1,9 @@
 ---
 
-- name: Restart keepalived service
-  ansible.builtin.systemd:
+- name: Restart keepalived-tantor service
+  ansible.builtin.systemd_service:
     daemon_reload: true
-    name: keepalived
+    name: keepalived-tantor
     enabled: true
     state: restarted
   listen: "restart keepalived"
-
-- name: Wait for the cluster ip address (VIP) "{{ cluster_vip_1 }}" is running
-  ansible.builtin.wait_for:
-    host: "{{ cluster_vip_1 }}"
-    port: "{{ ansible_ssh_port | default(22) }}"
-    state: started
-    timeout: 60
-    delay: 2
-  listen: "restart keepalived"
-
-...

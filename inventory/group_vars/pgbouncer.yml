@@ -1,0 +1,8 @@
+---
+pgbouncer_listen_port: 6432
+pgbouncer_log_file: "/opt/tantor/var/log/pgbouncer/pgbouncer.log"
+pgbouncer_conf_file: "/opt/tantor/etc/pgbouncer/pgbouncer.ini"
+pgbouncer_pid_file: "/var/run/pgbouncer-tantor/pgbouncer.pid"
+pgbouncer_auth_user: pgbouncer
+pgbouncer_auth_user_passw: pgbouncer819mQ
+pgbouncer_incoming_hosts: "{% for host in groups['inv_cluster'] %}{{ hostvars[host]['ansible_default_ipv4'].address }}{% if not loop.last %},{% endif %}{% endfor %}"

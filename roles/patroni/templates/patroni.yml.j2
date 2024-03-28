@@ -1,4 +1,4 @@
-#jinja2: lstrip_blocks: True
+#jinja2: lstrip_blocks: True, trim_blocks: True
 scope: {{ patroni_scope |d('main', true) }}
 namespace: {{ patroni_namespace |d('/service/', true) }}
 name: {{ patroni_name |d(inventory_hostname, true) }}
@@ -92,6 +92,7 @@ bootstrap:
       use_slots: {{ patroni_bootstrap_dcs_pg_use_slots |string |d(true, true) |replace(None, true) |lower }}
     {% if patroni_bootstrap_dcs_pg_parameters |d([], true) |length > 0 %}
       parameters:
+        password_encryption: {% if major_version <= "13" %}md5{% elif major_version >= "14" %}scram-sha-256{%+ endif +%}
       {% for guc in patroni_bootstrap_dcs_pg_parameters %}
         {{ guc.option }}: {{ guc.value }}
       {% endfor %}
@@ -102,13 +103,16 @@ bootstrap:
         {{ item.option }}: {{ item.value }}
       {% endfor %}
     {% endif %}
+    {% for key,value in pg_conf_data.postgresql.parameters.items() %}
+        {{key}}: {{value}}
+    {% endfor %}
     {% if patroni_bootstrap_dcs_pg_hba |d([], true) |length > 0 %}
       pg_hba:
       {% for client in patroni_bootstrap_dcs_pg_hba %}
         - {{ client.type }} {{ client.database }} {{ client.user }} {{ client.address |d(None) }} {{ client.method }} {{ client.options |d(None) }}
       {% endfor %}
 	  {% for host in groups['inv_pg'] %}
-        - host all all {{ hostvars[host]['ansible_default_ipv4'].address }}/32 md5
+        - host all all {{ hostvars[host]['ansible_default_ipv4'].address }}/32 {% if major_version <= "13" %}md5{% elif major_version >= "14" %}scram-sha-256{%+ endif +%}
       {% endfor %}
     {% endif %}
   {% if patroni_bootstrap_dcs_slots |d([], true) |length > 0 %}
@@ -175,16 +179,48 @@ postgresql:
   listen: {{ patroni_pg_listen |d('0.0.0.0:5432', true) }}
   connect_address: {{ patroni_pg_connect_address |d(ansible_host + ':5432', true) }}
 {% if patroni_pg_data_dir |d(None, true) %}
+  {% if postgresql_vendor == 'tantordb' %}
   data_dir: {{ patroni_pg_data_dir }}
+  {% elif postgresql_vendor == 'classic' and ( ansible_facts['os_family'] == 'Debian' or (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")) %}
+  data_dir: /var/lib/postgresql/{{ major_version }}/{{ inventory_hostname }}/main/
+  {% elif postgresql_vendor == 'classic' and (ansible_facts['os_family'] == "Altlinux") %}
+  data_dir: /var/lib/pgsql/data/{{ inventory_hostname }}
+  {% elif postgresql_vendor == 'classic' %}
+  data_dir: /var/lib/pgsql/{{ major_version }}/data/{{ inventory_hostname }}
+  {% endif %}
 {% endif %}
 {% if patroni_pg_bin_dir |d(None, true) %}
+  {% if postgresql_vendor == 'tantordb' %}
   bin_dir: {{ patroni_pg_bin_dir }}
+  {% elif postgresql_vendor == 'classic' and ( ansible_facts['os_family'] == 'Debian' or (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")) %}
+  bin_dir: /usr/lib/postgresql/{{ major_version }}/bin
+  {% elif postgresql_vendor == 'classic' and (ansible_facts['os_family'] == "Altlinux") %}
+  bin_dir: /usr/bin/
+  {% elif postgresql_vendor == 'classic' %}
+  bin_dir: /usr/pgsql-{{ major_version }}/bin
+  {% endif %}
 {% endif %}
 {% if patroni_pg_config_dir |d(None, true) %}
+  {% if postgresql_vendor == 'tantordb' %}
   config_dir: {{ patroni_pg_config_dir }}
+  {% elif postgresql_vendor == 'classic' and ( ansible_facts['os_family'] == 'Debian' or (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")) %}
+  config_dir: /var/lib/postgresql/{{ major_version }}/{{ inventory_hostname }}/main/
+  {% elif postgresql_vendor == 'classic' and (ansible_facts['os_family'] == "Altlinux") %}
+  config_dir: /var/lib/pgsql/data/{{ inventory_hostname }}
+  {% elif postgresql_vendor == 'classic' %}
+  config_dir: /var/lib/pgsql/{{ major_version }}/data/{{ inventory_hostname }}
+  {% endif %}
 {% endif %}
 {% if patroni_pg_pgpass |d(None, true) %}
+  {% if postgresql_vendor == 'tantordb' %}
   pgpass: {{ patroni_pg_pgpass }}
+  {% elif postgresql_vendor == 'classic' and ( ansible_facts['os_family'] == 'Debian' or (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")) %}
+  pgpass: /var/lib/postgresql/.pgpass
+  {% elif postgresql_vendor == 'classic' and (ansible_facts['os_family'] == "Altlinux") %}
+  pgpass: /var/lib/pgsql/.pgpass
+  {% elif postgresql_vendor == 'classic' %}
+  pgpass: /var/lib/pgsql/.pgpass
+  {% endif %}
 {% endif %}
 {% if patroni_pg_authentication |d([], true) |length > 0 %}
   authentication:

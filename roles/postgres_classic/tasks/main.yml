@@ -1,0 +1,271 @@
+---
+
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Installation block
+  when: postgresql_vendor == 'classic'
+  block:
+    - name: Prerequisite block
+      block:
+        - name: Add Epel repository
+          ansible.builtin.package:
+            name:
+              - epel-release
+          when: (ansible_distribution == "Rocky") or (ansible_distribution == "CentOS")
+
+        - name: Do system update (apt)
+          ansible.builtin.apt:
+            update_cache: true
+            upgrade: true
+          when: (ansible_pkg_mgr == 'apt')
+          changed_when: false
+
+        - name: Do system update (yum)
+          ansible.builtin.yum:
+            update_cache: true
+          when: (ansible_pkg_mgr == 'yum')
+          changed_when: false
+
+        - name: Do system update (dnf)
+          ansible.builtin.dnf:
+            update_cache: true
+          when: (ansible_pkg_mgr == 'dnf')
+          changed_when: false
+
+        - name: Do system update (apt_rpm)
+          community.general.apt_rpm:
+            update_cache: true
+          when: (ansible_pkg_mgr == 'apt_rpm')
+          changed_when: false
+
+        - name: Install prerequisite packages
+          ansible.builtin.package:
+            name:
+              - apt-transport-https
+              - ca-certificates
+              - curl
+              - gnupg
+              - gpg
+              - locales
+              - lsb-release
+              - software-properties-common
+              - telnet
+              - python3-pip
+              - python3-psycopg2
+              - sudo
+              - virtualenv
+              - python3-setuptools
+              - wget
+              - acl
+              - lsb-release
+            state: present
+          when: ansible_pkg_mgr == 'apt'
+
+        - name: Install prerequisite packages (yum)
+          ansible.builtin.package:
+            name:
+              - ca-certificates
+              - curl
+              - gnupg
+              - gpg
+              - telnet
+              - python3-pip
+              - python3-psycopg2
+              - python3-setuptools
+              - wget
+              - acl
+            state: present
+          when: ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
+
+        - name: Install prerequisite packages (apt_rpm)
+          ansible.builtin.package:
+            name:
+              - ca-certificates
+              - curl
+              - gnupg
+              - gpg
+              - telnet
+              - python3
+              - python3-module-pip
+              - python3-module-psycopg2
+              - apt-https
+              - python3-module-setuptools
+              - wget
+              - acl
+            state: present
+          when: ansible_pkg_mgr == 'apt_rpm'
+
+        - name: Disable firewalld for Rocky-8
+          ansible.builtin.service:
+            state: stopped
+            name: firewalld
+          when: (ansible_facts['os_family'] == "RedHat") and
+                (ansible_distribution == "Rocky" ) and
+                (ansible_distribution_major_version == "8")
+
+    - name: Block for Debian and Ubuntu
+      when: (ansible_facts['os_family'] == "Debian") or (ansible_facts['os_family'] == "Ubuntu")
+      block:
+        - name: Get system release (Debian)
+          ansible.builtin.command:
+            cmd: lsb_release -cs
+          register: debian_release
+          changed_when: false
+
+        - name: Add repository key (Debian)
+          ansible.builtin.apt_key:
+            url: "{{ postgresql_debian_gpg_key }}"
+            state: present
+
+        - name: Add PostgreSQL repo (Debian)
+          ansible.builtin.apt_repository:
+            repo: deb https://apt.postgresql.org/pub/repos/apt {{ debian_release.stdout }}-pgdg main
+            state: present
+            filename: postgresql-classic
+
+        - name: Install postgresql-server (Debian)
+          ansible.builtin.package:
+            name:
+              - postgresql-{{ major_version }}
+              - postgresql-contrib
+              - libpq-dev
+              - python3-psycopg2
+            state: present
+
+    - name: Block for Centos-7 , RedOS , Rocky
+      when: (ansible_distribution == "CentOS") or (ansible_distribution == "RED") or (ansible_distribution == "Rocky")
+      block:
+        - name: "Setting up PostgreSQL repository (yum)"
+          ansible.builtin.yum:
+            name: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+            state: present
+            disable_gpg_check: true
+          when: (ansible_pkg_mgr == 'yum')
+
+        - name: "Setting up PostgreSQL repository (dnf)"
+          ansible.builtin.dnf:
+            name: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+            state: present
+            disable_gpg_check: true
+          when: (ansible_pkg_mgr == 'dnf')
+
+        - name: "Fix repolist for RedOS"
+          ansible.builtin.replace:
+            path: /etc/yum.repos.d/pgdg-redhat-all.repo
+            regexp: 'rhel-\$releasever'
+            replace: "rhel-{{ ansible_distribution_version }}"
+          when: (ansible_distribution == "RED")
+
+        - name: Check enabled modules for Rocky linux
+          ansible.builtin.command:
+            cmd: dnf -qy module list --enabled
+          changed_when: false
+          register: rocky_enabled_modules
+          when: ( ansible_distribution == "Rocky" )
+
+        - name: Disable postgresql module at Rocky linux
+          ansible.builtin.command:
+            cmd: dnf -qy module disable postgresql
+          when: (ansible_distribution == "Rocky") and ("postgresql" in rocky_enabled_modules.stdout)
+          changed_when: ("postgresql" in rocky_enabled_modules.stdout)
+
+        - name: Install PostgreSQL
+          ansible.builtin.package:
+            name:
+              - postgresql{{ major_version }}-server
+              - postgresql{{ major_version }}-contrib
+              - postgresql-libs
+              - python3-psycopg2
+            state: present
+
+        - name: Install PostgreSQL extentions
+          ansible.builtin.package:
+            name:
+              - pg_stat_monitor_{{ major_version }}
+            state: present
+          when: (ansible_distribution == "Rocky")
+
+    - name: Block for Astra Linux (Smolensk and Orel)
+      when: (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")
+      block:
+        - name: Add repository key (Astra)
+          ansible.builtin.apt_key:
+            url: "{{ postgresql_debian_gpg_key }}"
+            state: present
+            validate_certs: false
+
+        - name: Add PostgreSQL repo (Astra)
+          ansible.builtin.apt_repository:
+            repo: deb https://apt.postgresql.org/pub/repos/apt buster-pgdg main
+            state: present
+            filename: postgresql-classic
+
+        - name: Install postgresql-server (Astra)
+          ansible.builtin.package:
+            name:
+              - postgresql-{{ major_version }}
+              - postgresql-contrib
+              - libpq-dev
+            state: present
+
+    - name: Block for AltLinux
+      when: (ansible_facts['os_family'] == "Altlinux")
+      block:
+
+        - name: Install postgresql repo
+          community.general.apt_rpm:
+            pkg: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+            state: present
+
+        - name: Install PostgreSQL
+          ansible.builtin.package:
+            name:
+              - postgresql{{ major_version }}-server
+              - postgresql{{ major_version }}-contrib
+              - python3-module-psycopg2
+            state: present
+
+        - name: Create a /var/run/postgresql directory if it does not exist
+          ansible.builtin.file:
+            path: /var/run/postgresql
+            state: directory
+            mode: '0755'
+            owner: postgres
+            group: postgres
+
+    - name: Block for Cleanup for Debian-like systems
+      when: (ansible_facts['os_family'] == "Astra Linux") or
+            (ansible_facts['os_family'] == "Astra Linux (Orel)") or
+            (ansible_facts['os_family'] == "Debian")
+      block:
+        - name: Stop Postgresql service
+          ansible.builtin.service:
+            name: postgresql@{{ major_version }}-main
+            state: stopped
+
+        # - name: Remove cluster data folders
+        #   ansible.builtin.file:
+        #     cmd: |
+        #       rm -rf /var/lib/postgresql/*
+        #       rm -rf /etc/postgresql/*
+
+        - name: Remove cluster data folders
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          with_items:
+            - "/var/lib/postgresql/"
+            - "/etc/postgresql/"
+          when: (services['patroni-tantor.service']['state'] | d()) != 'running' and ('patroni-tantor.service' not in services)
+
+        - name: Create cluster data folders
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: directory
+            owner: postgres
+            group: postgres
+            mode: "0755"
+          with_items:
+            - "/var/lib/postgresql/"
+            - "/etc/postgresql/"

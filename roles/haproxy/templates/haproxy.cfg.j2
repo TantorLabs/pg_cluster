@@ -1,12 +1,12 @@
 global
     log         127.0.0.1 local2
-    chroot      /var/lib/haproxy
+    chroot      /opt/tantor/var/lib/haproxy
     pidfile     /var/run/haproxy.pid
     maxconn     1000
     user        haproxy
     group       haproxy
     daemon
-    stats socket /var/lib/haproxy/stats
+    stats socket /opt/tantor/var/lib/haproxy/stats
 defaults
     mode                    tcp
     log                     global
@@ -29,7 +29,8 @@ frontend  ft_master
     default_backend             master
 backend master
 	{% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
-    option httpchk GET /master HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
+    option httpchk 
+    http-check send meth GET uri /master ver HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
 	{% else %}
 	option httpchk GET /master
     {% endif %}						   
@@ -45,7 +46,8 @@ frontend  ft_slave
     default_backend             slave
 backend slave
 	{% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
-    option httpchk GET /replica HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
+    option httpchk 
+    http-check send meth GET uri /replica ver HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
 	{% else %}
 	option httpchk GET /replica
     {% endif %}	
@@ -60,7 +62,8 @@ frontend  ft_master_pool
     default_backend             master_pool
 backend master_pool
 	{% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
-    option httpchk GET /master HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
+    option httpchk 
+    http-check send meth GET uri /master ver HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
 	{% else %}
 	option httpchk GET /master
     {% endif %}	
@@ -69,13 +72,15 @@ backend master_pool
     {% for host in groups['inv_pg'] %}
     server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ pgbouncer_listen_port }} maxconn 3000 check port 8008
     {% endfor %}
+    
 frontend  ft_slave_pool
     bind *:{{ haproxy_pool_postgresql_port_readonly }}
     mode tcp
     default_backend             slave_pool
 backend slave_pool
 	{% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
-    option httpchk GET /replica HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
+    option httpchk 
+    http-check send meth GET uri /replica ver HTTP/1.1\r\nAuthorization:\ Basic\ {{ haproxy_patroni_auth | b64encode }}
 	{% else %}
 	option httpchk GET /replica
     {% endif %}	

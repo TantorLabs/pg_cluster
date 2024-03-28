@@ -11,12 +11,14 @@ User=postgres
 Group=postgres
 
 # Path to the init file
-Environment=BOUNCERCONF=/etc/pgbouncer/pgbouncer.ini
+Environment=BOUNCERCONF={{ pgbouncer_conf_file }}
 
 RuntimeDirectory=pgbouncer
-PIDFile=/var/run/pgbouncer/pgbouncer.pid
+PIDFile={{ pgbouncer_pid_file }}
 
-ExecStart=/usr/sbin/pgbouncer -d -q ${BOUNCERCONF}
+#ExecStart=/usr/sbin/pgbouncer -d -q ${BOUNCERCONF}
+ExecStart=/opt/tantor/usr/bin/pgbouncer -d -q ${BOUNCERCONF}
+
 ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGINT
 

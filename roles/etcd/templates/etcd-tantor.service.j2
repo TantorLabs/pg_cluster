@@ -1,0 +1,19 @@
+[Unit]
+Description=Etcd Server
+After=network.target
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+WorkingDirectory=/opt/tantor/var/lib/etcd/
+EnvironmentFile=-/opt/tantor/etc/etcd/etcd.conf
+User= {{ etcd_user }}
+# set GOMAXPROCS to number of processors
+ExecStart=/bin/bash -c "GOMAXPROCS=$(nproc) /opt/tantor/usr/bin/etcd"
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+

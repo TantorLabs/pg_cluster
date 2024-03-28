@@ -1,0 +1,3 @@
+{% for host in groups['inv_etcd'] %}
+{{ hostvars[host]['ansible_hostname']}},{{ hostvars[host]['ansible_host']}},{{ hostvars[host]['ansible_hostname']}},{{ hostvars[host]['ansible_host']}}
+{% endfor %}

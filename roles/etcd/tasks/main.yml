@@ -1,88 +1,58 @@
 ---
 - name: Collect facts for etcd
-  set_fact:
-    cacheable: yes
-    etcd_listen_public: '{{ "0.0.0.0" if etcd_iface_public == "all" else ansible_default_ipv4.address if etcd_iface_public == "default" else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"] }}'
-    etcd_listen_cluster: '{{ "0.0.0.0" if etcd_iface_cluster == "all" else ansible_default_ipv4.address if etcd_iface_cluster == "default" else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"] }}'
-    etcd_address_public:  '{{ ansible_fqdn if not etcd_use_ips | bool else ansible_default_ipv4.address if etcd_iface_public  is in [ "all", "default" ] else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"] }}'
-    etcd_address_cluster: '{{ ansible_fqdn if not etcd_use_ips | bool else ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ] else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"] }}'
+  ansible.builtin.set_fact:
+    cacheable: true
+    etcd_listen_public: >-
+        {{ "0.0.0.0" if etcd_iface_public == "all" else
+          (ansible_default_ipv4.address if etcd_iface_public == "default"
+            else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
 
-- debug: var=etcd_address_cluster verbosity=0
+    etcd_listen_cluster: >-
+        {{ "0.0.0.0" if etcd_iface_cluster == "all" else
+          (ansible_default_ipv4.address if etcd_iface_cluster == "default"
+           else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
 
-- name: Create etcd group
-  become: yes
-  become_user: root
-  group:
-    name: '{{ etcd_group }}'
-    state: present
+    etcd_address_public: >-
+        {{ ansible_fqdn if not etcd_use_ips | bool else
+          (ansible_default_ipv4.address if etcd_iface_public is in [ "all", "default" ]
+           else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
 
-- name: Create etcd user
-  become: yes
-  become_user: root
-  user:
-    name: '{{ etcd_user }}'
-    group: '{{ etcd_group }}'
-    home: '{{ etcd_data_dir }}'
+    etcd_address_cluster: >-
+        {{ ansible_fqdn if not etcd_use_ips | bool else
+          (ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ]
+           else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
+
+- name: Install etcd-tantor-all
+  ansible.builtin.package:
+    name: etcd-tantor-all
     state: present
 
 - name: Create dirs
-  become: yes
+  become: true
   become_user: root
-  file:
+  ansible.builtin.file:
     state: directory
     path: '{{ item }}'
     owner: '{{ etcd_user }}'
     group: '{{ etcd_group }}'
-    mode: 0755
+    mode: "0755"
   with_items:
-    - /etc/etcd
     - '{{ etcd_cluster_pki_dir }}'
 
-- include_tasks: pki.yml
+- name: Add tasks for secure ETCD connection
+  ansible.builtin.include_tasks: pki.yml
   when: etcd_secure | bool
 
-- name: Downloading official etcd release
-  get_url:
-    url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
-    dest: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
-    mode: 0755
-  register: get_etcd
+- name: Copy etcd configuration
+  ansible.builtin.template:
+    src: etcd.conf.j2
+    dest: /opt/tantor/etc/etcd/etcd.conf
+    mode: "0644"
+  notify: Restart etcd-tantor.service
 
-- name: Unzip downloaded file
-  unarchive:
-    src: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
-    dest: "/etc/etcd/"
-    remote_src: yes
-    owner: '{{ etcd_user }}'
-    group: '{{ etcd_group }}'
-    creates: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64/etcd"
-
-- name: Copy etcd binaries to destination directory
-  copy:
-    src: "/etc/etcd/etcd-{{ etcd_version }}-linux-amd64/{{ item }}"
-    dest: "/usr/local/bin/{{ item }}"
-    mode: 0755
-    owner: '{{ etcd_user }}'
-    group: '{{ etcd_group }}'
-    remote_src: yes
-  with_items:
-    - etcd
-    - etcdctl
-
-- name: Install etcd.service configuration
-  become: yes
-  become_user: root
-  with_items:
-    - f: etcd.conf
-      d: /etc/etcd
-  template:
-    src: '{{ item.f }}.j2'
-    dest: '{{ item.d }}/{{ item.f }}'
-    owner: '{{ etcd_user }}'
-    group: '{{ etcd_group }}'
-    mode: 0644
-  notify:
-  - restart etcd masters
-#  - restart etcd members
-
-- include_tasks: '{{ etcd_init_system }}.yml'
+- name: Configure etcd-tantor.service
+  ansible.builtin.template:
+    src: etcd-tantor.service.j2
+    dest: /lib/systemd/system/etcd-tantor.service
+    mode: "0644"
+  notify: Restart etcd-tantor.service

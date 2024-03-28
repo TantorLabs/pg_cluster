@@ -1,40 +1,72 @@
-- name: Update system
+---
+
+- name: "Configure hostname"
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
   become: true
-  apt:
-    update_cache: yes
-    upgrade: 'yes'
 
-- name: Install basic utils
-  apt:
-    name:
-    - htop
-    - iotop
-    - sysstat
-    - nano
-    - net-tools
-    - less
-    - jq
-    state: latest
+- name: Include task for Debian-like systems
+  ansible.builtin.include_tasks: debian.yml
+  when: (ansible_os_family == "Astra Linux") or (ansible_os_family == "Debian")
 
-- name: Install gnupg
-  apt:
-    name: gnupg
+- name: Include task for RHEL-like systems
+  ansible.builtin.include_tasks: rhel.yml
+  when: (ansible_distribution == "RED") or (ansible_distribution == "Centos") or (ansible_distribution == "Rocky")
+
+- name: Block for installation of basic utils
+  module_defaults:
+    ansible.builtin.apt:
+      update_cache: true
+    ansible.builtin.yum:
+      update_cache: true
+    ansible.builtin.dnf:
+      update_cache: true
+    ansible.builtin.apt_rpm:
+      update_cache: true
+  block:
+    - name: Install basic utils
+      ansible.builtin.package:
+        name:
+          - htop
+          - iotop
+          - sysstat
+          - nano
+          - net-tools
+          - less
+          - jq
+          - wget
+          - gnupg
+          - chrony
+          - python3-pip
+        state: present
+      notify: Restart chronyd
+
+- name: Install python package psutil
+  ansible.builtin.pip:
+    name: psutil
+
+- name: Get content of /etc/security/limits.conf file
+  ansible.builtin.lineinfile:
+    path: /etc/security/limits.conf
+    regexp: '(postgres\shard)|(postgres\ssoft)'
+    state: absent
+  check_mode: true
+  register: sec_limit
+  changed_when: false
+
+- name: Add secure limits for postgres if not exists
+  ansible.builtin.lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
     state: present
-    update_cache: yes
+  when: not sec_limit.found
+  with_items:
+    - "postgres soft    nofile   65536"
+    - "postgres hard    nofile   100000"
 
-- name: Ensure the locale exists
-  locale_gen:
-    name: ru_RU.UTF-8
-    state: present
-
-- name: Setup default locale
-  command: localectl set-locale LANG=ru_RU.UTF-8
-
-- name: Set nofile for postgres
-  become: yes
-  become_user: root
-  shell: |
-    cat >> /etc/security/limits.conf << EOL
-    postgres soft    nofile   65536
-    postgres hard    nofile   100000
-    EOL
+- name: Add another bin dir to system-wide $PATH.
+  when: ansible_env.PATH is not search("/opt/tantor/usr/bin:/opt/tantor/usr/sbin")
+  ansible.builtin.copy:
+    dest: /etc/profile.d/tantor.sh
+    content: 'PATH=$PATH:/opt/tantor/usr/bin:/opt/tantor/usr/sbin'
+    mode: "0644"

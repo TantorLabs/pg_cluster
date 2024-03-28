@@ -1,0 +1,8 @@
+---
+
+- name: Restart pgbouncer-tantor
+  ansible.builtin.systemd_service:
+    name: pgbouncer-tantor
+    state: restarted
+    daemon_reload: true
+    enabled: true

@@ -1,47 +1,29 @@
-- name: Configure patroni repository key
-  apt_key:
-    url: "{{ patroni_apt_key_url }}"
-- name: Configure patroni repository
-  apt_repository:
-    repo: "{{ patroni_apt_repo }}"
+---
 
-- name: Add patroni group
-  group:
-    name: "{{ patroni_system_group }}"
+- name: Load watchdog kernel module
+  community.general.modprobe:
+    name: softdog
     state: present
 
-- name: Add patroni user
-  user:
-    name: "{{ patroni_system_user }}"
-    group: "{{ patroni_system_group }}"
-    system: yes
-
-- name: Create udev rule for watchdog
-  copy:
-    content: 'KERNEL=="{{ patroni_watchdog_device |basename }}", OWNER="{{ patroni_system_user }}", GROUP="{{ patroni_system_group }}", MODE="0600"'
-    dest: /etc/udev/rules.d/60-watchdog.rules
-    owner: root
-    group: root
-    mode: 0644
-
-- name: Install watchdog
-  package:
-    name: freeipmi-bmc-watchdog
-    update_cache: yes
+- name: Chown postgres watchdog
+  ansible.builtin.file:
+    path: /dev/watchdog
+    owner: postgres
+    state: file
 
 - name: Make kernel watchdog device available for patroni
-  template:
+  ansible.builtin.template:
     src: patroni-watchdog.service.j2
     dest: /etc/systemd/system/patroni-watchdog.service
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
   notify:
-    - restart patroni-watchdog
+    - Restart patroni-watchdog
 
 # Dirty hack. See https://bugs.launchpad.net/ubuntu/+source/watchdog/+bug/1448924
 - name: Enable watchdog daemon to start on boot
-  file:
+  ansible.builtin.file:
     src: /lib/systemd/system/watchdog.service
     dest: /etc/systemd/system/multi-user.target.wants/watchdog.service
     state: link
@@ -49,76 +31,145 @@
         ansible_distribution_release in ('xenial', 'jessie')
 
 - name: Force systemd to reread configs
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     daemon_reload: true
 
 - name: Install system packages for patroni
-  package:
-    name: patroni
+  ansible.builtin.package:
+    name: patroni-tantor-all
     state: present
-    update_cache: yes
+    update_cache: true
+
+- name: Create patroni unit file
+  ansible.builtin.template:
+    src: patroni-tantor.service.j2
+    dest: /etc/systemd/system/patroni-tantor.service
+    owner: root
+    group: root
+    mode: "0644"
 
 - name: Create patroni config directory
-  file:
+  ansible.builtin.file:
     path: "{{ patroni_config_dir }}"
     state: directory
     owner: "{{ patroni_system_user }}"
     group: "{{ patroni_system_group }}"
-    mode: 0750
+    mode: "0755"
 
 - name: Create patroni log directory
-  file:
+  ansible.builtin.file:
     path: "{{ patroni_log_dir }}"
     state: directory
     owner: "{{ patroni_system_user }}"
     group: "{{ patroni_system_group }}"
-    mode: 0750
-  when: patroni_log_destination |d('stderr', true) != 'stderr'
+    mode: "0755"
+  when: patroni_log_destination |d('stderr', true) != 'stderr' # **
 
 - name: Prepare callback scripts
-  copy:
+  ansible.builtin.copy:
     src: "callbacks/{{ item.event }}"
     dest: "{{ item.script }}"
     owner: "{{ patroni_system_user }}"
     group: "{{ patroni_system_group }}"
-    mode: 0750
-    backup: yes
+    mode: "0750"
+    backup: true
   with_items:
     - "{{ patroni_pg_callbacks }}"
   when: not( (item.script is none) or (item.script | trim | length == 0) )
 
-- name: Create patroni unit file
-  template:
-    src: patroni.service.j2
-    dest: /etc/systemd/system/patroni.service
+- name: Upload pg_configurator.py
+  become: true
+  become_user: root
+  with_items:
+    - f: "{{ playbook_dir + '/tools/pg_configurator.py' }}"
+      d: '/opt/tantor/etc/patroni'
+      m: '0400'
+  ansible.builtin.copy:
+    src: '{{ item.f }}'
+    dest: '{{ item.d }}'
     owner: root
     group: root
-    mode: 0644
+    mode: '{{ item.m }}'
+
+- name: Create json configuration
+  become: true
+  become_user: root
+  ansible.builtin.command: |
+      python3 /opt/tantor/etc/patroni/pg_configurator.py \
+      --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
+      --db-ram="{{ pg_conf_db_ram }}" \
+      --db-disk-type="{{ pg_conf_db_disk_type }}" \
+      --db-duty="{{ pg_conf_db_duty }}" \
+      --pg-version="{{ patroni_pg_version }}" \
+      --output-format=patroni-json \
+      --min-conns=200 \
+      --max-conns=200 \
+      --common-conf \
+      --output-file-name=/opt/tantor/etc/patroni/postgresql.json
+  args:
+    creates: /opt/tantor/etc/patroni/postgresql.json
+
+- name: Get content of remote file
+  ansible.builtin.slurp:
+    src: /opt/tantor/etc/patroni/postgresql.json
+  register: remote_yaml
+
+- name: Interpret remote file content as yaml
+  ansible.builtin.set_fact:
+    pg_conf_data: '{{ remote_yaml.content | b64decode | from_json }}'
+
+- name: Check if patoni conf file exists
+  ansible.builtin.stat:
+    path: "{{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml"
+  register: patroni_conf
+
+- name: Get content of patroni conf file
+  ansible.builtin.lineinfile:
+    path: "{{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml"
+    regexp: '(bulk_wal_dir|log_directory:\spg_log)'
+    state: absent
+  check_mode: true
+  register: pg_wal_log_conf
+  changed_when: false
+  when: patroni_conf.stat.exists
 
 - name: Create patroni configuration file
-  template:
+  ansible.builtin.template:
     src: patroni.yml.j2
-    dest: "{{ patroni_config_dir }}/{{ patroni_name|default(inventory_hostname) }}.yml"
+    dest: "{{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml"
     owner: "{{ patroni_system_user }}"
     group: "{{ patroni_system_group }}"
-    mode: 0600
-  notify:
-    - restart patroni
+    mode: "0600"
+  when: (not patroni_conf.stat.exists) or (pg_wal_log_conf.found)
+
+- name: Replace patroni_pg_wal_dir string from the patroni template to real variable
+  ansible.builtin.replace:
+    path: "{{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml"
+    regexp: 'bulk_wal_dir'
+    replace: "{{ patroni_pg_wal_dir }}"
+  when: patroni_pg_wal_dir is defined
+
+- name: Replace pg_log string from the patroni template to real variable
+  ansible.builtin.replace:
+    path: "{{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml"
+    regexp: 'log_directory:\spg_log'
+    replace: "log_directory: {{ patroni_pg_log_dir }}"
+  when: patroni_pg_log_dir is defined
 
 - name: Copy keys/certs from etcd
-  become: yes
+  become: true
   become_user: root
   with_items:
     - f: '{{ etcd_pki_key_src }}'
-      d: /etc/patroni
+      d: /opt/tantor/etc/patroni
       m: '0400'
     - f: '{{ etcd_pki_cert_src }}'
-      d: /etc/patroni
+      d: /opt/tantor/etc/patroni
       m: '0600'
     - f: '{{ etcd_pki_ca_cert_src }}'
-      d: /etc/patroni
+      d: /opt/tantor/etc/patroni
       m: '0600'
-  copy:
+  ansible.builtin.copy:
     src: '{{ item.f }}'
     dest: '{{ item.d }}'
     owner: postgres
@@ -126,18 +177,25 @@
     mode: '{{ item.m }}'
 
 - name: Ensure patroni is running
-  systemd:
-    name: patroni.service
+  ansible.builtin.systemd_service:
+    name: patroni-tantor.service
     state: started
-    daemon_reload: yes
-    enabled: yes
+    daemon_reload: true
+    enabled: true
   tags: [patroni]
 
-- wait_for:
+- name: Wait for patroni to run
+  ansible.builtin.wait_for:
     path: /var/run/postgresql/.s.PGSQL.{{ patroni_pg_port }}
 
-- name: Create replication user
-  become: yes
-  become_user: root
-  command: su - postgres -c "psql -A -t -d postgres -c \"CREATE ROLE {{ patroni_replication_username }} WITH REPLICATION LOGIN PASSWORD '{{ patroni_replication_password }}'\""
-  ignore_errors: yes
+- name: Create replicator role
+  community.postgresql.postgresql_user:
+    db: postgres
+    name: "{{ patroni_replication_username }}"
+    password: "{{ patroni_replication_password }}"
+    encrypted: true
+    role_attr_flags: REPLICATION
+    state: present
+    port: "5432"
+  become: true
+  become_user: postgres

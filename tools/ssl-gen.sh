@@ -53,6 +53,9 @@ tmp=${1##*/}		# longest occurance of slash from back
 conf_name=${tmp%%.*}	# longest occurance of dot from front
 cur_d=$(pwd)
 
+ssl_folder=$(cat ${conf_file} | head -n1 | cut -d "," -f1)
+mkdir -p ../pki-dir/"${ssl_folder}"
+
 ca=ca
 ca_csr="/tmp/${ca}-csr.json"
 ca_config="/tmp/${ca}-config.json"
@@ -214,5 +217,5 @@ rm -f ${ca_csr}* ${ca_config}*
 
 [ "*.pem" != "" ] && chmod 644 *.pem
 cd ${cur_d}
-mv -v **/*.pem ../pki-dir
+mv -v **/*.pem ../pki-dir/"${ssl_folder}"
 exit

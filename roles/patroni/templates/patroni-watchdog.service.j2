@@ -2,7 +2,7 @@
 
 [Unit]
 Description=Makes kernel watchdog device available for Patroni
-Before=patroni.service
+Before=patroni-postgres.service
 
 [Service]
 Type=oneshot

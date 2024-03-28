@@ -1,0 +1,7 @@
+---
+
+- name: Restart HAproxy
+  ansible.builtin.systemd_service:
+    name: haproxy-tantor
+    daemon-reload: true
+    state: restarted

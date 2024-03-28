@@ -4,12 +4,13 @@ ETCD_DATA_DIR="{{etcd_cluster_data_dir}}"
 #ETCD_SNAPSHOT_COUNTER="10000"
 #ETCD_HEARTBEAT_INTERVAL="100"
 #ETCD_ELECTION_TIMEOUT="1000"
-{% if etcd_iface_public == 'all' %}
-{% set client_endpoints = [ etcd_listen_public ] %}
-{% else %}
-{% set client_endpoints = [ etcd_listen_public, '127.0.0.1' ] %}
-{% endif %}
-ETCD_LISTEN_CLIENT_URLS="{{ client_endpoints | map('regex_replace', '^(.+)$', etcd_scheme ~ '\\1' ~ ':' ~ etcd_port_client) | join(',') }}"
+##{% if etcd_iface_public == 'all' %}
+##{% set client_endpoints = [ etcd_listen_public ] %}
+##{% else %}
+##{% set client_endpoints = [ etcd_listen_public, 'localhost' ] %}
+##{% endif %}
+##ETCD_LISTEN_CLIENT_URLS="{{ client_endpoints | map('regex_replace', '^(.+)$', etcd_scheme ~ '\\1' ~ ':' ~ etcd_port_client) | join(',') }}"
+ETCD_LISTEN_CLIENT_URLS="{{etcd_scheme}}{{etcd_listen_cluster}}:{{etcd_port_client}},{{etcd_scheme}}localhost:{{etcd_port_client}}"
 #ETCD_MAX_SNAPSHOTS="5"
 #ETCD_MAX_WALS="5"
 #ETCD_CORS=""
