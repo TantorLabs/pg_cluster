@@ -1,6 +1,6 @@
-# pg_cluster, кластер высокой доступности на базе решения Patroni
+# pg_cluster - HA cluster based on patroni archestration tool
 
-## Структура проекта
+## Project Structure
 
 ```
 |-- pg-cluster.yaml			# Main playbook
@@ -80,28 +80,28 @@
 |   `-- ssl-gen.sh
 ```
 
-![Архитектура](pg_cluster.png)
+![Architecture](pg_cluster_architechture.png)
 
-# Общие сведения
+# General information
 
-В этом разделе описан порядок развёртывания ``pg_cluster`` с помощью средств автоматизации на базе ``ansible``.
-Далее по тексту будут представлены примеры вводимых в терминале команд, нужных для подготовки SSH сессии, проверки корректности настроек ansible и запуска playbook. В качестве примера пользователя в них будет использоваться учётная запись ``admin_user``. При запуске команд в контуре Заказчика данный пользователь должен быть изменён на учётную запись, имеющую беспарольный доступ по SSH ко всем серверам (виртуальным машинам) указанным в файле ``my_inventory``, а также доступ в привилегированный режим (root). В результате работы плейбука на серверах, указанных в файле ``my_inventory`` будет развёрнут кластер выбранной СУБД (tantordb или postgresql), управляемый через patroni.
+This section describes how to deploy ``pg_cluster`` using ``ansible`` based automation tools.
+The following text will present examples of commands to be entered in the terminal to prepare an SSH session, check if the ansible settings are correct and start the playbook. The ``admin_user`` account will be used as an example user. When launching commands in the Customer's loop, this user must be changed to an account that has passwordless SSH access to all servers (virtual machines) specified in the ``my_inventory`` file, as well as access to privileged mode (root). As a result of the playbook operation, a cluster of the selected DBMS (tantordb or postgresql) managed via patroni will be deployed on the servers specified in the ``my_inventory`` file.
 
-## Подготовка узлов на базе ОС Astra Linux 1.7
+## Host preparation (based on OS Astra Linux 1.7)
 
-1. Создайте пользователя ``admin_user`` (выполняется на каждом узле из файла ``inventory``):
+1. Create an ``admin_user`` user (executed on each node from the ``inventory`` file):
 
 ```bash
 adduser admin_user
 ```
 
-2. Установите git (выполняется на узле, с которого будет запускаться ansible-playbook):
+2. Install git (executed on the node from which ansible-playbook will be run):
 
 ```bash
 apt install git
 ```
 
-3. Скачайте проект (выполняется на узле, с которого будет запускаться ansible-playbook):
+3. Download the project (run on the node from which ansible-playbook will be launched):
 
 ```bash
 git clone -b tantor-classic https://github.com/TantorLabs/pg_cluster
@@ -109,17 +109,17 @@ git clone -b tantor-classic https://github.com/TantorLabs/pg_cluster
 cd pg_cluster
 ```
 
-4. Сгенерируйте SSH ключи и загрузите на узлы кластера (выполняется на узле, с которого будет запускаться ansible-playbook):
+4. Generate SSH keys and upload to cluster nodes (run on the node from which ansible-playbook will run):
 
 ```bash
 ssh-keygen -t rsa -b 4096 -C "admin_user" -f /home/admin_user/pg_lab_ansible -q -N ""
 
 cat /home/admin_user/pg_lab_ansible.pub >> /home/admin_user/.ssh/authorized_keys
 
-ssh-copy-id -i /home/admin_user/pg_lab_ansible.pub admin_user@ip_узла  ( повторите команду для каждого узла из файла inventory)
+ssh-copy-id -i /home/admin_user/pg_lab_ansible.pub admin_user@ip_node ( repeat the command for each node in the inventory file)
 ```
 
-5. Пропишите параметры подключения каждого сервера из ``inventory файла`` для пользователя ``admin_user`` (выполняется на узле, с которого будет запускаться ansible-playbook):
+5. Write the connection parameters of each server from the ``inventory file`` for the user ``admin_user`` (run on the node from which ansible-playbook will be launched):
 
 ```bash
 cat >> $HOME/.ssh/config << EOL  
@@ -132,38 +132,38 @@ Host xxx.xxx.xxx.xxx
 EOL
 ```
 
-6. Предоставьте возможность пользователю ``admin_user`` переходить в привилегированный режим (root) без ввода пароля (выполняется на каждом узле из файла inventory).
+6. Grant the ``admin_user`` user possibility to enter to privileged mode (root) without entering a password (executed on each node from the inventory file).
 
-7. Протестируйте подключение по ``ssh`` пользователя ``admin_user`` (при подключении не должен запрашиваться пароль):
+7. Test the ``ssh`` connection of the ``admin_user`` user (no password should be requested when connecting):
 
 ```bash
-ssh admin_user@ip_узла
+ssh admin_user@ip_node
 ```
 
-## Подготовка Ansible
+## Ansible preparation
 
-Подготовка к запуску выполняется на узле, с которого будет запускаться ansible-playbook, и включает в себя следующие шаги:
+Startup preparation is performed on the node from which ansible-playbook will be launched, and includes the following steps:
 
-1. Установите ansible
+1. Install ansible
 
 ```bash
 apt install python3-pip
-python3 -m pip install ansible=="xxx" # укажите максимально доступную версию
+python3 -m pip install ansible=="xxx" # specify the maximum available version
 ```
 
-2. В файле ``inventory/group_vars/prepare_nodes.yml`` измените значение переменных ``USERNAME:PASSWORD`` на имя пользователя и пароль для доступа к репозиторию Tantor DB.
+2. In the ``inventory/group_vars/prepare_nodes.yml`` file, change the value of the ``USERNAME:PASSWORD`` variables to the user name and password to access the Tantor DB repository.
 
-3. В файле ``inventory/group_vars/keepalived.yml`` измените значение переменной ``cluster_vip_1`` на IP, который будет использоваться keepalived для выделенного виртуального адреса.
+3. In the ``inventory/group_vars/keepalived.yml`` file, change the value of the ``cluster_vip_1`` variable to the IP that will be used by keepalived for the allocated virtual address.
 
-4. Заполните ``inventory`` файл ``inventory/my_inventory``
+4. Fill in the ``inventory`` file ``inventory/my_inventory``.
 
-После заполнения файла ``my_inventory`` рекомендуется убедиться, что все серверы доступны для подключения к ним по SSH с указанием требуемого пользователя. Для этого выполните следующую команду в терминале:
+After filling in the ``my_inventory`` file, it is recommended to make sure that all servers are available to connect to them via SSH with the required user. To do this, run the following command in the terminal:
 
 ```bash
 ansible all -i inventory/my_inventory -m ping -u admin_user
 ```
 
-Результатом выполнения команды выше будет ответ от каждого из доступных серверов (виртуальных машин) в следующем формате:
+The result of the command above will be a response from each of the available servers (virtual machines) in the following format:
 
 ```bash
 <device_fqdn_name> | SUCCESS => {
@@ -175,37 +175,299 @@ ansible all -i inventory/my_inventory -m ping -u admin_user
 }
 ```
 
-Данный вывод для каждого сервера, описанного в файле ``my_inventory``, означает успешное подключение к нему по SSH. Если в результате ответа от какого-либо сервера (виртуальной машины) сообщение отличалось от шаблона выше - проверьте возможность подключения к нему через ключ от имени пользователя, передаваемого при помощи флага ``-u``. При необходимости подключаться только с вводом пароля (без использования ключей) - необходимо добавлять флаги ``-kK`` к запуску команд и вводить пароль для SSH-подключения (флаг ``-k``) и для перехода пользователя в привилегированный режим (root) (флаг ``-K``):
+This output for each server described in ``my_inventory`` file means successful connection to it via SSH. If as a result of the response from any server (virtual machine) the message differed from the above template - check whether it is possible to connect to it via a key from the user name passed using the ``-u`` flag. If it is necessary to connect only with password entry (without using keys) - it is necessary to add ``-kK`` flags to the command launch and enter the password for SSH connection (``-k`` flag) and for user to switch to privileged mode (root) (``-K`` flag).
 
-## Особенности запуска
+## Launch Features
 
-Плейбук допускает возможность разделения каталогов pg_data, pg_wal и pg_log.
-В случае необходимости размещения WAL-журналов в отдельной папки необходимо внести изменения в файл ``inventory/groupvars/patroni.yml``:
+The playbook allows the possibility of separating the pg_data, pg_wal and pg_log directories.
+If it is necessary to place WAL logs in a separate folder, it is required to make changes to the ``inventory/groupvars/patroni.yml`` file:
 
-* убрать комментарий для переменной ``patroni_pg_wal_dir`` и в ней прописать каталог для размещения WAL-журналов;
-* для переменной ``patroni_bootstrap_initdb`` добавить параметр ``waldir`` и проверить, что он ссылается на переменную ``patroni_pg_wal_dir``;
-* для выбранного метода создания реплик (по-умолчанию ``patroni_pg_basebackup``) добавить параметр ``waldir`` со значением ``bulk_wal_dir``;
+* remove the comment for the ``patroni_pg_wal_dir`` variable and specify the directory for placing WAL logs in it;
+* for the ``patroni_bootstrap_initdb`` variable add the ``waldir`` parameter and check that it refers to the ``patroni_pg_wal_dir`` variable;
+* for the selected replica creation method (by default ``patroni_pg_basebackup``) add ``waldir`` parameter with ``bulk_wal_dir`` value;
 
-В случае необходимости размещения LOG-журналов:
+In case it is necessary to place LOGs:
 
-* убрать комментарий для переменной ``patroni_pg_log_dir`` и в ней прописать каталог для размещения LOG-журналов;
+* remove the comment for the variable ``patroni_pg_pg_log_dir`` and in it specify the directory for placing LOG logs;
 
-## Запуск плейбука
+## Playbook launch
 
-Одна из задач из плейбука выполняется на том же узле, с которого запускается ansible (контрольный сервер). В случае, если пользователь, под которым ведётся запуск, не имеет на этом сервере возможность беспарольного доступа в привелигированный режим (root) - необходимо добавить флаг ``-K`` к команде запуска и ввести пароль.
+One of the playbook tasks is executed on the same node from which ansible is launched (control server). In case the user under which ansible is run does not have passwordless access to root mode on this server, it is necessary to add the ``-K`` flag to the start command and enter the password.
 
-Существует несколько вариантов запуска Ansible: с возможностью установки TantorDB либо классического PostgreSQL в качестве СУБД.
+There are several options to run Ansible: with the option to install TantorDB or classic PostgreSQL as a DBMS.
 
-Для установки СУБД TantorDB используйте следующую команду:
+Use the following command to install TantorDB:
 
 ```bash
 ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb major_version=15" pg-cluster.yaml -K
 ```
 
-Для установки СУБД TantorDB используйте следующую команду:
+Use the following command to install the PostgreSQL DBMS:
 
 ```bash
 ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=classic major_version=11" pg-cluster.yaml -K
 ```
 
-В командах выше замените значение параметра ``major_version`` на версию СУБД, которую необходимо установить, а параметр ``admin_user`` на пользователя, имеющего беспарольный доступ к серверам из файла ``my_inventory`` с возможностью перехода в привилегированный режим (root).
+In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root).
+
+## HOW TO
+
+#### Work with etcd:
+
+```bash
+# on NODE_1
+e_host=(ETCDCTL_API=3 /opt/tantor/usr/bin/etcdctl --endpoints=https://<HOST_1_IP>:2379,https://<HOST_2_IP:2379,https://<HOST_N_IP:2379 --cacert=/opt/tantor/etc/patroni/ca.pem --cert=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>.pem  --key=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>-key.pem)
+
+# list etcd members
+etcdctl "${e_host[@]}" --debug member list
+
+# check version
+etcdctl "${e_host[@]}" version
+>> etcdctl version: 3.3.18
+>> API version: 2
+
+# get key value ("main" is "patroni_scope")
+etcdctl "${e_host[@]}" get /service/main/config
+
+# cleanup patroni cluster configuration
+etcdctl "${e_host[@]}" rm /service/main --recursive
+```
+
+#### Manual start patroni:
+
+```bash
+ps -ef | grep "bin/patroni" | grep -v grep | awk '{print $2}' | xargs kill
+su -l postgres -c "/usr/bin/python3 /opt/tantor/usr/bin/patroni /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml"
+```
+
+#### Manual create user:
+
+```bash
+# create user
+su - postgres -c "psql -A -t -d postgres -c \"CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'repuserpasswd'\""
+# check user
+su - postgres -c "psql -A -t -d postgres -c \"select * from pg_roles where rolname = 'replicator'\""
+```
+
+#### Manage Patroni Cluster
+
+Patroni includes a command called `patronictl` which can be used to control the cluster. Let`s check the status of the cluster:
+```bash
+root@node1:~# patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list
++ Cluster: main (7351350415269982209) --+---------+-----------+----+-----------+
+| Member  | Host            | Role    | State     | TL | Lag in MB |
++---------+-----------------+---------+-----------+----+-----------+
+| node1   | xxx.xxx.xxx.xxx | Leader  | running   |  1 |           |
+| node2   | yyy.yyy.yyy.yyy | Replica | streaming |  1 |         0 |
+| node3   | zzz.zzz.zzz.zzz | Replica | streaming |  1 |         0 |
++---------+-----------------+---------+-----------+----+-----------+
+```
+`patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml edit-config` should be used only to manage global cluster configuration.
+It should not contain any node-specific settings like `connect_address`, `listen`, `data_dir` and so on.
+
+Update DCS `pg_hba` settings:
+
+```bash
+cat > pg_hba.conf << EOL
+host replication replicator 0.0.0.0/0 md5
+local all all  trust
+host all all 127.0.0.1/32 trust
+host all all localhost trust
+EOL
+
+cat pg_hba.conf | jq -R -s 'split("\n") | .[0:-1] | {"postgresql": {"pg_hba": .}}' | \
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml edit-config --apply - --force main
+
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml show-config
+```
+
+Change `postgresql.conf` settings:
+
+```bash
+cat > postgresql.conf << EOL
+  "postgresql": {
+	"parameters": {
+	  "max_connections" : 101,
+	  "max_locks_per_transaction": 64,
+	  "max_prepared_transactions": 0,
+	  "max_replication_slots": 10,
+	  "max_wal_senders": 10,
+	  "max_worker_processes": 8,
+	  "track_commit_timestamp": false,
+	  "wal_keep_segments": 8,
+	  "wal_level": "replica",
+	  "wal_log_hints": true
+	}
+  }
+EOL
+
+cat postgresql.conf | patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml edit-config --apply - --force main
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml restart main
+```
+
+Make `switchover`:
+
+```bash
+root@node1:~# patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml switchover
+Current cluster topology
++ Cluster: main (7351350415269982209) --+---------+-----------+----+-----------+
+| Member| Host            | Role    | State     | TL | Lag in MB |
++-------+-----------------+---------+-----------+----+-----------+
+| node1 | xxx.xxx.xxx.xxx | Leader  | running   |  1 |           |
+| node2 | yyy.yyy.yyy.yyy | Replica | streaming |  1 |         0 |
+| node3 | zzz.zzz.zzz.zzz | Replica | streaming |  1 |         0 |
++-------+-----------------+---------+-----------+----+-----------+
+Primary [node1]:
+Candidate ['node2', 'node3'] []: node2
+When should the switchover take place (e.g. 2024-04-02T13:51 )  [now]:
+Are you sure you want to switchover cluster main, demoting current leader node1? [y/N]: y
+2024-04-02 12:51:28.04774 Successfully switched over to "node2"
++ Cluster: main (7351350415269982209) --+---------+-----------+----+-----------+
+| Member| Host            | Role    | State     | TL | Lag in MB |
++-------+-----------------+---------+-----------+----+-----------+
+| node1 | xxx.xxx.xxx.xxx | Leader  | streaming |  2 |           |
+| node2 | yyy.yyy.yyy.yyy | Replica | running   |  2 |         0 |
+| node3 | zzz.zzz.zzz.zzz | Replica | streaming |  2 |         0 |
++-------+-----------------+---------+-----------+----+-----------+
+```
+
+Switch to Asynchronous mode (default mode):
+
+```bash
+cat > postgresql.conf << EOL
+"postgresql": {
+"parameters": {
+    "synchronous_commit" : "local"
+}
+}
+"synchronous_mode": false
+"synchronous_mode_strict": false
+EOL
+cat postgresql.conf | patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml edit-config --apply - --force main
+```
+
+Switch to Synchronous mode:
+
+```bash
+cat > postgresql.conf << EOL
+"postgresql": {
+"parameters": {
+    "synchronous_commit" : "remote_apply"
+}
+}
+"synchronous_mode": true
+"synchronous_mode_strict": true
+EOL
+cat postgresql.conf | patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml edit-config --apply - --force main
+```
+
+![synchronous_commit](synchronous_commit.png)
+
+Reinit failed node:
+In case if output of ``patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list`` provides the information about failed state of the node
+```bash
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list
+>>
+root@node1:~# patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list
++ Cluster: main (7351350415269982209) --+------------+-----------+----+-----------+
+| Member  | Host            | Role    | State        | TL | Lag in MB |
++---------+-----------------+---------+--------------+----+-----------+
+| node1   | xxx.xxx.xxx.xxx | Leader  | running      |  1 |           |
+| node2   | yyy.yyy.yyy.yyy | Replica | streaming    |  1 |         0 |
+| node3   | zzz.zzz.zzz.zzz | Replica | start failed |  1 |         0 |
++---------+-----------------+---------+--------------+----+-----------+
+```
+failed node can be reconfigured to join the cluster using:
+```bash
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml reinit node3
+>>
+root@node1:~# patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list
++ Cluster: main (7351350415269982209) --+---------+-----------+----+-----------+
+| Member  | Host            | Role    | State     | TL | Lag in MB |
++---------+-----------------+---------+-----------+----+-----------+
+| node1   | xxx.xxx.xxx.xxx | Leader  | running   |  1 |           |
+| node2   | yyy.yyy.yyy.yyy | Replica | streaming |  1 |         0 |
+| node3   | zzz.zzz.zzz.zzz | Replica | streaming |  1 |         0 |
++---------+-----------------+---------+-----------+----+-----------+
+```
+
+## Cluster test
+
+After successful cluster deployment:
+```bash
+# on deployment node run test, the test will take about 5 minutes
+# please use the latest possible version of python3
+# please run commands from the pg_cluster folder
+python3 tools/pg_cluster_backend/pg_cluster_backend.py --operations=10000
+```
+
+To emulate deadlocks, needs to change parameter `test.accounts = 100 -> 10` in `tools/pg_cluster_backend/conf/pg_cluster_backend.conf`.
+
+Simultaneously with the test, you should perform actions with the cluster:
+
+```bash
+# on NODE_1
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml restart main
+shutdown -r now
+
+# on NODE_2
+patronictl -c /opt/tantor/etc/patroni/<NODE2_HOSTNAME>.yml list
+patronictl -c /opt/tantor/etc/patroni/<NODE2_HOSTNAME>.yml restart main
+shutdown -r now
+
+# on NODE_3
+patronictl -c /opt/tantor/etc/patroni/<NODE3_HOSTNAME>.yml list
+patronictl -c /opt/tantor/etc/patroni/<NODE3_HOSTNAME>.yml restart main
+shutdown -r now
+
+# on NODE_1
+patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml switchover
+
+# on primary node
+su - postgres -c "psql -A -t -d test_db -c \"
+	select pg_terminate_backend(pid)
+	from pg_stat_activity
+	where application_name = 'pg_cluster_backend'\""
+
+# on NODE_1
+systemctl stop patroni
+
+# on NODE_2
+systemctl stop patroni
+
+# on NODE_1
+systemctl start patroni
+
+# on NODE_2
+systemctl start patroni
+
+# restart all nodes in random order
+```
+
+After completing these steps, the test backend should continue work.  
+Check how many transaction losses on switchover with asynchronous replication:
+
+```sql
+SELECT
+	sum(balance)::numeric - -- result balance
+	((select count(1) from public.accounts) * 100 + 10000) -- where "--operations=10000"
+FROM public.accounts
+
+-- positive value means lost transactions
+-- negative value means successfully committed transactions in which the backend received an exception
+```
+
+
+
+## Links
+
+https://koudingspawn.de/setup-an-etcd-cluster/  
+https://lzone.de/cheat-sheet/etcd  
+https://coreos.com/os/docs/latest/generate-self-signed-certificates.html  
+https://sadique.io/blog/2016/11/11/setting-up-a-secure-etcd-cluster-behind-a-proxy/  
+https://github.com/portworx/cfssl-certs  
+https://github.com/andrewrothstein/ansible-etcd-cluster  
+https://github.com/kostiantyn-nemchenko/ansible-role-patroni  
+https://medium.com/code-with-benefit/install-configure-and-secure-postgresql-12-on-ubuntu-18-04-79086bae119e
