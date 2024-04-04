@@ -12,7 +12,7 @@
     state: directory
     owner: postgres
     group: postgres
-    mode: "755"
+    mode: "0755"
 
 - name: Write pgbouncer.ini
   ansible.builtin.template:
@@ -22,6 +22,7 @@
     owner: postgres
     group: postgres
     mode: "0755"
+  notify: Restart pgbouncer-tantor
 
 - name: Create log and pid directories
   ansible.builtin.file:
@@ -33,6 +34,7 @@
   with_items:
     - "/opt/tantor/var/log/pgbouncer"
     - "/var/run/pgbouncer-tantor"
+  notify: Restart pgbouncer-tantor
 
 - name: Check if postgresql node is in master state
   ansible.builtin.command:
@@ -53,19 +55,6 @@
   become: true
   become_user: postgres
   when: psql_node_status.stdout == 'f'
-
-# - name: Create userlist.txt
-#   become: true
-#   become_user: root
-#   ansible.builtin.command: |
-#     su - postgres -c "psql -A -t -d postgres -c \"
-#      COPY (SELECT usename, passwd
-#             FROM pg_shadow
-#            WHERE usename='pgbouncer')
-#               TO '/opt/tantor/etc/pgbouncer/userlist.txt'
-#             WITH (FORMAT CSV, DELIMITER ' ', FORCE_QUOTE *)
-#     \""
-#   # ignore_errors: true
 
 - name: Create userlist for PGbouncer
   ansible.builtin.file:
@@ -93,18 +82,7 @@
   when: ( groups['inv_cluster'] | length == 1  ) or (not pgbouncer_userlist.found)
   become: true
   become_user: postgres
-
-  # become: true
-  # become_user: root
-
-# - name: Move userlist to pgbouncer folder
-#   ansible.builtin.copy:
-#     remote_src: true
-#     src: /tmp/userlist.txt
-#     dest: /opt/tantor/etc/pgbouncer/userlist.txt
-#     mode: "0644"
-#     owner: postgres
-#     group: postgres
+  notify: Restart pgbouncer-tantor
 
 - name: Upload pgbouncer_prepare.sql
   become: true
@@ -119,12 +97,6 @@
     owner: postgres
     group: postgres
     mode: '{{ item.m }}'
-
-# - name: Create pgbouncer namespace
-#   become: true
-#   become_user: root
-#   ansible.builtin.command: su - postgres -c "psql -A -t -d postgres -f /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql"
-#   ignore_errors: true
 
 - name: Create pgbouncer namespace
   community.postgresql.postgresql_script:

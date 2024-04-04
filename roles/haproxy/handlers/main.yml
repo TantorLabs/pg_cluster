@@ -5,3 +5,4 @@
     name: haproxy-tantor
     daemon-reload: true
     state: restarted
+    enabled: true
