@@ -87,29 +87,45 @@
 This section describes how to deploy ``pg_cluster`` using ``ansible`` based automation tools.
 The following text will present examples of commands to be entered in the terminal to prepare an SSH session, check if the ansible settings are correct and start the playbook. The ``admin_user`` account will be used as an example user. When launching commands in the Customer's loop, this user must be changed to an account that has passwordless SSH access to all servers (virtual machines) specified in the ``my_inventory`` file, as well as access to privileged mode (root). As a result of the playbook operation, a cluster of the selected DBMS (tantordb or postgresql) managed via patroni will be deployed on the servers specified in the ``my_inventory`` file.
 
+## Requirements
+
+Playbook requires the following component's version to be installed:
+* Ansible >= 2.9.10 (recommended 2.16.6)
+* psycopg2 >= 2.5.1
+* Python3 (with pip module) >= 3.10.0 (recommended 3.12.0)
+
 ## Host preparation (based on OS Astra Linux 1.7)
 
 1. Create an ``admin_user`` user (executed on each node from the ``inventory`` file):
 
 ```bash
-adduser admin_user
+sudo adduser admin_user
 ```
 
 2. Install git (executed on the node from which ansible-playbook will be run):
 
 ```bash
-apt install git
+sudo apt install git
 ```
 
 3. Download the project (run on the node from which ansible-playbook will be launched):
 
 ```bash
-git clone -b tantor-classic https://github.com/TantorLabs/pg_cluster
+git clone https://github.com/TantorLabs/pg_cluster
 
 cd pg_cluster
 ```
+---
+NB: Points from 4 to 5 are optional for cases where the user has already generated an SSH keys. If you do not want to have the SSH keys in a non-standard location, points 4 and 5 can be replaced with the following commands, run as the admin_user account:
+```bash
+ssh-keygen -t rsa -b 4096
+ssh-copy-id admin_user@ip_node (repeat the command for each node in the inventory file)
+```
+If you have followed the NB part above, please continue from point 6 of the current instruction.
 
-4. Generate SSH keys and upload to cluster nodes (run on the node from which ansible-playbook will run):
+---
+
+4. Generate SSH keys and upload to cluster nodes (run on the node from which ansible-playbook will be launched as admin_user account):
 
 ```bash
 ssh-keygen -t rsa -b 4096 -C "admin_user" -f /home/admin_user/pg_lab_ansible -q -N ""
@@ -119,9 +135,11 @@ cat /home/admin_user/pg_lab_ansible.pub >> /home/admin_user/.ssh/authorized_keys
 ssh-copy-id -i /home/admin_user/pg_lab_ansible.pub admin_user@ip_node ( repeat the command for each node in the inventory file)
 ```
 
-5. Write the connection parameters of each server from the ``inventory file`` for the user ``admin_user`` (run on the node from which ansible-playbook will be launched):
+5. Write the connection parameters of each server from the ``inventory file`` for the user ``admin_user`` (run on the node from which ansible-playbook will be launched as admin_user account):
 
 ```bash
+mkdir -p $HOME/.ssh/
+
 cat >> $HOME/.ssh/config << EOL  
 Host xxx.xxx.xxx.xxx  
      Port 22  
@@ -134,7 +152,7 @@ EOL
 
 6. Grant the ``admin_user`` user possibility to enter to privileged mode (root) without entering a password (executed on each node from the inventory file).
 
-7. Test the ``ssh`` connection of the ``admin_user`` user (no password should be requested when connecting):
+7. Test the ``ssh`` connection of the ``admin_user`` user (no password should be requested when run and connect as admin_user account):
 
 ```bash
 ssh admin_user@ip_node
@@ -147,8 +165,7 @@ Startup preparation is performed on the node from which ansible-playbook will be
 1. Install ansible
 
 ```bash
-apt install python3-pip
-python3 -m pip install ansible=="xxx" # specify the maximum available version
+sudo python3 -m pipX.X install ansible==X.X.X # where X.X(.X) represents the version of pip and Ansible specified in the Requirements block of the current instruction.
 ```
 
 2. In the ``inventory/group_vars/prepare_nodes.yml`` file, change the value of the ``USERNAME:PASSWORD`` variables to the user name and password to access the Tantor DB repository.
@@ -208,7 +225,7 @@ Use the following command to install the PostgreSQL DBMS:
 ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=classic major_version=11" pg-cluster.yaml -K
 ```
 
-In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root).
+In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password.
 
 ## HOW TO
 

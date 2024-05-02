@@ -2,7 +2,7 @@
 # vars file for pg_cluster
 
 nexus_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
-nexus_dev_apt_astra: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
-nexus_dev_apt_ubuntu_22_04: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/ubuntu-22.04 jammy main"
-nexus_dev_apt_ubuntu_20_04: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/ubuntu-20.04 focal main"
-nexus_dev_yum_redos_7_3: "https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/redos-7.3/"
+nexus_apt_astra: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
+nexus_apt_ubuntu_22_04: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/ubuntu-22.04 jammy main"
+nexus_apt_ubuntu_20_04: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/ubuntu-20.04 focal main"
+nexus_yum_redos_7_3: "https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/redos-7.3/"

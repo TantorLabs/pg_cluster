@@ -37,7 +37,6 @@
           - wget
           - gnupg
           - chrony
-          - python3-pip
         state: present
       notify: Restart chronyd
 

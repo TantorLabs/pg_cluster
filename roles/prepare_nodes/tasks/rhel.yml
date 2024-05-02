@@ -29,5 +29,5 @@
       ansible.builtin.yum_repository:
         name: tantorlabs
         description: Tantorlabs repository for RedOS 7.3
-        baseurl: "{{ nexus_dev_yum_redos_7_3 }}"
+        baseurl: "{{ nexus_yum_redos_7_3 }}"
       when: (ansible_facts['os_family'] == "RED")

@@ -38,7 +38,7 @@
   block:
     - name: Configure nexus-dev repository (Astra Smolenks)
       ansible.builtin.apt_repository:
-        repo: "{{ nexus_dev_apt_astra }}"
+        repo: "{{ nexus_apt_astra }}"
 
 
 - name: Block for Ubuntu
@@ -46,14 +46,14 @@
   block:
     - name: Configure nexus-dev repository (Ubuntu 22.04)
       ansible.builtin.apt_repository:
-        repo: "{{ nexus_dev_apt_ubuntu_22_04 }}"
+        repo: "{{ nexus_apt_ubuntu_22_04 }}"
         state: present
         filename: tantorlabs
       when: (ansible_distribution_version == "22.04")
 
     - name: Configure nexus-dev repository (Ubuntu 20.04)
       ansible.builtin.apt_repository:
-        repo: "{{ nexus_dev_apt_ubuntu_20_04 }}"
+        repo: "{{ nexus_apt_ubuntu_20_04 }}"
         state: present
         filename: tantorlabs
       when: (ansible_distribution_version == "20.04")
