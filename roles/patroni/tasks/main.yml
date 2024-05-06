@@ -77,11 +77,11 @@
     - "{{ patroni_pg_callbacks }}"
   when: not( (item.script is none) or (item.script | trim | length == 0) )
 
-- name: Upload pg_configurator.py
+- name: Upload pg_configurator-22.10.17 to cluster machines
   become: true
   become_user: root
   with_items:
-    - f: "{{ playbook_dir + '/tools/pg_configurator.py' }}"
+    - f: "{{ playbook_dir + '/tools/pg_configurator-22.10.17.tar.gz' }}"
       d: '/opt/tantor/etc/patroni'
       m: '0400'
   ansible.builtin.copy:
@@ -91,16 +91,38 @@
     group: root
     mode: '{{ item.m }}'
 
-- name: Create json configuration
+- name: Install pg_configurator using pip module
+  ansible.builtin.pip:
+    name: /opt/tantor/etc/patroni/pg_configurator-22.10.17.tar.gz
+
+# - name: Create json configuration
+#   become: true
+#   become_user: root
+#   ansible.builtin.command: |
+#       python3 /opt/tantor/etc/patroni/pg_configurator.py \
+#       --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
+#       --db-ram="{{ pg_conf_db_ram }}" \
+#       --db-disk-type="{{ pg_conf_db_disk_type }}" \
+#       --db-duty="{{ pg_conf_db_duty }}" \
+#       --pg-version="{{ patroni_pg_version }}" \
+#       --output-format=patroni-json \
+#       --min-conns=200 \
+#       --max-conns=200 \
+#       --common-conf \
+#       --output-file-name=/opt/tantor/etc/patroni/postgresql.json
+#   args:
+#     creates: /opt/tantor/etc/patroni/postgresql.json
+
+- name: Create json configuration from local installation of pg_configurator
   become: true
   become_user: root
   ansible.builtin.command: |
-      python3 /opt/tantor/etc/patroni/pg_configurator.py \
+      pg_configurator \
       --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
       --db-ram="{{ pg_conf_db_ram }}" \
       --db-disk-type="{{ pg_conf_db_disk_type }}" \
       --db-duty="{{ pg_conf_db_duty }}" \
-      --pg-version="{{ patroni_pg_version }}" \
+      --pg-version="{{ major_version }}" \
       --output-format=patroni-json \
       --min-conns=200 \
       --max-conns=200 \

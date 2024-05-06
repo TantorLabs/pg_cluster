@@ -37,12 +37,18 @@
           - wget
           - gnupg
           - chrony
+          - libpq-dev
         state: present
       notify: Restart chronyd
 
-- name: Install python package psutil
+- name: Install python packages via pip
   ansible.builtin.pip:
-    name: psutil
+    name:
+      - packaging
+      - psutil
+      - wheel
+      - setuptools
+      - psycopg2
 
 - name: Get content of /etc/security/limits.conf file
   ansible.builtin.lineinfile:

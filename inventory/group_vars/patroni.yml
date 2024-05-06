@@ -9,12 +9,12 @@ patroni_system_group: postgres
 
 # Patroni settings block to distinguqish configuration data
 
-patroni_pg_data_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-server-{{ patroni_pg_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
-patroni_pg_config_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-server-{{ patroni_pg_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
+patroni_pg_data_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-server-{{ major_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
+patroni_pg_config_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-server-{{ major_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
 # patroni_pg_log_dir: ""
 # patroni_pg_wal_dir: ""
 
-patroni_exec_start_pre: "/bin/mkdir -m 2750 -p /var/run/postgresql/{{ patroni_pg_version }}-main.pg_stat_tmp"
+patroni_exec_start_pre: "/bin/mkdir -m 2750 -p /var/run/postgresql/{{ major_version }}-main.pg_stat_tmp"
 
 patroni_pip_packages:
   - { name: "setuptools", state: "latest",  umask: "0022", executable: "pip3" }
@@ -210,12 +210,12 @@ pg_conf_db_disk_type: SSD
 pg_conf_db_duty: mixed
 
 
-patroni_pg_bin_dir: "/opt/tantor/db/{{ patroni_pg_version }}/bin"
+patroni_pg_bin_dir: "/opt/tantor/db/{{ major_version }}/bin"
 patroni_pg_pgpass: /var/lib/postgresql/.pgpass
 patroni_bin_dir: /opt/tantor/usr/bin
 
 patroni_pg_packages:
-  - { name: "tantor-{{ edition | d('be', true) }}-server-{{ patroni_pg_version }}",            state: "present" }
+  - { name: "tantor-{{ edition | d('be', true) }}-server-{{ major_version }}",            state: "present" }
 
 patroni_system_packages:
   - { name: "python3-psycopg2", state: "present" }

@@ -90,9 +90,10 @@ The following text will present examples of commands to be entered in the termin
 ## Requirements
 
 Playbook requires the following component's version to be installed:
-* Ansible >= 2.9.10 (recommended 2.16.6)
-* psycopg2 >= 2.5.1
-* Python3 (with pip module) >= 3.10.0 (recommended 3.12.0)
+* Ansible >= 2.9.10
+* Python3 (with pip module) >= 3.10.0
+* psycopg2 >= 2.5.1 (it's recommended to install via pip)
+* packaging >= 24 (it's recommended to install via pip)
 
 ## Host preparation (based on OS Astra Linux 1.7)
 
