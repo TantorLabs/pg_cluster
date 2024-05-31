@@ -34,7 +34,13 @@
   ansible.builtin.systemd_service:
     daemon_reload: true
 
-- name: Install system packages for patroni
+- name: Install Python3
+  ansible.builtin.package:
+    name: python3-tantor-all
+    state: present
+    update_cache: true
+
+- name: Install Patroni
   ansible.builtin.package:
     name: patroni-tantor-all
     state: present
@@ -77,47 +83,23 @@
     - "{{ patroni_pg_callbacks }}"
   when: not( (item.script is none) or (item.script | trim | length == 0) )
 
-- name: Upload pg_configurator-22.10.17 to cluster machines
-  become: true
-  become_user: root
-  with_items:
-    - f: "{{ playbook_dir + '/tools/pg_configurator-22.10.17.tar.gz' }}"
-      d: '/opt/tantor/etc/patroni'
-      m: '0400'
-  ansible.builtin.copy:
-    src: '{{ item.f }}'
-    dest: '{{ item.d }}'
-    owner: root
-    group: root
-    mode: '{{ item.m }}'
+- name: Install pg-configurator for Debian-like systems
+  ansible.builtin.package:
+    name: pg-configurator-tantor-all
+    state: present
+  when: (ansible_os_family == "Astra Linux") or (ansible_os_family == "Debian")
 
-- name: Install pg_configurator using pip module
-  ansible.builtin.pip:
-    name: /opt/tantor/etc/patroni/pg_configurator-22.10.17.tar.gz
-
-# - name: Create json configuration
-#   become: true
-#   become_user: root
-#   ansible.builtin.command: |
-#       python3 /opt/tantor/etc/patroni/pg_configurator.py \
-#       --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
-#       --db-ram="{{ pg_conf_db_ram }}" \
-#       --db-disk-type="{{ pg_conf_db_disk_type }}" \
-#       --db-duty="{{ pg_conf_db_duty }}" \
-#       --pg-version="{{ patroni_pg_version }}" \
-#       --output-format=patroni-json \
-#       --min-conns=200 \
-#       --max-conns=200 \
-#       --common-conf \
-#       --output-file-name=/opt/tantor/etc/patroni/postgresql.json
-#   args:
-#     creates: /opt/tantor/etc/patroni/postgresql.json
+- name: Install pg_configurator for RHEL-like systems
+  ansible.builtin.package:
+    name: pg_configurator-tantor-all
+    state: present
+  when: (ansible_distribution == "RED") or (ansible_distribution == "Centos") or (ansible_distribution == "Rocky")
 
 - name: Create json configuration from local installation of pg_configurator
   become: true
   become_user: root
   ansible.builtin.command: |
-      pg_configurator \
+      /opt/tantor/usr/bin/pg_configurator \
       --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
       --db-ram="{{ pg_conf_db_ram }}" \
       --db-disk-type="{{ pg_conf_db_disk_type }}" \

@@ -24,6 +24,7 @@
       - telnet
       - virtualenv
       - wget
+      - libpq-dev
     state: present
     update_cache: true
 

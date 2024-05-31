@@ -217,7 +217,7 @@ There are several options to run Ansible: with the option to install TantorDB or
 Use the following command to install TantorDB:
 
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb major_version=15" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15" pg-cluster.yaml -K
 ```
 
 Use the following command to install the PostgreSQL DBMS:
@@ -226,36 +226,35 @@ Use the following command to install the PostgreSQL DBMS:
 ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=classic major_version=11" pg-cluster.yaml -K
 ```
 
-In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password.
+In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, the value of ``postgresql_vendor`` with the DBMS vendor and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password. For TantorDB you can also specify DBMS edition.
 
 ## HOW TO
+
+Below you can find some common commands for working with the software products included in the pg_cluster solution. Note that the commands and their result may differ depending on the software versions used.
 
 #### Work with etcd:
 
 ```bash
 # on NODE_1
-e_host=(ETCDCTL_API=3 /opt/tantor/usr/bin/etcdctl --endpoints=https://<HOST_1_IP>:2379,https://<HOST_2_IP:2379,https://<HOST_N_IP:2379 --cacert=/opt/tantor/etc/patroni/ca.pem --cert=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>.pem  --key=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>-key.pem)
+e_host=(
+  /opt/tantor/usr/bin/etcdctl
+  --endpoints=https://<HOST_1_IP>:2379,https://<HOST_2_IP>:2379,https://<HOST_N_IP>:2379
+  --cacert=/opt/tantor/etc/patroni/ca.pem
+  --cert=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>.pem  
+  --key=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>-key.pem
+)
 
 # list etcd members
-etcdctl "${e_host[@]}" --debug member list
+ETCDCTL_API=3 "${e_host[@]}" member list --debug
 
 # check version
-etcdctl "${e_host[@]}" version
->> etcdctl version: 3.3.18
->> API version: 2
+ETCDCTL_API=3  "${e_host[@]}" version
 
 # get key value ("main" is "patroni_scope")
-etcdctl "${e_host[@]}" get /service/main/config
+ETCDCTL_API=3  "${e_host[@]}" get /service/main/config
 
 # cleanup patroni cluster configuration
-etcdctl "${e_host[@]}" rm /service/main --recursive
-```
-
-#### Manual start patroni:
-
-```bash
-ps -ef | grep "bin/patroni" | grep -v grep | awk '{print $2}' | xargs kill
-su -l postgres -c "/usr/bin/python3 /opt/tantor/usr/bin/patroni /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml"
+ETCDCTL_API=3  "${e_host[@]}" del /service/main --prefix
 ```
 
 #### Manual create user:
@@ -303,20 +302,11 @@ Change `postgresql.conf` settings:
 
 ```bash
 cat > postgresql.conf << EOL
-  "postgresql": {
-	"parameters": {
-	  "max_connections" : 101,
-	  "max_locks_per_transaction": 64,
-	  "max_prepared_transactions": 0,
-	  "max_replication_slots": 10,
-	  "max_wal_senders": 10,
-	  "max_worker_processes": 8,
-	  "track_commit_timestamp": false,
-	  "wal_keep_segments": 8,
-	  "wal_level": "replica",
-	  "wal_log_hints": true
-	}
-  }
+"postgresql": {
+"parameters": {
+	"max_connections" : 101
+}
+}
 EOL
 
 cat postgresql.conf | patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml edit-config --apply - --force main
@@ -410,7 +400,7 @@ root@node1:~# patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list
 +---------+-----------------+---------+-----------+----+-----------+
 ```
 
-## Cluster test
+## Cluster test (still in progress)
 
 After successful cluster deployment:
 ```bash
