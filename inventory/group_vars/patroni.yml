@@ -214,10 +214,10 @@ patroni_pg_bin_dir: "/opt/tantor/db/{{ major_version }}/bin"
 patroni_pg_pgpass: /var/lib/postgresql/.pgpass
 patroni_bin_dir: /opt/tantor/usr/bin
 
-patroni_pg_packages:
-  - { name: "tantor-{{ edition | d('be', true) }}-server-{{ major_version }}",            state: "present" }
+# patroni_pg_packages:
+#   - { name: "tantor-{{ edition | d('be', true) }}-server-{{ major_version }}",            state: "present" }
 
-patroni_system_packages:
-  - { name: "python3-psycopg2", state: "present" }
-  - { name: "python3-pip",      state: "present" }
-  - { name: "jq",               state: "present" }
+# patroni_system_packages:
+#   - { name: "python3-psycopg2", state: "present" }
+#   - { name: "python3-pip",      state: "present" }
+#   - { name: "jq",               state: "present" }

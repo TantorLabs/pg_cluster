@@ -184,7 +184,7 @@ ansible all -i inventory/my_inventory -m ping -u admin_user
 The result of the command above will be a response from each of the available servers (virtual machines) in the following format:
 
 ```bash
-<device_fqdn_name> | SUCCESS => {
+<device_hostname_name> | SUCCESS => {
     "ansible_facts": {
         "discovered_interpreter_python": "/usr/bin/<host_python_version>"
     },
@@ -227,6 +227,24 @@ ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=c
 ```
 
 In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, the value of ``postgresql_vendor`` with the DBMS vendor and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password. For TantorDB you can also specify DBMS edition.
+
+## Launch without internet access
+
+It's possible to lauch the playbook without external internet access. In that case specify additional environment variable ``add_nexus_repo=false`` during the playbook launch. In that case command could look like:
+
+```bash
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=false" pg-cluster.yaml -K
+```
+
+In that case make sure that following packages are available within local repositories:
+
+* etcd-tantor-all
+* python3-tantor-all
+* patroni-tantor-all
+* pg_configurator-tantor-all
+* haproxy-tantor-all
+* keepalived-tantor-all
+* pgbouncer-tantor-all
 
 ## HOW TO
 

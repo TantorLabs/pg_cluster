@@ -27,27 +27,10 @@
     - name: Install basic utils
       ansible.builtin.package:
         name:
-          - htop
-          - iotop
-          - sysstat
-          - nano
-          - net-tools
-          - less
           - jq
-          - wget
-          - gnupg
           - chrony
         state: present
       notify: Restart chronyd
-
-- name: Install python packages via pip
-  ansible.builtin.pip:
-    name:
-      - packaging
-      - psutil
-      - wheel
-      - setuptools
-      - psycopg2
 
 - name: Get content of /etc/security/limits.conf file
   ansible.builtin.lineinfile:

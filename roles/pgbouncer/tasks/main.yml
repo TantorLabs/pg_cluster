@@ -43,8 +43,10 @@
   register: psql_node_status
 
 - name: Create pgbouncer role
+  vars:
+    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_user:
-    login_host: localhost
+    login_host: 127.0.0.1
     db: postgres
     name: "{{ pgbouncer_auth_user }}"
     password: "{{ pgbouncer_auth_user_passw }}"
@@ -73,6 +75,8 @@
   changed_when: false
 
 - name: Run query for creation of userlist.txt
+  vars:
+    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_query:
     login_db: postgres
     query: |
@@ -99,6 +103,8 @@
     mode: '{{ item.m }}'
 
 - name: Create pgbouncer namespace
+  vars:
+    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_script:
     db: postgres
     path: /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql

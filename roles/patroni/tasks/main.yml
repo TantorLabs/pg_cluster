@@ -34,12 +34,6 @@
   ansible.builtin.systemd_service:
     daemon_reload: true
 
-- name: Install Python3
-  ansible.builtin.package:
-    name: python3-tantor-all
-    state: present
-    update_cache: true
-
 - name: Install Patroni
   ansible.builtin.package:
     name: patroni-tantor-all
@@ -193,6 +187,8 @@
     path: /var/run/postgresql/.s.PGSQL.{{ patroni_pg_port }}
 
 - name: Create replicator role
+  vars:
+    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_user:
     db: postgres
     name: "{{ patroni_replication_username }}"

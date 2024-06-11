@@ -1,6 +1,8 @@
 ---
 # vars file for pg_cluster
 
+add_nexus_repo: true
+
 nexus_key_url: "https://public.tantorlabs.ru/tantorlabs.ru.asc"
 nexus_apt_astra: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/astra-smolensk-1.7 smolensk main"
 nexus_apt_ubuntu_22_04: "deb [arch=amd64] https://USERNAME:PASSWORD@nexus.tantorlabs.ru/repository/ubuntu-22.04 jammy main"
