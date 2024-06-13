@@ -178,22 +178,24 @@ sudo python3 -m pipX.X install ansible==X.X.X # where X.X(.X) represents the ver
 After filling in the ``my_inventory`` file, it is recommended to make sure that all servers are available to connect to them via SSH with the required user. To do this, run the following command in the terminal:
 
 ```bash
-ansible all -i inventory/my_inventory -m ping -u admin_user
+ansible all -i inventory/my_inventory -m ansible.builtin.setup -a "filter=ansible_hostname" -u admin_user
 ```
 
 The result of the command above will be a response from each of the available servers (virtual machines) in the following format:
 
 ```bash
-<device_hostname_name> | SUCCESS => {
+<hostname_from_inventory_file> | SUCCESS => {
     "ansible_facts": {
+        "ansible_hostname": "<device_hostname>",
         "discovered_interpreter_python": "/usr/bin/<host_python_version>"
     },
-    "changed": false,
-    "ping": "pong"
+    "changed": false
 }
 ```
 
 This output for each server described in ``my_inventory`` file means successful connection to it via SSH. If as a result of the response from any server (virtual machine) the message differed from the above template - check whether it is possible to connect to it via a key from the user name passed using the ``-u`` flag. If it is necessary to connect only with password entry (without using keys) - it is necessary to add ``-kK`` flags to the command launch and enter the password for SSH connection (``-k`` flag) and for user to switch to privileged mode (root) (``-K`` flag).
+
+Pay attention to the value of the ``ansible_hostname`` variable in the command output. If the value is ``localhost`` or ``localhost.localdomain``, check the ``/etc/hosts`` file of the machines with incorrect output. Ensure that the real device hostname is set **before** localhost on the line containing ``127.0.0.1``.
 
 ## Launch Features
 
@@ -230,13 +232,13 @@ In the commands above, replace the value of the ``major_version`` parameter with
 
 ## Launch without internet access
 
-It's possible to lauch the playbook without external internet access. In that case specify additional environment variable ``add_nexus_repo=false`` during the playbook launch. In that case command could look like:
+It's possible to launch the playbook without external internet access. In that case, specify the additional environment variable ``add_nexus_repo=false`` during the playbook launch. The command might look like this:
 
 ```bash
 ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=false" pg-cluster.yaml -K
 ```
 
-In that case make sure that following packages are available within local repositories:
+In that case, make sure that the following packages are available in the local repositories:
 
 * etcd-tantor-all
 * python3-tantor-all
@@ -248,7 +250,7 @@ In that case make sure that following packages are available within local reposi
 
 ## HOW TO
 
-Below you can find some common commands for working with the software products included in the pg_cluster solution. Note that the commands and their result may differ depending on the software versions used.
+Below you can find some common commands for working with the software products included in the ``pg_cluster`` solution. Note that the commands and their result may differ depending on the software versions used.
 
 #### Work with etcd:
 
