@@ -7,11 +7,11 @@
 
 - name: Include task for Debian-like systems
   ansible.builtin.include_tasks: debian.yml
-  when: (ansible_os_family == "Astra Linux") or (ansible_os_family == "Debian")
+  when: ansible_os_family in ("Astra Linux", "Debian")
 
 - name: Include task for RHEL-like systems
   ansible.builtin.include_tasks: rhel.yml
-  when: (ansible_distribution == "RED") or (ansible_distribution == "Centos") or (ansible_distribution == "Rocky")
+  when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
 
 - name: Block for installation of basic utils
   module_defaults:

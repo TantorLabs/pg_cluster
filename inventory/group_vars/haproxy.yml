@@ -1,4 +1,6 @@
 ---
+haproxy_package_version: ""
+
 haproxy_postgresql_port_rewritten: 15432
 haproxy_postgresql_port_readonly: 15433
 haproxy_pool_postgresql_port_rewritten: 16432

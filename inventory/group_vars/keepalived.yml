@@ -1,4 +1,6 @@
 ---
+keepalived_package_version: ""
+
 # Cluster variables
 cluster_vip_1: "xxx.xxx.xxx.xxx"
 vip_interface: "{{ ansible_default_ipv4.interface }}"  # interface name (ex. "ens32")

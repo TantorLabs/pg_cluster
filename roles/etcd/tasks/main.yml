@@ -22,10 +22,29 @@
           (ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ]
            else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
 
-- name: Install etcd-tantor-all
-  ansible.builtin.package:
-    name: etcd-tantor-all
+- name: Install etcd-tantor-all (RHEL-like systems)
+  when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+  ansible.builtin.yum:
+    name: >-
+      {% if etcd_package_version | d(false) %}
+        etcd-tantor-all-{{ etcd_package_version }}
+      {% else %}
+        etcd-tantor-all
+      {% endif %}
     state: present
+    allow_downgrade: true
+
+- name: Install etcd-tantor-all (Debian-like systems)
+  when: ansible_os_family in ("Astra Linux", "Debian")
+  ansible.builtin.apt:
+    name: >-
+      {% if etcd_package_version | d(false) %}
+        etcd-tantor-all={{ etcd_package_version }}
+      {% else %}
+        etcd-tantor-all
+      {% endif %}
+    state: present
+    allow_downgrade: true
 
 - name: Create dirs
   become: true
@@ -53,6 +72,6 @@
 - name: Configure etcd-tantor.service
   ansible.builtin.template:
     src: etcd-tantor.service.j2
-    dest: /lib/systemd/system/etcd-tantor.service
+    dest: /etc/systemd/system/etcd-tantor.service
     mode: "0644"
   notify: Restart etcd-tantor.service

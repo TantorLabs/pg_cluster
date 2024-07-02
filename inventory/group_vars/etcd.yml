@@ -1,4 +1,6 @@
 ---
+etcd_package_version: ""
+
 etcd_user: etcd
 etcd_group: etcd
 etcd_data_dir: /opt/tantor/var/lib/etcd

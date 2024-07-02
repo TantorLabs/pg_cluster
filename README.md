@@ -247,6 +247,9 @@ In that case, make sure that the following packages are available in the local r
 * haproxy-tantor-all
 * keepalived-tantor-all
 * pgbouncer-tantor-all
+* tantor DBMS
+
+Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-15`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=false" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-15`` is available in your local repository.
 
 ## HOW TO
 

@@ -26,7 +26,7 @@
     - en_US.UTF-8
 
 - name: Block for Astra
-  when: ((ansible_os_family == "Astra Linux") or (ansible_os_family == "Astra Linux (Orel)")) and (add_nexus_repo == 'true')
+  when: (ansible_os_family in ("Astra Linux", "Astra Linux (Orel)")) and (add_nexus_repo == 'true')
   block:
     - name: Configure nexus-dev repository (Astra Smolenks)
       ansible.builtin.apt_repository:

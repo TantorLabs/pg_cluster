@@ -1,10 +1,28 @@
 ---
 
-- name: Install pgbouncer
-  ansible.builtin.package:
-    name: pgbouncer-tantor-all
+- name: Install pgbouncer-tantor-all (RHEL-like systems)
+  when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+  ansible.builtin.yum:
+    name: >-
+      {% if pgbouncer_package_version | d(false) %}
+        pgbouncer-tantor-all-{{ pgbouncer_package_version }}
+      {% else %}
+        pgbouncer-tantor-all
+      {% endif %}
     state: present
-    update_cache: true
+    allow_downgrade: true
+
+- name: Install pgbouncer-tantor-all (Debian-like systems)
+  when: ansible_os_family in ("Astra Linux", "Debian")
+  ansible.builtin.apt:
+    name: >-
+      {% if pgbouncer_package_version | d(false) %}
+        pgbouncer-tantor-all={{ pgbouncer_package_version }}
+      {% else %}
+        pgbouncer-tantor-all
+      {% endif %}
+    state: present
+    allow_downgrade: true
 
 - name: Create conf directory
   ansible.builtin.file:
@@ -114,7 +132,7 @@
 - name: Create pgbouncer unit file
   ansible.builtin.template:
     src: pgbouncer.service.j2
-    dest: /usr/lib/systemd/system/pgbouncer-tantor.service
+    dest: /etc/systemd/system/pgbouncer-tantor.service
     owner: root
     group: root
     mode: "0644"

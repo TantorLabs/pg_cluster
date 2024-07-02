@@ -1,5 +1,6 @@
 ---
-patroni_pg_version: 15
+patroni_package_version: ""
+pg_configurator_package_version: ""
 patroni_pg_exists: false #**
 patroni_pg_port: 5432
 
@@ -9,8 +10,8 @@ patroni_system_group: postgres
 
 # Patroni settings block to distinguqish configuration data
 
-patroni_pg_data_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-server-{{ major_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
-patroni_pg_config_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-server-{{ major_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
+patroni_pg_data_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-{{ major_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
+patroni_pg_config_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-{{ major_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
 # patroni_pg_log_dir: ""
 # patroni_pg_wal_dir: ""
 
@@ -48,6 +49,7 @@ patroni_restapi_listen: 0.0.0.0:8008
 patroni_restapi_connect_address: "{{ ansible_host }}:8008"
 patroni_restapi_certfile: ""
 patroni_restapi_keyfile: ""
+patroni_restapi_cafile: ""
 patroni_restapi_username: "test_user"
 patroni_restapi_password: "test_pass"
 
