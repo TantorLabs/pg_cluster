@@ -68,6 +68,7 @@
 - name: Upgrade patroni-tantor-all package if it is installed
   when:
     - "'patroni-tantor-all' in ansible_facts.packages"
+    - patroni_package_version != ""
     - "package_facts_result.ansible_facts.packages['patroni-tantor-all'][0]['version'] != patroni_package_version"
   block:
     - name: Check if this node is the master
