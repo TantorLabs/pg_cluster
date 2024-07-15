@@ -1,14 +1,15 @@
 ---
 
 - name: Install keepalived-tantor-all (RHEL-like systems)
-  when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
   ansible.builtin.yum:
     name: >-
-      {% if keepalived_package_version | d(false) %}
-        keepalived-tantor-all-{{ keepalived_package_version }}
-      {% else %}
-        keepalived-tantor-all
-      {% endif %}
+      {{
+        'keepalived-tantor-all-' + keepalived_package_version
+        if keepalived_package_version | length > 0
+        else
+        'keepalived-tantor-all'
+      }}
     state: present
     allow_downgrade: true
   register: package_status
@@ -19,14 +20,15 @@
   tags: keepalived_install, keepalived
 
 - name: Install keepalived-tantor-all (Debian-like systems)
-  when: ansible_os_family in ("Astra Linux", "Debian")
+  when: ansible_os_family in ["Astra Linux", "Debian"]
   ansible.builtin.apt:
     name: >-
-      {% if keepalived_package_version | d(false) %}
-        keepalived-tantor-all={{ keepalived_package_version }}
-      {% else %}
-        keepalived-tantor-all
-      {% endif %}
+      {{
+        'keepalived-tantor-all=' + keepalived_package_version
+        if keepalived_package_version | length > 0
+        else
+        'keepalived-tantor-all'
+      }}
     state: present
     allow_downgrade: true
   register: package_status

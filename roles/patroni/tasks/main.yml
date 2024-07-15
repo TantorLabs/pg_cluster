@@ -42,26 +42,28 @@
   when: "'patroni-tantor-all' not in ansible_facts.packages"
   block:
     - name: Install patroni-tantor-all (RHEL-like systems)
-      when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+      when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
       ansible.builtin.yum:
         name: >-
-          {% if patroni_package_version | d(false) %}
-            patroni-tantor-all-{{ patroni_package_version }}
-          {% else %}
-            patroni-tantor-all
-          {% endif %}
+          {{
+            'patroni-tantor-all-' + patroni_package_version
+            if patroni_package_version | length > 0
+            else
+            'patroni-tantor-all'
+          }}
         state: present
         allow_downgrade: true
 
     - name: Install patroni-tantor-all (Debian-like systems)
-      when: ansible_os_family in ("Astra Linux", "Debian")
+      when: ansible_os_family in ["Astra Linux", "Debian"]
       ansible.builtin.apt:
         name: >-
-          {% if patroni_package_version | d(false) %}
-            patroni-tantor-all={{ patroni_package_version }}
-          {% else %}
-            patroni-tantor-all
-          {% endif %}
+          {{
+            'patroni-tantor-all=' + patroni_package_version
+            if patroni_package_version | length > 0
+            else
+            'patroni-tantor-all'
+          }}
         state: present
         allow_downgrade: true
 
@@ -127,26 +129,28 @@
           register: patroni_stop_result
 
         - name: Install patroni-tantor-all (RHEL-like systems)
-          when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+          when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
           ansible.builtin.yum:
             name: >-
-              {% if patroni_package_version | d(false) %}
-                patroni-tantor-all-{{ patroni_package_version }}
-              {% else %}
-                patroni-tantor-all
-              {% endif %}
+              {{
+                'patroni-tantor-all-' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
             state: present
             allow_downgrade: true
 
         - name: Install patroni-tantor-all (Debian-like systems)
-          when: ansible_os_family in ("Astra Linux", "Debian")
+          when: ansible_os_family in ["Astra Linux", "Debian"]
           ansible.builtin.apt:
             name: >-
-              {% if patroni_package_version | d(false) %}
-                patroni-tantor-all={{ patroni_package_version }}
-              {% else %}
-                patroni-tantor-all
-              {% endif %}
+              {{
+                'patroni-tantor-all=' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
             state: present
             allow_downgrade: true
 
@@ -182,26 +186,28 @@
           register: patroni_stop_result
 
         - name: Install patroni-tantor-all (RHEL-like systems) at previous master
-          when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+          when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
           ansible.builtin.yum:
             name: >-
-              {% if patroni_package_version | d(false) %}
-                patroni-tantor-all-{{ patroni_package_version }}
-              {% else %}
-                patroni-tantor-all
-              {% endif %}
+              {{
+                'patroni-tantor-all-' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
             state: present
             allow_downgrade: true
 
         - name: Install patroni-tantor-all (Debian-like systems) at previous master
-          when: ansible_os_family in ("Astra Linux", "Debian")
+          when: ansible_os_family in ["Astra Linux", "Debian"]
           ansible.builtin.apt:
             name: >-
-              {% if patroni_package_version | d(false) %}
-                patroni-tantor-all={{ patroni_package_version }}
-              {% else %}
-                patroni-tantor-all
-              {% endif %}
+              {{
+                'patroni-tantor-all=' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
             state: present
             allow_downgrade: true
 
@@ -258,15 +264,27 @@
 
 - name: Install pg-configurator for Debian-like systems
   ansible.builtin.package:
-    name: pg-configurator-tantor-all
+    name: >-
+      {{
+        'pg-configurator-tantor-all=' + pg_configurator_package_version
+        if pg_configurator_package_version | length > 0
+        else
+        'pg-configurator-tantor-all'
+      }}
     state: present
-  when: ansible_os_family in ("Astra Linux", "Debian")
+  when: ansible_os_family in ["Astra Linux", "Debian"]
 
 - name: Install pg_configurator for RHEL-like systems
   ansible.builtin.package:
-    name: pg_configurator-tantor-all
+    name: >-
+      {{
+        'pg_configurator-tantor-all-' + pg_configurator_package_version
+        if pg_configurator_package_version | length > 0
+        else
+        'pg_configurator-tantor-all'
+      }}
     state: present
-  when: ansible_distribution in ("RED", "Centos", "Rocky")
+  when: ansible_distribution in ["RED", "Centos", "Rocky"]
 
 - name: Create json configuration from local installation of pg_configurator
   become: true

@@ -26,4 +26,4 @@
         name: tantorlabs
         description: Tantorlabs repository for RedOS 7.3
         baseurl: "{{ nexus_yum_redos_7_3 }}"
-      when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+      when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]

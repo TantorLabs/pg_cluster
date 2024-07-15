@@ -1,26 +1,28 @@
 ---
 
 - name: Install pgbouncer-tantor-all (RHEL-like systems)
-  when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
   ansible.builtin.yum:
     name: >-
-      {% if pgbouncer_package_version | d(false) %}
-        pgbouncer-tantor-all-{{ pgbouncer_package_version }}
-      {% else %}
-        pgbouncer-tantor-all
-      {% endif %}
+      {{
+        'pgbouncer-tantor-all-' + pgbouncer_package_version
+        if pgbouncer_package_version | length > 0
+        else
+        'pgbouncer-tantor-all'
+      }}
     state: present
     allow_downgrade: true
 
 - name: Install pgbouncer-tantor-all (Debian-like systems)
-  when: ansible_os_family in ("Astra Linux", "Debian")
+  when: ansible_os_family in ["Astra Linux", "Debian"]
   ansible.builtin.apt:
     name: >-
-      {% if pgbouncer_package_version | d(false) %}
-        pgbouncer-tantor-all={{ pgbouncer_package_version }}
-      {% else %}
-        pgbouncer-tantor-all
-      {% endif %}
+      {{
+        'pgbouncer-tantor-all=' + pgbouncer_package_version
+        if pgbouncer_package_version | length > 0
+        else
+        'pgbouncer-tantor-all'
+      }}
     state: present
     allow_downgrade: true
 

@@ -1,24 +1,26 @@
 - name: Install haproxy-tantor-all (RHEL-like systems)
-  when: ansible_os_family in ("RED", "Centos", "Rocky", "RedHat")
+  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
   ansible.builtin.yum:
     name: >-
-      {% if haproxy_package_version | d(false) %}
-        haproxy-tantor-all-{{ haproxy_package_version }}
-      {% else %}
-        haproxy-tantor-all
-      {% endif %}
+      {{
+        'haproxy-tantor-all-' + haproxy_package_version
+        if haproxy_package_version | length > 0
+        else
+        'haproxy-tantor-all'
+      }}
     state: present
     allow_downgrade: true
 
 - name: Install haproxy-tantor-all (Debian-like systems)
-  when: ansible_os_family in ("Astra Linux", "Debian")
+  when: ansible_os_family in ["Astra Linux", "Debian"]
   ansible.builtin.apt:
     name: >-
-      {% if haproxy_package_version | d(false) %}
-        haproxy-tantor-all={{ haproxy_package_version }}
-      {% else %}
-        haproxy-tantor-all
-      {% endif %}
+      {{
+        'haproxy-tantor-all=' + haproxy_package_version
+        if haproxy_package_version | length > 0
+        else
+        'haproxy-tantor-all'
+      }}
     state: present
     allow_downgrade: true
 
