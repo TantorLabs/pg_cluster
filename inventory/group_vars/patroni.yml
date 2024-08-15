@@ -88,6 +88,7 @@ patroni_bootstrap_dcs_standby_cluster:
   - { option: "archive_cleanup_command",  value: "" }
   - { option: "recovery_min_apply_delay", value: "" }
 
+patroni_bootstrap_dcs_pg_archive_mode: ""
 patroni_bootstrap_dcs_pg_use_pg_rewind: false
 patroni_bootstrap_dcs_pg_use_slots: true
 patroni_bootstrap_dcs_pg_parameters:
@@ -115,7 +116,20 @@ patroni_bootstrap_method_command: ""
 patroni_bootstrap_method_keep_existing_recovery_conf: false
 patroni_bootstrap_method_recovery_conf: []
 #  - { option: "standby_mode",    value: "on" }
-#  - { option: "restore_command", value: "cp ../wal_archive/%f %p" }
+#  - { option: "restore_command", value: '/opt/tantor/usr/bin/wal-g --config /var/lib/postgresql/.walg.json wal-fetch "%f" "%p" 2>&1 | tee -a /var/lib/postgresql/walg.log' }
+#  - { option: "recovery_target_timeline", value: "latest" }
+#  - { option: "recovery_target_action", value: "promote" }
+#  - { option: "recovery_target_time", value: '""' }
+
+patroni_boostrap_method_walg_storage: ""
+patroni_boostrap_method_walg_s3_username: ""
+patroni_boostrap_method_walg_s3_password: ""
+patroni_boostrap_method_walg_s3_bucket: ""
+patroni_boostrap_method_walg_s3_region: ""
+
+patroni_boostrap_method_nfs_storage: ""
+patroni_boostrap_method_nfs_compression: "brotli"
+patroni_boostrap_method_nfs_delta_max_steps: "1"
 
 patroni_bootstrap_initdb:
   - { option: "encoding", value: "UTF8" }
@@ -180,6 +194,8 @@ patroni_pg_custom_conf: "" #TODO
 
 patroni_pg_parameters:
   - { option: "unix_socket_directories", value: "/var/run/postgresql" }
+  # - { option: "archive_mode", value: "on" }
+  # - { option: "archive_command", value: '/opt/tantor/usr/bin/wal-g --config /var/lib/postgresql/.walg.json wal-push "%p" 2>&1 | tee -a /var/lib/postgresql/walg.log' }
 
 patroni_pg_hba: []
 #  - { type: "host", database: "all",         user: "all",                                address: "0.0.0.0/0", method: "ident", options: "map=omicron" }

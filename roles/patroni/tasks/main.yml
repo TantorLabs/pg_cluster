@@ -328,6 +328,31 @@
   changed_when: false
   when: patroni_conf.stat.exists
 
+- name: Block for wal-g setup
+  when: ( patroni_bootstrap_method_name == "wal-g" ) or ( patroni_bootstrap_method_name == "walg" )
+  block:
+    - name: Install wal-g
+      ansible.builtin.package:
+        name:
+          - wal-g-tantor-all
+        state: present
+
+    - name: Copy patroni custom bootstrap script
+      ansible.builtin.template:
+        src: patroni_custom_bootstrap_script.sh.j2
+        dest: "{{ patroni_config_dir }}/patroni_custom_bootstrap_script.sh"
+        mode: "0755"
+        owner: "postgres"
+        group: "postgres"
+
+    - name: Copy wal-g configuration file
+      ansible.builtin.template:
+        src: walg.json.j2
+        dest: "/var/lib/postgresql/.walg.json"
+        mode: "0600"
+        owner: "postgres"
+        group: "postgres"
+
 - name: Create patroni configuration file
   ansible.builtin.template:
     src: patroni.yml.j2
@@ -394,5 +419,25 @@
     role_attr_flags: REPLICATION
     state: present
     port: "5432"
+  become: true
+  become_user: postgres
+
+- name: Check if fullbackup exists
+  when: ( patroni_bootstrap_method_name == "wal-g" ) or ( patroni_bootstrap_method_name == "walg" )
+  ansible.builtin.command:
+    cmd: /opt/tantor/usr/bin/wal-g --config /var/lib/postgresql/.walg.json backup-list
+  register: if_backup_exists
+  changed_when: false
+
+- name: Perform initial fullbackup
+  when:
+    - ( patroni_bootstrap_method_name == "wal-g" ) or ( patroni_bootstrap_method_name == "walg" )
+    - "'No backups found' in if_backup_exists.stderr"
+  ansible.builtin.shell:
+    cmd: >
+      /opt/tantor/usr/bin/wal-g
+      --config /var/lib/postgresql/.walg.json
+      backup-push $(/opt/tantor/db/{{ major_version }}/bin/psql -d postgres -c "SHOW data_directory;" -t -A)
+  changed_when: "'No backups found' in if_backup_exists.stderr"
   become: true
   become_user: postgres

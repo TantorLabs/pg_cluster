@@ -5,14 +5,6 @@
     name: "{{ inventory_hostname }}"
   become: true
 
-- name: Include task for Debian-like systems
-  ansible.builtin.include_tasks: debian.yml
-  when: ansible_os_family in ["Astra Linux", "Debian"]
-
-- name: Include task for RHEL-like systems
-  ansible.builtin.include_tasks: rhel.yml
-  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-
 - name: Block for installation of basic utils
   module_defaults:
     ansible.builtin.apt:
@@ -31,6 +23,14 @@
           - chrony
         state: present
       notify: Restart chronyd
+
+- name: Include task for Debian-like systems
+  ansible.builtin.include_tasks: debian.yml
+  when: ansible_os_family in ["Astra Linux", "Debian"]
+
+- name: Include task for RHEL-like systems
+  ansible.builtin.include_tasks: rhel.yml
+  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
 
 - name: Get content of /etc/security/limits.conf file
   ansible.builtin.lineinfile:
