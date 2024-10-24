@@ -1,4 +1,6 @@
 ---
+pgbouncer_package_version: ""
+
 pgbouncer_listen_port: 6432
 pgbouncer_log_file: "/opt/tantor/var/log/pgbouncer/pgbouncer.log"
 pgbouncer_conf_file: "/opt/tantor/etc/pgbouncer/pgbouncer.ini"

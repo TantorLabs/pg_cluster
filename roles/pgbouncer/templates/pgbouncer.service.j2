@@ -1,11 +1,12 @@
 [Unit]
 Description=A lightweight connection pooler for PostgreSQL
+Documentation=man:pgbouncer(1)
 After=syslog.target
 After=network.target
 
 [Service]
-Type=forking
-LimitNOFILE=65536
+RemainAfterExit=yes
+Type=notify
 
 User=postgres
 Group=postgres
@@ -13,17 +14,11 @@ Group=postgres
 # Path to the init file
 Environment=BOUNCERCONF={{ pgbouncer_conf_file }}
 
-RuntimeDirectory=pgbouncer-tantor
-PIDFile={{ pgbouncer_pid_file }}
-
-#ExecStart=/usr/sbin/pgbouncer -d -q ${BOUNCERCONF}
-ExecStart=/opt/tantor/usr/bin/pgbouncer -d -q ${BOUNCERCONF}
-
-ExecReload=/bin/kill -HUP $MAINPID
-KillSignal=SIGINT
+ExecStart=/opt/tantor/usr/bin/pgbouncer -q $BOUNCERCONF
+ExecReload=/opt/tantor/usr/bin/pgbouncer -R -q $BOUNCERCONF
 
 # Give a reasonable amount of time for the server to start up/shut down
-TimeoutSec=30
+TimeoutSec=300
 
 [Install]
 WantedBy=multi-user.target

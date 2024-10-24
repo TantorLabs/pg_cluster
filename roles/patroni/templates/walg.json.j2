@@ -1,0 +1,37 @@
+#jinja2: lstrip_blocks: True, trim_blocks: True
+
+{% if patroni_boostrap_method_walg_storage == 's3' %}
+{
+{% if postgresql_vendor == 'tantordb' %}
+  "PGDATA": "{{ patroni_pg_data_dir }}",
+{% elif postgresql_vendor == 'classic' and ( ansible_facts['os_family'] == 'Debian' or (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")) %}
+  "PGDATA": "/var/lib/postgresql/{{ major_version }}/{{ inventory_hostname }}/main/",
+{% elif postgresql_vendor == 'classic' and (ansible_facts['os_family'] == "Altlinux") %}
+  "PGDATA": "/var/lib/pgsql/data/{{ inventory_hostname }}",
+{% elif postgresql_vendor == 'classic' %}
+  "PGDATA": "/var/lib/pgsql/{{ major_version }}/data/{{ inventory_hostname }}",
+{% endif %}
+ "AWS_ACCESS_KEY_ID":"{{ patroni_boostrap_method_walg_s3_username }}",
+ "AWS_SECRET_ACCESS_KEY": "{{ patroni_boostrap_method_walg_s3_password }}",
+ "WALE_S3_PREFIX":"s3://{{ patroni_boostrap_method_walg_s3_bucket }}",
+ "AWS_ENDPOINT":"https://storage.yandexcloud.net",
+ "AWS_S3_FORCE_PATH_STYLE":"True",
+ "AWS_REGION":"{{ patroni_boostrap_method_walg_s3_region }}"
+}
+{% elif patroni_boostrap_method_walg_storage == 'nfs' %}
+{
+    "WALG_FILE_PREFIX": "{{ patroni_boostrap_method_nfs_storage }}",
+    "WALG_COMPRESSION_METHOD": "{{ patroni_boostrap_method_nfs_compression }}",
+    "WALG_DELTA_MAX_STEPS": "{{ patroni_boostrap_method_nfs_delta_max_steps }}",
+    "PGHOST": "/var/run/postgresql/.s.PGSQL.{{ patroni_pg_port }}",
+  {% if postgresql_vendor == 'tantordb' %}
+    "PGDATA": "{{ patroni_pg_data_dir }}"
+  {% elif postgresql_vendor == 'classic' and ( ansible_facts['os_family'] == 'Debian' or (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")) %}
+    "PGDATA": "/var/lib/postgresql/{{ major_version }}/{{ inventory_hostname }}/main/"
+  {% elif postgresql_vendor == 'classic' and (ansible_facts['os_family'] == "Altlinux") %}
+    "PGDATA": "/var/lib/pgsql/data/{{ inventory_hostname }}"
+  {% elif postgresql_vendor == 'classic' %}
+    "PGDATA": "/var/lib/pgsql/{{ major_version }}/data/{{ inventory_hostname }}"
+  {% endif %}
+}
+{% endif %}

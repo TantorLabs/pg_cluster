@@ -1,0 +1,57 @@
+#jinja2: lstrip_blocks: True, trim_blocks: True
+#!/bin/bash
+
+# Define WAL-G configuration path
+config_path="/var/lib/postgresql/.walg.json"
+{% if postgresql_vendor == 'tantordb' %}
+pgdata_dir="{{ patroni_pg_data_dir }}"
+{% elif postgresql_vendor == 'classic' and ( ansible_facts['os_family'] == 'Debian' or (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")) %}
+pgdata_dir="/var/lib/postgresql/{{ major_version }}/{{ inventory_hostname }}/main/"
+{% elif postgresql_vendor == 'classic' and (ansible_facts['os_family'] == "Altlinux") %}
+pgdata_dir="/var/lib/pgsql/data/{{ inventory_hostname }}"
+{% elif postgresql_vendor == 'classic' %}
+pgdata_dir="/var/lib/pgsql/{{ major_version }}/data/{{ inventory_hostname }}"
+{% endif %}
+
+# Check if the base directory exists, create if it doesn't
+if [ ! -d "$pgdata_dir" ]; then
+    echo "Creating base directory: $pgdata_dir"
+    mkdir -p "$pgdata_dir"
+fi
+
+# Check for existing backups and catchups
+backup_list=$(/opt/tantor/usr/bin/wal-g --config "$config_path" backup-list 2>&1)
+catchup_list=$(/opt/tantor/usr/bin/wal-g --config "$config_path" catchup-list 2>&1)
+
+function get_latest_date() {
+   echo "$1" | tail -n +2 | awk '{print $2 " " $0}' | sort | tail -n 1 | cut -d' ' -f2-
+}
+
+# Check for "No backups found"
+if [[ "$backup_list" == *"No backups found"* && "$catchup_list" == *"No backups found"* ]]; then
+    # Standard DB init if no backups are found
+    echo "No backups found, initializing standard database..." >> /opt/tantor/var/log/patroni/patroni.log
+{% if postgresql_vendor == 'tantordb' %}
+    {{ patroni_pg_bin_dir }}/initdb -D $pgdata_dir
+{% elif postgresql_vendor == 'classic' and ( ansible_facts['os_family'] == 'Debian' or (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)")) %}
+    /usr/lib/postgresql/{{ major_version }}/bin/initdb -D $pgdata_dir
+{% elif postgresql_vendor == 'classic' and (ansible_facts['os_family'] == "Altlinux") %}
+    /usr/bin/initdb -D $pgdata_dir
+{% elif postgresql_vendor == 'classic' %}
+    /usr/pgsql-{{ major_version }}/bin/initdb -D $pgdata_dir
+{% endif %}
+    exit 0
+else
+    # Determine latest backup and perform appropriate fetch
+    latest_backup_date=$(get_latest_date "$backup_list")
+    latest_catchup_date=$(get_latest_date "$catchup_list")
+    #latest_catchup_date=0
+
+    if [[ "$latest_backup_date" > "$latest_catchup_date" ]]; then
+        echo "Latest backup date: $latest_backup_date" >> /opt/tantor/var/log/patroni/patroni.log
+        /opt/tantor/usr/bin/wal-g --config "$config_path" backup-fetch "$pgdata_dir" LATEST
+    else
+        echo "Latest catchup date: $latest_catchup_date" >> /opt/tantor/var/log/patroni/patroni.log       
+        /opt/tantor/usr/bin/wal-g --config "$config_path" catchup-fetch "$pgdata_dir" LATEST
+    fi
+fi

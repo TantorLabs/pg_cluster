@@ -5,14 +5,6 @@
     name: "{{ inventory_hostname }}"
   become: true
 
-- name: Include task for Debian-like systems
-  ansible.builtin.include_tasks: debian.yml
-  when: (ansible_os_family == "Astra Linux") or (ansible_os_family == "Debian")
-
-- name: Include task for RHEL-like systems
-  ansible.builtin.include_tasks: rhel.yml
-  when: (ansible_distribution == "RED") or (ansible_distribution == "Centos") or (ansible_distribution == "Rocky")
-
 - name: Block for installation of basic utils
   module_defaults:
     ansible.builtin.apt:
@@ -27,28 +19,18 @@
     - name: Install basic utils
       ansible.builtin.package:
         name:
-          - htop
-          - iotop
-          - sysstat
-          - nano
-          - net-tools
-          - less
           - jq
-          - wget
-          - gnupg
           - chrony
-          - libpq-dev
         state: present
       notify: Restart chronyd
 
-- name: Install python packages via pip
-  ansible.builtin.pip:
-    name:
-      - packaging
-      - psutil
-      - wheel
-      - setuptools
-      - psycopg2
+- name: Include task for Debian-like systems
+  ansible.builtin.include_tasks: debian.yml
+  when: ansible_os_family in ["Astra Linux", "Debian"]
+
+- name: Include task for RHEL-like systems
+  ansible.builtin.include_tasks: rhel.yml
+  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
 
 - name: Get content of /etc/security/limits.conf file
   ansible.builtin.lineinfile:
