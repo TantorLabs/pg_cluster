@@ -26,4 +26,15 @@
         name: tantorlabs
         description: Tantorlabs repository for RedOS 7.3
         baseurl: "{{ nexus_yum_redos_7_3 }}"
-      when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+      when:
+        - ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+        - ansible_distribution_version == '7.3'
+
+    - name: Add Tantor repository for RedOS-8.0
+      ansible.builtin.yum_repository:
+        name: tantorlabs
+        description: Tantorlabs repository for RedOS 8.0
+        baseurl: "{{ nexus_yum_redos_8_0 }}"
+      when:
+        - ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+        - ansible_distribution_version == '8.0'

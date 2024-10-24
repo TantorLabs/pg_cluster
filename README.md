@@ -212,7 +212,25 @@ In case it is necessary to place LOGs:
 
 ## Playbook launch
 
-One of the playbook tasks is executed on the same node from which ansible is launched (control server). In case the user under which ansible is run does not have passwordless access to root mode on this server, it is necessary to add the ``-K`` flag to the start command and enter the password.
+One of the playbook tasks is executed on the same node from which ansible is launched (control server). In case the user under which ansible is run does not have passwordless access to root mode on this server, it is necessary to add the ``-K`` flag to the start command and enter the password. 
+
+By default, the playbook does not attempt to connect to Tantor repositories and requires the following packages to be available within the system:
+
+* etcd-tantor-all
+* python3-tantor-all
+* patroni-tantor-all
+* pg_configurator-tantor-all
+* haproxy-tantor-all
+* keepalived-tantor-all
+* pgbouncer-tantor-all
+* wal-g-tantor-all
+* tantor DBMS
+
+Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-15`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-15`` is available in your local repository.  
+
+If the playbook is run in an environment with internet access, you can leverage the most up-to-date components included in the solution. To do this, add the flag ``add_nexus_repo=true`` and provide the connection details for the repositories in the file ``inventory/group_vars/prepare_nodes.yml``.
+
+---
 
 There are several options to run Ansible: with the option to install TantorDB or classic PostgreSQL as a DBMS.
 
@@ -228,29 +246,15 @@ Use the following command to install the PostgreSQL DBMS:
 ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=classic major_version=11" pg-cluster.yaml -K
 ```
 
-In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, the value of ``postgresql_vendor`` with the DBMS vendor and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password. For TantorDB you can also specify DBMS edition.
+In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, the value of ``postgresql_vendor`` with the DBMS vendor and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password. For TantorDB you also need to specify DBMS edition.
 
-## Launch without internet access
+## Launch with internet access
 
-It's possible to launch the playbook without external internet access. In that case, specify the additional environment variable ``add_nexus_repo=false`` during the playbook launch. The command might look like this:
-
+It's possible to launch the playbook with external internet access.
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=false" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=true" pg-cluster.yaml -K
 ```
-
-In that case, make sure that the following packages are available in the local repositories:
-
-* etcd-tantor-all
-* python3-tantor-all
-* patroni-tantor-all
-* pg_configurator-tantor-all
-* haproxy-tantor-all
-* keepalived-tantor-all
-* pgbouncer-tantor-all
-* wal-g-tantor-all
-* tantor DBMS
-
-Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-15`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=false" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-15`` is available in your local repository.
+In that case, make sure that connection details are provided in the file ``inventory/group_vars/prepare_nodes.yml``.
 
 ## HOW TO
 

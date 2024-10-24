@@ -30,8 +30,8 @@
   ansible.builtin.file:
     path: "/opt/tantor/etc/pgbouncer"
     state: directory
-    owner: postgres
-    group: postgres
+    owner: "postgres"
+    group: "postgres"
     mode: "0755"
 
 - name: Write pgbouncer.ini
@@ -39,8 +39,8 @@
     src: pgbouncer.ini.j2
     dest: /opt/tantor/etc/pgbouncer/pgbouncer.ini
     backup: true
-    owner: postgres
-    group: postgres
+    owner: "postgres"
+    group: "postgres"
     mode: "0755"
   notify: Restart pgbouncer-tantor
 
@@ -48,8 +48,8 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: postgres
-    group: postgres
+    owner: "postgres"
+    group: "postgres"
     mode: "0755"
   with_items:
     - "/opt/tantor/var/log/pgbouncer"
@@ -81,8 +81,8 @@
 - name: Create userlist for PGbouncer
   ansible.builtin.file:
     path: /opt/tantor/etc/pgbouncer/userlist.txt
-    owner: postgres
-    group: postgres
+    owner: "postgres"
+    group: "postgres"
     mode: "0644"
 
 - name: Check if pgbouncer missing in /opt/tantor/etc/pgbouncer/userlist.txt file
@@ -118,7 +118,7 @@
   ansible.builtin.copy:
     src: '{{ item.f }}'
     dest: '{{ item.d }}'
-    owner: postgres
+    owner: "postgres"
     group: postgres
     mode: '{{ item.m }}'
 
@@ -138,4 +138,15 @@
     owner: root
     group: root
     mode: "0644"
+  notify: Restart pgbouncer-tantor
+
+- name: Override tmpfiles.d configuration for pgbouncer-tantor
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/pgbouncer-tantor.conf
+    content: |
+      d /run/pgbouncer-tantor 0755 postgres postgres -
+    owner: root
+    group: root
+    mode: '0644'
+  register: pgbouncer_override
   notify: Restart pgbouncer-tantor
