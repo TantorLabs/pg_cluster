@@ -7,9 +7,10 @@
       - ca-certificates
       - gnupg
       - gpg
-      - libpq-devel
+      - libpq
     state: present
-  when: ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
+  when:
+    - ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
 
 
 - name: Add Tantor repository key (yum or dnf)
