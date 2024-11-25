@@ -178,22 +178,24 @@ sudo python3 -m pipX.X install ansible==X.X.X # where X.X(.X) represents the ver
 After filling in the ``my_inventory`` file, it is recommended to make sure that all servers are available to connect to them via SSH with the required user. To do this, run the following command in the terminal:
 
 ```bash
-ansible all -i inventory/my_inventory -m ping -u admin_user
+ansible all -i inventory/my_inventory -m ansible.builtin.setup -a "filter=ansible_hostname" -u admin_user
 ```
 
 The result of the command above will be a response from each of the available servers (virtual machines) in the following format:
 
 ```bash
-<device_fqdn_name> | SUCCESS => {
+<hostname_from_inventory_file> | SUCCESS => {
     "ansible_facts": {
+        "ansible_hostname": "<device_hostname>",
         "discovered_interpreter_python": "/usr/bin/<host_python_version>"
     },
-    "changed": false,
-    "ping": "pong"
+    "changed": false
 }
 ```
 
 This output for each server described in ``my_inventory`` file means successful connection to it via SSH. If as a result of the response from any server (virtual machine) the message differed from the above template - check whether it is possible to connect to it via a key from the user name passed using the ``-u`` flag. If it is necessary to connect only with password entry (without using keys) - it is necessary to add ``-kK`` flags to the command launch and enter the password for SSH connection (``-k`` flag) and for user to switch to privileged mode (root) (``-K`` flag).
+
+Pay attention to the value of the ``ansible_hostname`` variable in the command output. If the value is ``localhost`` or ``localhost.localdomain``, check the ``/etc/hosts`` file of the machines with incorrect output. Ensure that the real device hostname is set **before** localhost on the line containing ``127.0.0.1``.
 
 ## Launch Features
 
@@ -210,14 +212,32 @@ In case it is necessary to place LOGs:
 
 ## Playbook launch
 
-One of the playbook tasks is executed on the same node from which ansible is launched (control server). In case the user under which ansible is run does not have passwordless access to root mode on this server, it is necessary to add the ``-K`` flag to the start command and enter the password.
+One of the playbook tasks is executed on the same node from which ansible is launched (control server). In case the user under which ansible is run does not have passwordless access to root mode on this server, it is necessary to add the ``-K`` flag to the start command and enter the password. 
+
+By default, the playbook does not attempt to connect to Tantor repositories and requires the following packages to be available within the system:
+
+* etcd-tantor-all
+* python3-tantor-all
+* patroni-tantor-all
+* pg_configurator-tantor-all
+* haproxy-tantor-all
+* keepalived-tantor-all
+* pgbouncer-tantor-all
+* wal-g-tantor-all
+* tantor DBMS
+
+Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-15`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-15`` is available in your local repository.  
+
+If the playbook is run in an environment with internet access, you can leverage the most up-to-date components included in the solution. To do this, add the flag ``add_nexus_repo=true`` and provide the connection details for the repositories in the file ``inventory/group_vars/prepare_nodes.yml``.
+
+---
 
 There are several options to run Ansible: with the option to install TantorDB or classic PostgreSQL as a DBMS.
 
 Use the following command to install TantorDB:
 
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb major_version=15" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15" pg-cluster.yaml -K
 ```
 
 Use the following command to install the PostgreSQL DBMS:
@@ -226,36 +246,43 @@ Use the following command to install the PostgreSQL DBMS:
 ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=classic major_version=11" pg-cluster.yaml -K
 ```
 
-In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password.
+In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, the value of ``postgresql_vendor`` with the DBMS vendor and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password. For TantorDB you also need to specify DBMS edition.
+
+## Launch with internet access
+
+It's possible to launch the playbook with external internet access.
+```bash
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=true" pg-cluster.yaml -K
+```
+In that case, make sure that connection details are provided in the file ``inventory/group_vars/prepare_nodes.yml``.
 
 ## HOW TO
+
+Below you can find some common commands for working with the software products included in the ``pg_cluster`` solution. Note that the commands and their result may differ depending on the software versions used.
 
 #### Work with etcd:
 
 ```bash
 # on NODE_1
-e_host=(ETCDCTL_API=3 /opt/tantor/usr/bin/etcdctl --endpoints=https://<HOST_1_IP>:2379,https://<HOST_2_IP:2379,https://<HOST_N_IP:2379 --cacert=/opt/tantor/etc/patroni/ca.pem --cert=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>.pem  --key=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>-key.pem)
+e_host=(
+  /opt/tantor/usr/bin/etcdctl
+  --endpoints=https://<HOST_1_IP>:2379,https://<HOST_2_IP>:2379,https://<HOST_N_IP>:2379
+  --cacert=/opt/tantor/etc/patroni/ca.pem
+  --cert=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>.pem  
+  --key=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>-key.pem
+)
 
 # list etcd members
-etcdctl "${e_host[@]}" --debug member list
+ETCDCTL_API=3 "${e_host[@]}" member list --debug
 
 # check version
-etcdctl "${e_host[@]}" version
->> etcdctl version: 3.3.18
->> API version: 2
+ETCDCTL_API=3  "${e_host[@]}" version
 
 # get key value ("main" is "patroni_scope")
-etcdctl "${e_host[@]}" get /service/main/config
+ETCDCTL_API=3  "${e_host[@]}" get /service/main/config
 
 # cleanup patroni cluster configuration
-etcdctl "${e_host[@]}" rm /service/main --recursive
-```
-
-#### Manual start patroni:
-
-```bash
-ps -ef | grep "bin/patroni" | grep -v grep | awk '{print $2}' | xargs kill
-su -l postgres -c "/usr/bin/python3 /opt/tantor/usr/bin/patroni /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml"
+ETCDCTL_API=3  "${e_host[@]}" del /service/main --prefix
 ```
 
 #### Manual create user:
@@ -303,20 +330,11 @@ Change `postgresql.conf` settings:
 
 ```bash
 cat > postgresql.conf << EOL
-  "postgresql": {
-	"parameters": {
-	  "max_connections" : 101,
-	  "max_locks_per_transaction": 64,
-	  "max_prepared_transactions": 0,
-	  "max_replication_slots": 10,
-	  "max_wal_senders": 10,
-	  "max_worker_processes": 8,
-	  "track_commit_timestamp": false,
-	  "wal_keep_segments": 8,
-	  "wal_level": "replica",
-	  "wal_log_hints": true
-	}
-  }
+"postgresql": {
+"parameters": {
+	"max_connections" : 101
+}
+}
 EOL
 
 cat postgresql.conf | patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml edit-config --apply - --force main
@@ -410,7 +428,7 @@ root@node1:~# patronictl -c /opt/tantor/etc/patroni/<NODE1_HOSTNAME>.yml list
 +---------+-----------------+---------+-----------+----+-----------+
 ```
 
-## Cluster test
+## Cluster test (still in progress)
 
 After successful cluster deployment:
 ```bash

@@ -35,9 +35,13 @@ backend master
 	option httpchk GET /master
     {% endif %}						   
     http-check expect status 200
-    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    default-server inter 5s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
+    {% if patroni_restapi_certfile |d(None, true) and patroni_restapi_keyfile |d(None, true) and patroni_restapi_cafile |d(None, true) %}
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ patroni_pg_port }} maxconn 3000 check port 8008 ca-file {{ patroni_etcd3_cacert }} check-ssl
+    {% else %}
     server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ patroni_pg_port }} maxconn 3000 check port 8008
+    {% endif %}
     {% endfor %}
 
 frontend  ft_slave
@@ -52,9 +56,13 @@ backend slave
 	option httpchk GET /replica
     {% endif %}	
     http-check expect status 200
-    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    default-server inter 5s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
+    {% if patroni_restapi_certfile |d(None, true) and patroni_restapi_keyfile |d(None, true) and patroni_restapi_cafile |d(None, true) %}
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ patroni_pg_port }} maxconn 3000 check port 8008 ca-file {{ patroni_etcd3_cacert }} check-ssl
+    {% else %}
     server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ patroni_pg_port }} maxconn 3000 check port 8008
+    {% endif %}
     {% endfor %}
 
 frontend  ft_master_pool
@@ -68,9 +76,13 @@ backend master_pool
 	option httpchk GET /master
     {% endif %}	
     http-check expect status 200
-    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    default-server inter 5s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
+    {% if patroni_restapi_certfile |d(None, true) and patroni_restapi_keyfile |d(None, true) and patroni_restapi_cafile |d(None, true) %}
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ pgbouncer_listen_port }} maxconn 3000 check port 8008 ca-file {{ patroni_etcd3_cacert }} check-ssl
+    {% else %}
     server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ pgbouncer_listen_port }} maxconn 3000 check port 8008
+    {% endif %}
     {% endfor %}
     
 frontend  ft_slave_pool
@@ -85,7 +97,11 @@ backend slave_pool
 	option httpchk GET /replica
     {% endif %}	
     http-check expect status 200
-    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    default-server inter 5s fall 3 rise 2 on-marked-down shutdown-sessions
     {% for host in groups['inv_pg'] %}
+    {% if patroni_restapi_certfile |d(None, true) and patroni_restapi_keyfile |d(None, true) and patroni_restapi_cafile |d(None, true) %}
+    server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ pgbouncer_listen_port }} maxconn 3000 check port 8008 ca-file {{ patroni_etcd3_cacert }} check-ssl
+    {% else %}
     server {{ host }} {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ pgbouncer_listen_port }} maxconn 3000 check port 8008
+    {% endif %}
     {% endfor %}    

@@ -1,6 +1,7 @@
 ---
 
 - name: Configure nexus repository key
+  when: add_nexus_repo == 'true'
   ansible.builtin.apt_key:
     url: "{{ nexus_key_url }}"
     state: present
@@ -8,22 +9,11 @@
 - name: Install prerequisite packages
   ansible.builtin.package:
     name:
-      - apt-transport-https
-      - acl
-      - ca-certificates
-      - curl
+      - openssl
       - gnupg
       - gpg
       - locales
-      - lsb-release
-      - python3-pip
-      - python3-psycopg2
-      - python3-setuptools
-      - sudo
-      - software-properties-common
-      - telnet
-      - virtualenv
-      - wget
+      - libpq-dev
     state: present
     update_cache: true
 
@@ -36,26 +26,40 @@
     - en_US.UTF-8
 
 - name: Block for Astra
-  when: (ansible_os_family == "Astra Linux") or (ansible_os_family == "Astra Linux (Orel)")
+  when: (ansible_os_family in ("Astra Linux", "Astra Linux (Orel)")) and (add_nexus_repo == 'true')
   block:
-    - name: Configure nexus-dev repository (Astra Smolenks)
+    - name: Configure nexus repository (Astra 1.7)
       ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_astra }}"
+        repo: "{{ nexus_apt_astra_1_7 }}"
+      when:
+        - ansible_distribution == "Astra Linux"
+        - ansible_distribution_version == "1.7_x86-64"
+
+    - name: Configure nexus repository (Astra 1.8)
+      ansible.builtin.apt_repository:
+        repo: "{{ nexus_apt_astra_1_8 }}"
+      when:
+        - ansible_distribution == "Astra Linux"
+        - ansible_distribution_version == "1.8_x86-64"
 
 
 - name: Block for Ubuntu
-  when: (ansible_distribution == "Ubuntu")
+  when: (ansible_distribution == "Ubuntu") and (add_nexus_repo == 'true')
   block:
-    - name: Configure nexus-dev repository (Ubuntu 22.04)
+    - name: Configure nexus repository (Ubuntu 22.04)
       ansible.builtin.apt_repository:
         repo: "{{ nexus_apt_ubuntu_22_04 }}"
         state: present
         filename: tantorlabs
-      when: (ansible_distribution_version == "22.04")
+      when:
+        - ansible_distribution == "Ubuntu"
+        - ansible_distribution_version == "22.04"
 
-    - name: Configure nexus-dev repository (Ubuntu 20.04)
+    - name: Configure nexus repository (Ubuntu 20.04)
       ansible.builtin.apt_repository:
         repo: "{{ nexus_apt_ubuntu_20_04 }}"
         state: present
         filename: tantorlabs
-      when: (ansible_distribution_version == "20.04")
+      when:
+        - ansible_distribution == "Ubuntu"
+        - ansible_distribution_version == "20.04"

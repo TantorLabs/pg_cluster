@@ -23,9 +23,10 @@ log:
 restapi:
   listen: {{ patroni_restapi_listen |d('0.0.0.0:8008', true) }}
   connect_address: {{ patroni_restapi_connect_address |d(ansible_host + ':8008', true) }}
-{% if patroni_restapi_certfile |d(None, true) and patroni_restapi_keyfile |d(None, true) %}
+{% if patroni_restapi_certfile |d(None, true) and patroni_restapi_keyfile |d(None, true) and patroni_restapi_cafile |d(None, true) %}
   certfile: {{ patroni_restapi_certfile }}
   keyfile: {{ patroni_restapi_keyfile }}
+  cafile: {{ patroni_restapi_cafile }}
 {% endif %}
 {% if patroni_restapi_username |d(None, true) and patroni_restapi_password |d(None, true) %}
   authentication:

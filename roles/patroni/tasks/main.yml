@@ -1,5 +1,9 @@
 ---
 
+- name: Collect package facts
+  ansible.builtin.package_facts:
+  register: package_facts_result
+
 - name: Load watchdog kernel module
   community.general.modprobe:
     name: softdog
@@ -34,11 +38,184 @@
   ansible.builtin.systemd_service:
     daemon_reload: true
 
-- name: Install system packages for patroni
-  ansible.builtin.package:
-    name: patroni-tantor-all
-    state: present
-    update_cache: true
+- name: Install patroni-tantor-all package if not installed
+  when: "'patroni-tantor-all' not in ansible_facts.packages"
+  block:
+    - name: Install patroni-tantor-all (RHEL-like systems)
+      when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+      ansible.builtin.yum:
+        name: >-
+          {{
+            'patroni-tantor-all-' + patroni_package_version
+            if patroni_package_version | length > 0
+            else
+            'patroni-tantor-all'
+          }}
+        state: present
+        allow_downgrade: true
+
+    - name: Install patroni-tantor-all (Debian-like systems)
+      when: ansible_os_family in ["Astra Linux", "Debian"]
+      ansible.builtin.apt:
+        name: >-
+          {{
+            'patroni-tantor-all=' + patroni_package_version
+            if patroni_package_version | length > 0
+            else
+            'patroni-tantor-all'
+          }}
+        state: present
+        allow_downgrade: true
+
+- name: Upgrade patroni-tantor-all package if it is installed
+  when:
+    - "'patroni-tantor-all' in ansible_facts.packages"
+    - patroni_package_version != ""
+    - "package_facts_result.ansible_facts.packages['patroni-tantor-all'][0]['version'] != patroni_package_version"
+  block:
+    - name: Check if this node is the master
+      ansible.builtin.command: >-
+        /opt/tantor/usr/bin/patronictl
+        -c {{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml list
+        -f json
+      register: patroni_status
+      changed_when: false
+
+    - name: Set is_master fact
+      ansible.builtin.set_fact:
+        is_master: >-
+          {{
+            (patroni_status.stdout
+            | from_json
+            | selectattr('Role', 'equalto', 'Leader')
+            | map(attribute='Member')
+            | list
+            | first) == inventory_hostname
+          }}
+
+    - name: Set current master
+      ansible.builtin.set_fact:
+        current_master: >-
+          {{
+            (patroni_status.stdout
+            | from_json
+            | selectattr('Role', 'equalto', 'Leader')
+            | map(attribute='Member')
+            | list
+            | first)
+          }}
+      when: is_master
+
+    - name: Choose new leader
+      ansible.builtin.set_fact:
+        new_leader: >-
+          {{
+            (patroni_status.stdout
+            | from_json
+            | selectattr('Role', 'equalto', 'Replica')
+            | map(attribute='Member')
+            | difference([inventory_hostname])
+            | first)
+          }}
+      when: is_master
+
+    - name: Block for replica nodes
+      when: not is_master
+      block:
+        - name: Stop Patroni service on replica
+          ansible.builtin.service:
+            name: patroni-tantor
+            state: stopped
+          register: patroni_stop_result
+
+        - name: Install patroni-tantor-all (RHEL-like systems)
+          when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+          ansible.builtin.yum:
+            name: >-
+              {{
+                'patroni-tantor-all-' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
+            state: present
+            allow_downgrade: true
+
+        - name: Install patroni-tantor-all (Debian-like systems)
+          when: ansible_os_family in ["Astra Linux", "Debian"]
+          ansible.builtin.apt:
+            name: >-
+              {{
+                'patroni-tantor-all=' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
+            state: present
+            allow_downgrade: true
+
+        - name: Start Patroni service on replica
+          ansible.builtin.service:
+            name: patroni-tantor
+            state: started
+
+    - name: Block for master node
+      when: is_master
+      block:
+        - name: Perform switchover if this node is the master
+          ansible.builtin.command: >-
+            /opt/tantor/usr/bin/patronictl
+              -c {{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml
+              switchover
+              --leader {{ current_master }}
+              --candidate {{ new_leader }}
+              --force
+              {{ patroni_scope }}
+          register: switchover_result
+          changed_when: switchover_result.changed
+
+        - name: Wait for switchover to complete
+          ansible.builtin.pause:
+            minutes: 1
+
+        - name: Stop Patroni service at previous master
+          ansible.builtin.service:
+            name: patroni-tantor
+            state: stopped
+          when: is_master
+          register: patroni_stop_result
+
+        - name: Install patroni-tantor-all (RHEL-like systems) at previous master
+          when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+          ansible.builtin.yum:
+            name: >-
+              {{
+                'patroni-tantor-all-' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
+            state: present
+            allow_downgrade: true
+
+        - name: Install patroni-tantor-all (Debian-like systems) at previous master
+          when: ansible_os_family in ["Astra Linux", "Debian"]
+          ansible.builtin.apt:
+            name: >-
+              {{
+                'patroni-tantor-all=' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
+            state: present
+            allow_downgrade: true
+
+        - name: Start Patroni service at previous master node
+          ansible.builtin.service:
+            name: patroni-tantor
+            state: started
+          when: is_master
 
 - name: Create patroni unit file
   ansible.builtin.template:
@@ -47,6 +224,14 @@
     owner: root
     group: root
     mode: "0644"
+
+- name: Recursively change ownership for the /var/lib/postgresql/ folder
+  ansible.builtin.file:
+    path: /var/lib/postgresql/
+    state: directory
+    recurse: true
+    owner: "{{ patroni_system_user }}"
+    group: "{{ patroni_system_group }}"
 
 - name: Create patroni config directory
   ansible.builtin.file:
@@ -77,47 +262,35 @@
     - "{{ patroni_pg_callbacks }}"
   when: not( (item.script is none) or (item.script | trim | length == 0) )
 
-- name: Upload pg_configurator-22.10.17 to cluster machines
-  become: true
-  become_user: root
-  with_items:
-    - f: "{{ playbook_dir + '/tools/pg_configurator-22.10.17.tar.gz' }}"
-      d: '/opt/tantor/etc/patroni'
-      m: '0400'
-  ansible.builtin.copy:
-    src: '{{ item.f }}'
-    dest: '{{ item.d }}'
-    owner: root
-    group: root
-    mode: '{{ item.m }}'
+- name: Install pg-configurator for Debian-like systems
+  ansible.builtin.package:
+    name: >-
+      {{
+        'pg-configurator-tantor-all=' + pg_configurator_package_version
+        if pg_configurator_package_version | length > 0
+        else
+        'pg-configurator-tantor-all'
+      }}
+    state: present
+  when: ansible_os_family in ["Astra Linux", "Debian"]
 
-- name: Install pg_configurator using pip module
-  ansible.builtin.pip:
-    name: /opt/tantor/etc/patroni/pg_configurator-22.10.17.tar.gz
-
-# - name: Create json configuration
-#   become: true
-#   become_user: root
-#   ansible.builtin.command: |
-#       python3 /opt/tantor/etc/patroni/pg_configurator.py \
-#       --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
-#       --db-ram="{{ pg_conf_db_ram }}" \
-#       --db-disk-type="{{ pg_conf_db_disk_type }}" \
-#       --db-duty="{{ pg_conf_db_duty }}" \
-#       --pg-version="{{ patroni_pg_version }}" \
-#       --output-format=patroni-json \
-#       --min-conns=200 \
-#       --max-conns=200 \
-#       --common-conf \
-#       --output-file-name=/opt/tantor/etc/patroni/postgresql.json
-#   args:
-#     creates: /opt/tantor/etc/patroni/postgresql.json
+- name: Install pg_configurator for RHEL-like systems
+  ansible.builtin.package:
+    name: >-
+      {{
+        'pg_configurator-tantor-all-' + pg_configurator_package_version
+        if pg_configurator_package_version | length > 0
+        else
+        'pg_configurator-tantor-all'
+      }}
+    state: present
+  when: ansible_distribution in ["RED", "Centos", "Rocky"]
 
 - name: Create json configuration from local installation of pg_configurator
   become: true
   become_user: root
   ansible.builtin.command: |
-      pg_configurator \
+      /opt/tantor/usr/bin/pg_configurator \
       --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
       --db-ram="{{ pg_conf_db_ram }}" \
       --db-disk-type="{{ pg_conf_db_disk_type }}" \
@@ -154,6 +327,31 @@
   register: pg_wal_log_conf
   changed_when: false
   when: patroni_conf.stat.exists
+
+- name: Block for wal-g setup
+  when: ( patroni_bootstrap_method_name == "wal-g" ) or ( patroni_bootstrap_method_name == "walg" )
+  block:
+    - name: Install wal-g
+      ansible.builtin.package:
+        name:
+          - wal-g-tantor-all
+        state: present
+
+    - name: Copy patroni custom bootstrap script
+      ansible.builtin.template:
+        src: patroni_custom_bootstrap_script.sh.j2
+        dest: "{{ patroni_config_dir }}/patroni_custom_bootstrap_script.sh"
+        mode: "0755"
+        owner: "postgres"
+        group: "postgres"
+
+    - name: Copy wal-g configuration file
+      ansible.builtin.template:
+        src: walg.json.j2
+        dest: "/var/lib/postgresql/.walg.json"
+        mode: "0600"
+        owner: "postgres"
+        group: "postgres"
 
 - name: Create patroni configuration file
   ansible.builtin.template:
@@ -211,6 +409,8 @@
     path: /var/run/postgresql/.s.PGSQL.{{ patroni_pg_port }}
 
 - name: Create replicator role
+  vars:
+    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_user:
     db: postgres
     name: "{{ patroni_replication_username }}"
@@ -219,5 +419,25 @@
     role_attr_flags: REPLICATION
     state: present
     port: "5432"
+  become: true
+  become_user: postgres
+
+- name: Check if fullbackup exists
+  when: ( patroni_bootstrap_method_name == "wal-g" ) or ( patroni_bootstrap_method_name == "walg" )
+  ansible.builtin.command:
+    cmd: /opt/tantor/usr/bin/wal-g --config /var/lib/postgresql/.walg.json backup-list
+  register: if_backup_exists
+  changed_when: false
+
+- name: Perform initial fullbackup
+  when:
+    - ( patroni_bootstrap_method_name == "wal-g" ) or ( patroni_bootstrap_method_name == "walg" )
+    - "'No backups found' in if_backup_exists.stderr"
+  ansible.builtin.shell:
+    cmd: >
+      /opt/tantor/usr/bin/wal-g
+      --config /var/lib/postgresql/.walg.json
+      backup-push $(/opt/tantor/db/{{ major_version }}/bin/psql -d postgres -c "SHOW data_directory;" -t -A)
+  changed_when: "'No backups found' in if_backup_exists.stderr"
   become: true
   become_user: postgres
