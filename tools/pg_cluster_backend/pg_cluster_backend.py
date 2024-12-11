@@ -1,14 +1,27 @@
+import asyncio
+import os
+import sys
 from threading import Thread
 import time
 import threading
 import configparser
 import argparse
 import random
-from psc.pgstatlogger.pg_stat_logger import PSCLogger
-from psc.pgstatcommon.pg_stat_common import *
-import psc.postgresql as postgresql
+
+import asyncpg
+
 import logging
 import collections
+
+from tools.pg_cluster_backend.psc.pgstatcommon.pg_stat_common import (
+    read_conf_param_value,
+    exception_helper,
+    prepare_dirs,
+    get_resultset,
+    get_scalar,
+    SignalHandler,
+)
+from tools.pg_cluster_backend.psc.pgstatlogger.pg_stat_logger import PSCLogger
 
 VERSION = 1.0
 
@@ -21,8 +34,8 @@ class SysConf:
         self.config.read(
             os.path.join(
                 self.current_dir,
-                'conf',
-                os.path.splitext(os.path.basename(__file__))[0] + ".conf"
+                "conf",
+                os.path.splitext(os.path.basename(__file__))[0] + ".conf",
             )
         )
 
@@ -33,23 +46,27 @@ class SysConf:
                 return default
 
         self.dbs_dict = {}
-        for db in self.config['databases']:
-            self.dbs_dict[db] = read_conf_param_value(self.config['databases'][db])
+        for db in self.config["databases"]:
+            self.dbs_dict[db] = read_conf_param_value(self.config["databases"][db])
 
         # main parameters
-        self.application_name = get_key('main', 'application_name', 'custom_soft_reindex')
-        self.threads_num = int(get_key('main', 'threads_num', '2'))
-        self.conn_exception_sleep_interval = int(get_key('main', 'conn_exception_sleep_interval', '1'))
-        self.reconnect_attempt = int(get_key('main', 'reconnect_attempt', '3'))
+        self.application_name = get_key(
+            "main", "application_name", "custom_soft_reindex"
+        )
+        self.threads_num = int(get_key("main", "threads_num", "2"))
+        self.conn_exception_sleep_interval = int(
+            get_key("main", "conn_exception_sleep_interval", "1")
+        )
+        self.reconnect_attempt = int(get_key("main", "reconnect_attempt", "3"))
 
         # test parameters
-        self.accounts = int(get_key('test', 'accounts', '100'))
+        self.accounts = int(get_key("test", "accounts", "100"))
 
         # log parameters
-        self.log_level = get_key('log', 'log_level', 'Info')
-        self.log_sql = int(get_key('log', 'log_sql', '1'))
-        self.file_maxmbytes = int(get_key('log', 'file_maxmbytes', '50'))
-        self.file_backupcount = int(get_key('log', 'file_backupcount', '5'))
+        self.log_level = get_key("log", "log_level", "Info")
+        self.log_sql = int(get_key("log", "log_sql", "1"))
+        self.file_maxmbytes = int(get_key("log", "file_maxmbytes", "50"))
+        self.file_backupcount = int(get_key("log", "file_backupcount", "5"))
 
 
 class CLUSTERTESTGlobal:
@@ -68,14 +85,14 @@ class CLUSTERTESTGlobal:
             parser.add_argument(
                 "--version",
                 help="Show the version number and exit",
-                action='store_true',
-                default=False
+                action="store_true",
+                default=False,
             )
             parser.add_argument(
                 "--operations",
                 help="Number of billing operations",
                 type=int,
-                default=1000
+                default=1000,
             )
 
             try:
@@ -96,16 +113,13 @@ class CLUSTERTESTGlobal:
 
             self.sys_conf = SysConf()
 
-            prepare_dirs(
-                self.sys_conf.current_dir,
-                ["log"]
-            )
+            prepare_dirs(self.sys_conf.current_dir, ["log"])
             self.logger = PSCLogger(
                 self.sys_conf.application_name,
                 log_level=logging._nameToLevel[self.sys_conf.log_level.upper()],
                 max_bytes=1024 * 1000 * self.sys_conf.file_maxmbytes,
                 backup_count=self.sys_conf.file_backupcount,
-                delay=3
+                delay=3,
             )
             self.logger.start()
 
@@ -131,9 +145,10 @@ def init_test_tbls_and_data(db_conn):
         TABLESPACE = pg_default
         CONNECTION LIMIT = -1;
 
-    su - postgres -c "psql -A -t -d test_db -f /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql"
+    su - postgres -c "psql -A -t -d test_db -f /etc/pgbouncer/pgbouncer_prepare.sql"
     """
-    db_conn.execute("""
+    db_conn.execute(
+        """
     DO $$
         begin
         DROP TABLE IF EXISTS public.accounts CASCADE;
@@ -151,12 +166,14 @@ def init_test_tbls_and_data(db_conn):
         INSERT INTO public.accounts(user_name, balance)
              SELECT 'user_' || T.v, 100 from(SELECT generate_series(1, %d) as v) T;
         end$$;
-    """ % CLUSTERTEST.sys_conf.accounts)
+    """
+        % CLUSTERTEST.sys_conf.accounts
+    )
 
 
-def worker_func(thread_name):
+async def worker_func(thread_name):
     # https://www.2ndquadrant.com/en/blog/postgresql-anti-patterns-read-modify-write-cycles/
-    CLUSTERTEST.logger.log('Started %s' % thread_name, "Info", do_print=True)
+    CLUSTERTEST.logger.log("Started %s" % thread_name, "Info", do_print=True)
     reconnect_attempt = 0
 
     db_hosts = collections.deque([v for _, v in CLUSTERTEST.sys_conf.dbs_dict.items()])
@@ -170,112 +187,122 @@ def worker_func(thread_name):
 
         if CLUSTERTEST.operation_num % 10 == 0:
             CLUSTERTEST.logger.log(
-                'Progress %s' % str(
-                    round(float(CLUSTERTEST.operation_num) * 100 / CLUSTERTEST.args.operations, 2)
-                ) + "%",
+                "Progress %s"
+                % str(
+                    round(
+                        float(CLUSTERTEST.operation_num)
+                        * 100
+                        / CLUSTERTEST.args.operations,
+                        2,
+                    )
+                )
+                + "%",
                 "Info",
-                do_print=True
+                do_print=True,
             )
 
         do_work = True
 
         def execute_task():
             with db_local.xact():
-                result = get_resultset(db_local, """
+                result = get_resultset(
+                    db_local,
+                    """
                     SELECT id, balance
                     FROM public.accounts
                     ORDER BY random() LIMIT 2 FOR UPDATE
-                """)
+                """,
+                )
 
                 from_account = result[0]
                 to_account = result[1]
                 amount = round(random.uniform(0.01, 100), 2)
 
-                time.sleep(random.uniform(0.1, 0.2))  # emulate billing calculation delay
+                time.sleep(
+                    random.uniform(0.1, 0.2)
+                )  # emulate billing calculation delay
 
                 db_local.execute(
                     """
                     UPDATE public.accounts
                         SET balance = balance - %s::money
                     WHERE id = %d
-                    """ % (str(amount), from_account[0])
+                    """
+                    % (str(amount), from_account[0])
                 )
 
-                time.sleep(random.uniform(0.1, 0.2))  # emulate billing calculation delay
+                time.sleep(
+                    random.uniform(0.1, 0.2)
+                )  # emulate billing calculation delay
 
                 db_local.execute(
                     """
                     UPDATE public.accounts
                         SET balance = balance + %s::money + 1::money
                     WHERE id = %d
-                    """ % (str(amount), to_account[0])
+                    """
+                    % (str(amount), to_account[0])
                 )
             # success: next task
             return True
 
         while do_work:
             try:
-                if db_local is None and reconnect_attempt < CLUSTERTEST.sys_conf.reconnect_attempt:
+                if (
+                    db_local is None
+                    and reconnect_attempt < CLUSTERTEST.sys_conf.reconnect_attempt
+                ):
                     CLUSTERTEST.logger.log(
-                        "Thread '%s': connecting... reconnect_attempt = %d" % (thread_name, reconnect_attempt),
+                        "Thread '%s': connecting... reconnect_attempt = %d"
+                        % (thread_name, reconnect_attempt),
                         "Info",
-                        do_print=True
+                        do_print=True,
                     )
-                    db_local = postgresql.open(db_hosts[0])
+                    db_local = await asyncpg.connect(db_hosts[0])
                     db_local.execute(
-                        "SET application_name = '%s'" % (
-                                CLUSTERTEST.sys_conf.application_name
-                        )
+                        "SET application_name = '%s'"
+                        % (CLUSTERTEST.sys_conf.application_name)
                     )
                     current_pid = get_scalar(db_local, "SELECT pg_backend_pid()")
                     CLUSTERTEST.db_conns[current_pid] = db_local
-                elif db_local is None and reconnect_attempt >= CLUSTERTEST.sys_conf.reconnect_attempt:
+                elif (
+                    db_local is None
+                    and reconnect_attempt >= CLUSTERTEST.sys_conf.reconnect_attempt
+                ):
                     # change connection host
                     CLUSTERTEST.logger.log(
                         "Thread '%s': connecting to another host... " % thread_name,
                         "Info",
-                        do_print=True
+                        do_print=True,
                     )
                     invalid_host = db_hosts.popleft()
                     db_hosts.append(invalid_host)
                     reconnect_attempt = 0
-                    db_local = postgresql.open(db_hosts[0])
+                    db_local = await asyncpg.connect(db_hosts[0])
                     db_local.execute(
-                        "SET application_name = '%s'" % (
-                                CLUSTERTEST.sys_conf.application_name
-                        )
+                        "SET application_name = '%s'"
+                        % (CLUSTERTEST.sys_conf.application_name)
                     )
                     current_pid = get_scalar(db_local, "SELECT pg_backend_pid()")
                     CLUSTERTEST.db_conns[current_pid] = db_local
 
                 if execute_task():
                     do_work = False
-            except (
-                    postgresql.exceptions.DeadlockError
-            ) as e:
+            except asyncpg.exceptions.DeadlockDetectedError as exc:
                 CLUSTERTEST.logger.log(
-                    'Exception in \'%s\': %s. DeadlockError' % (
-                        thread_name, str(e)
-                    ),
-                    "Error",
-                    do_print=True
+                    msg=f"Exception in '{thread_name}': {str(exc)}. DeadlockError",
+                    code="Error",
+                    do_print=True,
                 )
                 # repeat task on deadlock
-                try:
-                    db_local.execute("ROLLBACK")
-                except (
-                    postgresql.exceptions.NoActiveTransactionError
-                ):
-                    pass
-            except (
-                    postgresql.exceptions.ReadOnlyTransactionError
-            ) as e:
+                db_local.execute("ROLLBACK")
+
+            except asyncpg.exceptions.ReadOnlySQLTransactionError as exc:
                 CLUSTERTEST.logger.log(
-                    'Exception in \'%s\': %s. ReadOnlyTransactionError' % (
-                        thread_name, str(e)
-                    ),
+                    "Exception in '%s': %s. ReadOnlyTransactionError"
+                    % (thread_name, str(exc)),
                     "Error",
-                    do_print=True
+                    do_print=True,
                 )
                 db_local = None
                 # switch connection on switchover
@@ -283,64 +310,80 @@ def worker_func(thread_name):
                 db_hosts.append(invalid_host)
                 time.sleep(CLUSTERTEST.sys_conf.conn_exception_sleep_interval)
             except (
-                postgresql.exceptions.QueryCanceledError,
-                postgresql.exceptions.AdminShutdownError,
-                postgresql.exceptions.CrashShutdownError,
-                postgresql.exceptions.ServerNotReadyError
-            ) as e:
+                asyncpg.exceptions.QueryCanceledError,
+                asyncpg.exceptions.AdminShutdownError,
+                asyncpg.exceptions.CrashShutdownError,
+            ) as exc:
                 if CLUSTERTEST.is_terminate:
                     return
                 CLUSTERTEST.logger.log(
-                    'Exception in \'%s\': %s. Reconnecting after %d sec...' % (
-                        thread_name, str(e), CLUSTERTEST.sys_conf.conn_exception_sleep_interval
+                    "Exception in '%s': %s. Reconnecting after %d sec..."
+                    % (
+                        thread_name,
+                        str(exc),
+                        CLUSTERTEST.sys_conf.conn_exception_sleep_interval,
                     ),
                     "Error",
-                    do_print=True
+                    do_print=True,
                 )
                 db_local = None
                 time.sleep(CLUSTERTEST.sys_conf.conn_exception_sleep_interval)
             except (
-                postgresql.exceptions.ClientCannotConnectError,
-                postgresql.exceptions.ProtocolError,
-                postgresql.exceptions.ConnectionFailureError,
-                ConnectionResetError
-            ) as e:
+                asyncpg.exceptions.ClientCannotConnectError,
+                asyncpg.exceptions.ProtocolError,
+                asyncpg.exceptions.ConnectionFailureError,
+                ConnectionResetError,
+            ) as exc:
                 reconnect_attempt += 1
                 CLUSTERTEST.logger.log(
-                    'Exception in \'%s\': %s. Reconnecting after %d sec... reconnect_attempt = %d' % (
-                        thread_name, str(e), CLUSTERTEST.sys_conf.conn_exception_sleep_interval, reconnect_attempt
+                    "Exception in '%s': %s. Reconnecting after %d sec... reconnect_attempt = %d"
+                    % (
+                        thread_name,
+                        str(exc),
+                        CLUSTERTEST.sys_conf.conn_exception_sleep_interval,
+                        reconnect_attempt,
                     ),
                     "Error",
-                    do_print=True
+                    do_print=True,
                 )
                 db_local = None
                 time.sleep(CLUSTERTEST.sys_conf.conn_exception_sleep_interval)
 
     db_local.close()
-    CLUSTERTEST.logger.log('Finished %s' % thread_name, "Info", do_print=True)
+    CLUSTERTEST.logger.log("Finished %s" % thread_name, "Info", do_print=True)
 
 
 def validate_test(db_conn):
-    result = get_resultset(db_conn, """
+    result = get_resultset(
+        db_conn,
+        """
         select sum(balance)::numeric from public.accounts
-    """)
-    if result[0][0] == CLUSTERTEST.sys_conf.accounts * 100 + CLUSTERTEST.args.operations:
-        CLUSTERTEST.logger.log('-------------> Test successful!', "Info", do_print=True)
+    """,
+    )
+    if (
+        result[0][0]
+        == CLUSTERTEST.sys_conf.accounts * 100 + CLUSTERTEST.args.operations
+    ):
+        CLUSTERTEST.logger.log("-------------> Test successful!", "Info", do_print=True)
     else:
-        result = get_resultset(db_conn, """
+        result = get_resultset(
+            db_conn,
+            """
             SELECT
                 sum(balance)::numeric -
                 ((select count(1) from public.accounts) * 100 + %d)
             FROM public.accounts
-        """ % CLUSTERTEST.args.operations)
+        """
+            % CLUSTERTEST.args.operations,
+        )
         CLUSTERTEST.logger.log(
-            '-------------> Test failed! Lost transactions: %d' % result[0][0],
+            "-------------> Test failed! Lost transactions: %d" % result[0][0],
             "Error",
-            do_print=True
+            do_print=True,
         )
 
 
-def cluster_specific_execute(func):
+async def cluster_specific_execute(func):
     reconnect_attempt = 0
     thread_name = "Main"
     db_hosts = collections.deque([v for _, v in CLUSTERTEST.sys_conf.dbs_dict.items()])
@@ -350,111 +393,125 @@ def cluster_specific_execute(func):
 
     while do_work:
         try:
-            if db_local is None and reconnect_attempt < CLUSTERTEST.sys_conf.reconnect_attempt:
+            if (
+                db_local is None
+                and reconnect_attempt < CLUSTERTEST.sys_conf.reconnect_attempt
+            ):
                 CLUSTERTEST.logger.log(
-                    "Thread '%s': connecting... reconnect_attempt = %d" % (thread_name, reconnect_attempt),
+                    "Thread '%s': connecting... reconnect_attempt = %d"
+                    % (thread_name, reconnect_attempt),
                     "Info",
-                    do_print=True
+                    do_print=True,
                 )
-                db_local = postgresql.open(db_hosts[0])
-                db_local.execute(
-                    "SET application_name = '%s'" % (
-                            CLUSTERTEST.sys_conf.application_name
-                    )
+                db_local = await asyncpg.connect(db_hosts[0])
+                await db_local.execute(
+                    "SET application_name = '%s'"
+                    % (CLUSTERTEST.sys_conf.application_name)
                 )
-            elif db_local is None and reconnect_attempt >= CLUSTERTEST.sys_conf.reconnect_attempt:
+            elif (
+                db_local is None
+                and reconnect_attempt >= CLUSTERTEST.sys_conf.reconnect_attempt
+            ):
                 # change connection host
                 CLUSTERTEST.logger.log(
                     "Thread '%s': connecting to another host... " % thread_name,
                     "Info",
-                    do_print=True
+                    do_print=True,
                 )
                 invalid_host = db_hosts.popleft()
                 db_hosts.append(invalid_host)
                 reconnect_attempt = 0
-                db_local = postgresql.open(db_hosts[0])
-                db_local.execute(
-                    "SET application_name = '%s'" % (
-                            CLUSTERTEST.sys_conf.application_name
-                    )
+                db_local = await asyncpg.connect(db_hosts[0])
+                await db_local.execute(
+                    "SET application_name = '%s'"
+                    % (CLUSTERTEST.sys_conf.application_name)
                 )
 
-            func(db_local)
+            await func(db_local)
             do_work = False
         except (
-            postgresql.exceptions.QueryCanceledError,
-            postgresql.exceptions.AdminShutdownError,
-            postgresql.exceptions.CrashShutdownError,
-            postgresql.exceptions.ServerNotReadyError
+            asyncpg.exceptions.QueryCanceledError,
+            asyncpg.exceptions.AdminShutdownError,
+            asyncpg.exceptions.ConnectionDoesNotExistError,
         ) as e:
             CLUSTERTEST.logger.log(
-                'Exception in \'%s\': %s. Reconnecting after %d sec...' % (
-                    thread_name, str(e), CLUSTERTEST.sys_conf.conn_exception_sleep_interval
+                "Exception in '%s': %s. Reconnecting after %d sec..."
+                % (
+                    thread_name,
+                    str(e),
+                    CLUSTERTEST.sys_conf.conn_exception_sleep_interval,
                 ),
                 "Error",
-                do_print=True
+                do_print=True,
             )
             db_local = None
-            time.sleep(CLUSTERTEST.sys_conf.conn_exception_sleep_interval)
-        except (
-            postgresql.exceptions.ClientCannotConnectError
-        ) as e:
+            await asyncio.sleep(CLUSTERTEST.sys_conf.conn_exception_sleep_interval)
+        except asyncpg.exceptions.CannotConnectNowError as e:
             reconnect_attempt += 1
             CLUSTERTEST.logger.log(
-                'Exception in \'%s\': %s. Reconnecting after %d sec... reconnect_attempt = %d' % (
-                    thread_name, str(e), CLUSTERTEST.sys_conf.conn_exception_sleep_interval, reconnect_attempt
+                "Exception in '%s': %s. Reconnecting after %d sec... reconnect_attempt = %d"
+                % (
+                    thread_name,
+                    str(e),
+                    CLUSTERTEST.sys_conf.conn_exception_sleep_interval,
+                    reconnect_attempt,
                 ),
                 "Error",
-                do_print=True
+                do_print=True,
             )
             db_local = None
-            time.sleep(CLUSTERTEST.sys_conf.conn_exception_sleep_interval)
+            await asyncio.sleep(CLUSTERTEST.sys_conf.conn_exception_sleep_interval)
 
-    db_local.close()
-    CLUSTERTEST.logger.log('Finished %s' % thread_name, "Info", do_print=True)
+    await db_local.close()
+    CLUSTERTEST.logger.log("Finished %s" % thread_name, "Info", do_print=True)
 
 
 if __name__ == "__main__":
     CLUSTERTEST = CLUSTERTESTGlobal()
     worker_threads = []
 
-    cluster_specific_execute(init_test_tbls_and_data)
+    asyncio.run(cluster_specific_execute(init_test_tbls_and_data))
 
-    CLUSTERTEST.logger.log('Start threads initialization', "Info", do_print=True)
+    CLUSTERTEST.logger.log("Start threads initialization", "Info", do_print=True)
     for t_num in range(1, CLUSTERTEST.sys_conf.threads_num + 1):
         worker_threads.append(
-            Thread(
-                target=worker_func,
-                args=["manager_%s" % str(t_num)]
-            )
+            Thread(target=worker_func, args=["manager_%s" % str(t_num)])
         )
-    for thread in worker_threads: thread.start()
+    for thread in worker_threads:
+        thread.start()
 
     alive_count = 1
     live_iteration = 0
     CLUSTERTEST.logger.log(
-        'Threads successfully initialized for db = %s' % str(next(iter(CLUSTERTEST.sys_conf.dbs_dict))),
+        "Threads successfully initialized for db = %s"
+        % str(next(iter(CLUSTERTEST.sys_conf.dbs_dict))),
         "Info",
-        do_print=True
+        do_print=True,
     )
     while alive_count > 0:
         with SignalHandler() as handler:
-            alive_count = len([thread for thread in worker_threads if thread.is_alive()])
-            if alive_count == 0: break
+            alive_count = len(
+                [thread for thread in worker_threads if thread.is_alive()]
+            )
+            if alive_count == 0:
+                break
             time.sleep(0.5)
-            if live_iteration % (20 * 3) == 0: CLUSTERTEST.logger.log('Live %s threads' % alive_count, "Info")
+            if live_iteration % (20 * 3) == 0:
+                CLUSTERTEST.logger.log("Live %s threads" % alive_count, "Info")
             live_iteration += 1
             if handler.interrupted:
                 CLUSTERTEST.is_terminate = True
-                CLUSTERTEST.logger.log('Received termination signal!', "Info", do_print=True)
+                CLUSTERTEST.logger.log(
+                    "Received termination signal!", "Info", do_print=True
+                )
                 for _, conn in CLUSTERTEST.db_conns.items():
                     try:
                         conn.interrupt()
                     except:
                         pass
-                CLUSTERTEST.logger.log('Stopping...', "Info", do_print=True)
+                CLUSTERTEST.logger.log("Stopping...", "Info", do_print=True)
                 PSCLogger.instance().stop()
                 sys.exit(0)
 
-    cluster_specific_execute(validate_test)
+    asyncio.run(cluster_specific_execute(validate_test))
     PSCLogger.instance().stop()

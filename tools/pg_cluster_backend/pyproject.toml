@@ -1,0 +1,17 @@
+[project]
+name = "pg_cluster_backend"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Tantor Labs", email = "tantor@tantorlabs.ru"},
+]
+dependencies = [
+    "asyncpg>=0.29.0",
+]
+requires-python = "==3.8.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
