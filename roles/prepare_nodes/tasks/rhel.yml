@@ -27,6 +27,8 @@
         name: tantorlabs
         description: Tantorlabs repository for RedOS 7.3
         baseurl: "{{ nexus_yum_redos_7_3 }}"
+        username: "{{ nexus_username }}"
+        password: "{{ nexus_password }}"
       when:
         - ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
         - ansible_distribution_version == '7.3'
@@ -36,6 +38,8 @@
         name: tantorlabs
         description: Tantorlabs repository for RedOS 8.0
         baseurl: "{{ nexus_yum_redos_8_0 }}"
+        username: "{{ nexus_username }}"
+        password: "{{ nexus_password }}"
       when:
         - ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
         - ansible_distribution_version == '8.0'

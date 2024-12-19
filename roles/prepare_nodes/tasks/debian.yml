@@ -25,6 +25,17 @@
     - ru_RU.UTF-8
     - en_US.UTF-8
 
+- name: Configure APT authentication for Tantor Nexus repositories
+  ansible.builtin.copy:
+    dest: "/etc/apt/auth.conf.d/tantor_auth.conf"
+    content: |
+      machine nexus.tantorlabs.ru
+      login {{ nexus_username }}
+      password {{ nexus_password }}
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Block for Astra
   when: (ansible_os_family in ("Astra Linux", "Astra Linux (Orel)")) and (add_nexus_repo == 'true')
   block:
@@ -41,7 +52,6 @@
       when:
         - ansible_distribution == "Astra Linux"
         - ansible_distribution_version == "1.8_x86-64"
-
 
 - name: Block for Ubuntu
   when: (ansible_distribution == "Ubuntu") and (add_nexus_repo == 'true')
