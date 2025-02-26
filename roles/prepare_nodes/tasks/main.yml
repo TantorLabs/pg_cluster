@@ -21,6 +21,7 @@
         name:
           - jq
           - chrony
+          - curl
         state: present
       notify: Restart chronyd
 

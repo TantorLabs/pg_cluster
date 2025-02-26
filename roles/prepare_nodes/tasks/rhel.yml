@@ -13,11 +13,12 @@
     - ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
 
 
-- name: Add Tantor repository key (yum or dnf)
+- name: Add Tantor repository key for YUM-based systems
   when: add_nexus_repo == 'true'
-  ansible.builtin.rpm_key:
-    key: "{{ nexus_key_url }}"
-    state: present
+  ansible.builtin.get_url:
+    url: "{{ nexus_key_url }}"
+    dest: "/etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
+    mode: "0644"
 
 - name: Block for REDos
   when: add_nexus_repo == 'true'
@@ -29,6 +30,8 @@
         baseurl: "{{ nexus_yum_redos_7_3 }}"
         username: "{{ nexus_username }}"
         password: "{{ nexus_password }}"
+        gpgcheck: true
+        gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
       when:
         - ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
         - ansible_distribution_version == '7.3'
@@ -40,6 +43,8 @@
         baseurl: "{{ nexus_yum_redos_8_0 }}"
         username: "{{ nexus_username }}"
         password: "{{ nexus_password }}"
+        gpgcheck: true
+        gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
       when:
         - ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
         - ansible_distribution_version == '8.0'
