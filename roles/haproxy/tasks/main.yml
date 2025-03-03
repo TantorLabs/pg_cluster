@@ -11,6 +11,18 @@
     state: present
     allow_downgrade: true
 
+- name: Install haproxy-tantor-all (Alt Linux)
+  when: ansible_os_family in ["Altlinux"]
+  community.general.apt_rpm:
+    name: >-
+      {{
+        'haproxy-tantor-all-' + haproxy_package_version
+        if haproxy_package_version | length > 0
+        else
+        'haproxy-tantor-all'
+      }}
+    state: present
+
 - name: Install haproxy-tantor-all (Debian-like systems)
   when: ansible_os_family in ["Astra Linux", "Debian"]
   ansible.builtin.apt:

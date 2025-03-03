@@ -13,3 +13,4 @@ nexus_apt_ubuntu_22_04: "deb [arch=amd64] https://nexus.tantorlabs.ru/repository
 nexus_apt_ubuntu_20_04: "deb [arch=amd64] https://nexus.tantorlabs.ru/repository/ubuntu-20.04 focal main"
 nexus_yum_redos_7_3: "https://nexus.tantorlabs.ru/repository/redos-7.3/"
 nexus_yum_redos_8_0: "https://nexus.tantorlabs.ru/repository/redos-8/"
+nexus_yum_altlinux_c10f2: "https://nexus.tantorlabs.ru/repository/altrepo_c10f2/"

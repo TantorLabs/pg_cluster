@@ -1,6 +1,23 @@
 ---
 
+- name: Collect facts for Alt linux
+  when: ansible_os_family in ["Altlinux"]
+  block:
+    - name: Collect installed RPM packages
+      ansible.builtin.command: rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n'
+      register: rpm_output
+
+    - name: Parse installed packages into a dictionary
+      ansible.builtin.set_fact:
+        installed_packages: >-
+          {{
+            dict(
+              rpm_output.stdout_lines | map('split', ' ', 1) | list
+            )
+          }}
+
 - name: Collect package facts
+  when: not ansible_os_family in ["Altlinux"]
   ansible.builtin.package_facts:
   register: package_facts_result
 
@@ -39,7 +56,9 @@
     daemon_reload: true
 
 - name: Install patroni-tantor-all package if not installed
-  when: "'patroni-tantor-all' not in ansible_facts.packages"
+  when: #('patroni-tantor-all' not in ansible_facts.packages) or ('patroni-tantor-all' not in installed_packages)
+      - ('patroni-tantor-all' not in (ansible_facts.packages | default({})))
+      - ('patroni-tantor-all' not in (installed_packages | default({})))
   block:
     - name: Install patroni-tantor-all (RHEL-like systems)
       when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
@@ -53,6 +72,18 @@
           }}
         state: present
         allow_downgrade: true
+
+    - name: Install patroni-tantor-all (Alt Linux)
+      when: ansible_os_family in ["Altlinux"]
+      community.general.apt_rpm:
+        name: >-
+          {{
+            'patroni-tantor-all-' + patroni_package_version
+            if patroni_package_version | length > 0
+            else
+            'patroni-tantor-all'
+          }}
+        state: present
 
     - name: Install patroni-tantor-all (Debian-like systems)
       when: ansible_os_family in ["Astra Linux", "Debian"]
@@ -69,9 +100,10 @@
 
 - name: Upgrade patroni-tantor-all package if it is installed
   when:
-    - "'patroni-tantor-all' in ansible_facts.packages"
+    - ('patroni-tantor-all' in (ansible_facts.packages | default({}))) or ('patroni-tantor-all' in (installed_packages | default({})))
     - patroni_package_version != ""
-    - "package_facts_result.ansible_facts.packages['patroni-tantor-all'][0]['version'] != patroni_package_version"
+    - ('patroni-tantor-all' not in (ansible_facts.packages | default({}))) or ('patroni-tantor-all' not in (installed_packages | default({})))
+
   block:
     - name: Check if this node is the master
       ansible.builtin.command: >-
@@ -141,6 +173,18 @@
             state: present
             allow_downgrade: true
 
+        - name: Install patroni-tantor-all (Alt linux)
+          when: ansible_os_family in ["Altlinux"]
+          community.general.apt_rpm:
+            name: >-
+              {{
+                'patroni-tantor-all-' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
+            state: present
+
         - name: Install patroni-tantor-all (Debian-like systems)
           when: ansible_os_family in ["Astra Linux", "Debian"]
           ansible.builtin.apt:
@@ -197,6 +241,18 @@
               }}
             state: present
             allow_downgrade: true
+
+        - name: Install patroni-tantor-all (Alt linux) at previous master
+          when: ansible_os_family in ["Altlinux"]
+          community.general.apt_rpm:
+            name: >-
+              {{
+                'patroni-tantor-all-' + patroni_package_version
+                if patroni_package_version | length > 0
+                else
+                'patroni-tantor-all'
+              }}
+            state: present
 
         - name: Install patroni-tantor-all (Debian-like systems) at previous master
           when: ansible_os_family in ["Astra Linux", "Debian"]
@@ -284,7 +340,7 @@
         'pg_configurator-tantor-all'
       }}
     state: present
-  when: ansible_distribution in ["RED", "Centos", "Rocky"]
+  when: ansible_distribution in ["RED", "Centos", "Rocky", "Altlinux"]
 
 - name: Create json configuration from local installation of pg_configurator
   become: true

@@ -48,6 +48,18 @@
     state: present
     allow_downgrade: true
 
+- name: Install etcd-tantor-all (Alt Linux)
+  when: ansible_os_family in ["Altlinux"]
+  community.general.apt_rpm:
+    name: >-
+      {{
+        'etcd-tantor-all-' + etcd_package_version
+        if etcd_package_version | length > 0
+        else
+        'etcd-tantor-all'
+      }}
+    state: present
+
 - name: Create dirs
   become: true
   become_user: root

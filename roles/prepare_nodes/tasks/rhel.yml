@@ -1,6 +1,8 @@
 ---
 
 - name: Install prerequisite packages (yum or dnf)
+  when:
+    - ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
   ansible.builtin.package:
     name:
       - openssl
@@ -9,12 +11,11 @@
       - gpg
       - libpq
     state: present
-  when:
-    - ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
-
 
 - name: Add Tantor repository key for YUM-based systems
-  when: add_nexus_repo == 'true'
+  when:
+    - add_nexus_repo == 'true'
+    - ansible_pkg_mgr in ['yum', 'dnf']
   ansible.builtin.get_url:
     url: "{{ nexus_key_url }}"
     dest: "/etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"

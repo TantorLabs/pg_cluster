@@ -1,31 +1,28 @@
 ---
 
+- name: Create folders if not exists
+  ansible.builtin.file:
+    state: directory
+    path: "{{ item }}"
+    owner: 'root'
+    group: 'root'
+    mode: "0755"
+  with_items:
+    - /etc/apt/sources.list.d
+    - /etc/apt/trusted.gpg.d
+    - /etc/apt/auth.conf.d
+
 - name: Configure nexus repository key
-  when: add_nexus_repo == 'true'
+  when:
+    - add_nexus_repo == 'true'
+    - ansible_os_family != 'Altlinux'
   ansible.builtin.apt_key:
     url: "{{ nexus_key_url }}"
     state: present
 
-- name: Install prerequisite packages
-  ansible.builtin.package:
-    name:
-      - openssl
-      - gnupg
-      - gpg
-      - locales
-      - libpq-dev
-    state: present
-    update_cache: true
-
-- name: Ensure the locale exists
-  community.general.locale_gen:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - ru_RU.UTF-8
-    - en_US.UTF-8
-
 - name: Configure APT authentication for Tantor Nexus repositories
+  when:
+    - add_nexus_repo == 'true'
   ansible.builtin.copy:
     dest: "/etc/apt/auth.conf.d/tantor_auth.conf"
     content: |
@@ -36,8 +33,69 @@
     group: root
     mode: "0644"
 
+- name: Block for Altlinux
+  when:
+    - add_nexus_repo == 'true'
+    - ansible_os_family == 'Altlinux'
+  block:
+    - name: Add Tantor repository key for ALT Linux
+      ansible.builtin.get_url:
+        url: "{{ nexus_key_url }}"
+        dest: "/etc/apt/trusted.gpg.d/RPM-GPG-KEY-tantorlabs"
+        mode: "0644"
+
+    - name: Add Tantor repository for Alt Linux c10f2
+      when:
+        - ansible_distribution_version == '10.2'
+      ansible.builtin.copy:
+        dest: "/etc/apt/sources.list.d/tantorlabs.list"
+        content: |
+          rpm {{ nexus_yum_altlinux_c10f2 }} x86_64 tantor
+        mode: "0644"
+
+    - name: Install prerequisite packages (apt_rpm)
+      when:
+        - ansible_pkg_mgr == 'apt_rpm'
+      ansible.builtin.package:
+        name:
+          - glibc-locales
+          - openssl
+          - ca-certificates
+          - gnupg
+          - libpq5
+          - libpq5-devel
+        state: present
+
+- name: Block for Debian-like systems
+  when:
+    - ansible_os_family != 'Altlinux'
+  block:
+    - name: Install prerequisite packages
+      when:
+        - ansible_pkg_mgr == 'apt'
+      ansible.builtin.package:
+        name:
+          - openssl
+          - gnupg
+          - gpg
+          - locales
+          - libpq-dev
+        state: present
+        update_cache: true
+
+
+    - name: Ensure the locale exists 
+      community.general.locale_gen:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - ru_RU.UTF-8
+        - en_US.UTF-8
+
 - name: Block for Astra
-  when: (ansible_os_family in ("Astra Linux", "Astra Linux (Orel)")) and (add_nexus_repo == 'true')
+  when:
+    - ansible_os_family in ("Astra Linux", "Astra Linux (Orel)")
+    - add_nexus_repo == 'true'
   block:
     - name: Configure nexus repository (Astra 1.7)
       ansible.builtin.apt_repository:

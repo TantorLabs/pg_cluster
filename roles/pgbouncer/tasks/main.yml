@@ -13,6 +13,18 @@
     state: present
     allow_downgrade: true
 
+- name: Install pgbouncer-tantor-all (Alt linux)
+  when: ansible_os_family in ["Altlinux"]
+  community.general.apt_rpm:
+    name: >-
+      {{
+        'pgbouncer-tantor-all-' + pgbouncer_package_version
+        if pgbouncer_package_version | length > 0
+        else
+        'pgbouncer-tantor-all'
+      }}
+    state: present
+
 - name: Install pgbouncer-tantor-all (Debian-like systems)
   when: ansible_os_family in ["Astra Linux", "Debian"]
   ansible.builtin.apt:
@@ -58,7 +70,7 @@
 
 - name: Check if postgresql node is in master state
   ansible.builtin.command:
-    cmd: su - postgres -c "psql -A -t -d postgres -c \"SELECT pg_is_in_recovery();\""
+    cmd: su - postgres -s /bin/bash -c "psql -A -t -d postgres -c \"SELECT pg_is_in_recovery();\""
   changed_when: false
   register: psql_node_status
 
