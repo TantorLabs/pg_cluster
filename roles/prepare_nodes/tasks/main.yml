@@ -13,7 +13,7 @@
       update_cache: true
     ansible.builtin.dnf:
       update_cache: true
-    ansible.builtin.apt_rpm:
+    community.general.apt_rpm:
       update_cache: true
   block:
     - name: Install basic utils
@@ -21,12 +21,13 @@
         name:
           - jq
           - chrony
+          - curl
         state: present
       notify: Restart chronyd
 
 - name: Include task for Debian-like systems
   ansible.builtin.include_tasks: debian.yml
-  when: ansible_os_family in ["Astra Linux", "Debian"]
+  when: ansible_os_family in ["Astra Linux", "Debian", "Altlinux"]
 
 - name: Include task for RHEL-like systems
   ansible.builtin.include_tasks: rhel.yml

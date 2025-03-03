@@ -2,6 +2,6 @@
 
 - name: Install  tantor-server
   ansible.builtin.package:
-    name: "tantor-{{ edition | d('be', true) }}-server-{{ major_version | d('15', true) }}"
+    name: "tantor-{{ edition | d('be', true) }}-server-{{ major_version | d('16', true) }}"
     state: present
   when: postgresql_vendor == 'tantordb'
