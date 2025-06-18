@@ -11,13 +11,13 @@
   roles:
     - prepare_nodes
 
-- name: Generage SSL certs for etcd
+- name: Generage certs
   hosts: localhost
   connection: local
   become: true
-  tags: etcd
+  tags: certificates
   roles:
-    - role: etcd-ssl
+    - role: certificates
 
 - name: Install etcd
   hosts: inv_etcd
@@ -89,6 +89,7 @@
   tags: keepalived
   vars_files:
     - 'inventory/group_vars/etcd.yml'
+    - 'inventory/group_vars/patroni.yml'
     - 'inventory/group_vars/keepalived.yml'
   roles:
     - keepalived

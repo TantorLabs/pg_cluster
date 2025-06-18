@@ -1,0 +1,42 @@
+---
+
+- name: Get current cluster members
+  when: cluster_exists
+  ansible.builtin.shell: |
+    ETCDCTL_API=3 {{ etcd_bin_path }} \
+      --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
+      --cacert=/opt/tantor/etc/patroni/ca.pem \
+      --cert=/opt/tantor/etc/patroni/{{ hostvars[etcd_leader]['ansible_hostname'] }}.pem \
+      --key=/opt/tantor/etc/patroni/{{ hostvars[etcd_leader]['ansible_hostname'] }}-key.pem \
+      member list --write-out=json
+  register: current_members
+  delegate_to: "{{ etcd_leader }}"
+  run_once: true
+  changed_when: false
+
+- name: Parse current members
+  when: cluster_exists and current_members is defined
+  ansible.builtin.set_fact:
+    existing_member_names: >-
+      {{
+        (current_members.stdout | from_json).members |
+        map(attribute='name') |
+        list
+      }}
+  run_once: true
+
+- name: Add new etcd members to cluster
+  when:
+    - cluster_exists
+    - ansible_hostname not in existing_member_names
+    - inventory_hostname != etcd_leader
+  ansible.builtin.shell: |
+    ETCDCTL_API=3 {{ etcd_bin_path }} \
+      --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
+      --cacert=/opt/tantor/etc/patroni/ca.pem \
+      --cert=/opt/tantor/etc/patroni/{{ hostvars[etcd_leader]['ansible_hostname'] }}.pem \
+      --key=/opt/tantor/etc/patroni/{{ hostvars[etcd_leader]['ansible_hostname'] }}-key.pem \
+      member add {{ ansible_hostname }} \
+      --peer-urls=https://{{ ansible_default_ipv4.address }}:{{ etcd_port_peer }}
+  delegate_to: "{{ etcd_leader }}"
+  register: member_add_result
