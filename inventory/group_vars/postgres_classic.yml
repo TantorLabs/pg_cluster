@@ -3,4 +3,4 @@
 config_system_locale: 'ru_RU.UTF-8'
 config_system_language: 'en_US.UTF-8'
 postgresql_debian_gpg_key: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
-major_version: 17
+major_version: 16

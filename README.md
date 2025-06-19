@@ -241,7 +241,7 @@ By default, the playbook does not attempt to connect to Tantor repositories and 
 * wal-g-tantor-all
 * tantor DBMS
 
-Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-15`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-15`` is available in your local repository.  
+Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-16`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-16`` is available in your local repository.  
 
 If the playbook is run in an environment with internet access, you can leverage the most up-to-date components included in the solution. To do this, add the flag ``add_nexus_repo=true`` and provide the connection details for the repositories in the file ``inventory/group_vars/prepare_nodes.yml``.
 
@@ -252,7 +252,7 @@ There are several options to run Ansible: with the option to install TantorDB or
 Use the following command to install TantorDB:
 
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16" pg-cluster.yaml -K
 ```
 
 Use the following command to install the PostgreSQL DBMS:
@@ -267,7 +267,7 @@ In the commands above, replace the value of the ``major_version`` parameter with
 
 It's possible to launch the playbook with external internet access.
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=true" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16 add_nexus_repo=true" pg-cluster.yaml -K
 ```
 In that case, make sure that connection details are provided in the file ``inventory/group_vars/prepare_nodes.yml``.
 
@@ -281,10 +281,10 @@ Below you can find some common commands for working with the software products i
 # on NODE_1
 e_host=(
   /opt/tantor/usr/bin/etcdctl
-  --endpoints=https://<HOST_1_IP>:2379,https://<HOST_2_IP>:2379,https://<HOST_N_IP>:2379
-  --cacert=/opt/tantor/etc/patroni/ca.pem
-  --cert=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>.pem  
-  --key=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>-key.pem
+  --endpoints=https://$(hostname -I | awk '{print $1}'):2379
+  --cacert=/opt/tantor/var/lib/etcd/pg-cluster.pki/ca.pem
+  --cert=/opt/tantor/var/lib/etcd/pg-cluster.pki/$(hostname).pem  
+  --key=/opt/tantor/var/lib/etcd/pg-cluster.pki/$(hostname)-key.pem
 )
 
 # list etcd members
