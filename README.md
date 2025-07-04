@@ -271,6 +271,10 @@ ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=t
 ```
 In that case, make sure that connection details are provided in the file ``inventory/group_vars/prepare_nodes.yml``.
 
+## Component maintenance
+
+The playbook supports both full and partial updates for most components. Each role includes a variable that defines the desired version of a component (e.g., the variable ``pg_configurator_package_version`` corresponds to the ``pg-configurator-tantor-all`` component). These variables are defined in the ``inventory/group_vars`` YAML files. On the first run, the latest versions of the components will be installed. If you need to install a specific version, simply set the appropriate variable and run the playbook again.
+
 ## HOW TO
 
 Below you can find some common commands for working with the software products included in the ``pg_cluster`` solution. Note that the commands and their result may differ depending on the software versions used.
