@@ -72,9 +72,34 @@
   with_items:
     - '{{ etcd_cluster_pki_dir }}'
 
+- name: Add tasks for checking ETCD cluster
+  ansible.builtin.include_tasks: cluster_state.yml
+
+- name: Add nodes into ETCD cluster
+  ansible.builtin.include_tasks: cluster_add.yml
+
+- name: Remove nodes into ETCD cluster
+  ansible.builtin.include_tasks: cluster_del.yml
+
 - name: Add tasks for secure ETCD connection
   ansible.builtin.include_tasks: pki.yml
   when: etcd_secure | bool
+
+
+- name: Set etcd configuration parameters
+  ansible.builtin.set_fact:
+    etcd_initial_cluster_state: >-
+      {%- if cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
+      existing
+      {%- else -%}
+      new
+      {%- endif -%}
+    etcd_use_initial_token: >-
+      {%- if cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
+      false
+      {%- else -%}
+      true
+      {%- endif -%}
 
 - name: Copy etcd configuration
   ansible.builtin.template:

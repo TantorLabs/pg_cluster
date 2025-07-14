@@ -22,8 +22,10 @@ ETCD_ADVERTISE_CLIENT_URLS="{{etcd_scheme}}{{etcd_address_public}}:{{etcd_port_c
 ETCD_INITIAL_ADVERTISE_PEER_URLS="{{etcd_scheme}}{{etcd_address_cluster}}:{{etcd_port_peer}}"
 {% endif %}
 ETCD_INITIAL_CLUSTER="{{etcd_cluster}}"
-ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_STATE="{{ etcd_initial_cluster_state }}"
+{% if etcd_use_initial_token %}
 ETCD_INITIAL_CLUSTER_TOKEN="{{etcd_initial_cluster_token}}"
+{% endif %}
 # if you use different ETCD_NAME (e.g. test), set ETCD_INITIAL_CLUSTER value for this name, i.e. "test=http://..."
 #ETCD_DISCOVERY=""
 #ETCD_DISCOVERY_SRV=""

@@ -1,0 +1,39 @@
+---
+
+- name: Check existing etcd cluster members
+  ansible.builtin.shell: |
+    ETCDCTL_API=3 {{ etcd_bin_path }} \
+      --endpoints=https://{{ ansible_default_ipv4.address }}:{{ etcd_port_client }} \
+      --cacert={{ etcd_conf_dir }}/ca.pem \
+      --cert={{ etcd_conf_dir }}/{{ ansible_hostname }}.pem \
+      --key={{ etcd_conf_dir }}/{{ ansible_hostname }}-key.pem \
+      member list --write-out=json
+  register: etcd_member_list
+  failed_when: false
+  changed_when: false
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['inv_etcd'] }}"
+  run_once: true
+
+- name: Parse existing cluster state
+  ansible.builtin.set_fact:
+    active_etcd_nodes: >-
+      {{
+        etcd_member_list.results |
+        selectattr('rc', 'equalto', 0) |
+        map(attribute='item') |
+        list
+      }}
+    cluster_exists: >-
+      {{
+        etcd_member_list.results |
+        selectattr('rc', 'equalto', 0) |
+        list | length > 0
+      }}
+  run_once: true
+
+- name: Determine cluster leader for management operations
+  ansible.builtin.set_fact:
+    etcd_leader: "{{ active_etcd_nodes | first }}"
+  when: active_etcd_nodes | length > 0
+  run_once: true

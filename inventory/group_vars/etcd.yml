@@ -8,7 +8,9 @@ etcd_data_dir: /opt/tantor/var/lib/etcd
 etcd_master_group_name: inv_etcd
 
 etcd_secure: True
-etcd_pki_dir: "{{ [ playbook_dir, 'pki-dir', hostvars[groups['inv_etcd'][0]]['ansible_hostname'] ] | path_join }}"
+etcd_bin_path: "/opt/tantor/usr/bin/etcdctl"
+etcd_conf_dir: "/opt/tantor/var/lib/etcd/pg-cluster.pki"
+etcd_pki_dir: "{{playbook_dir}}/pki-dir/{{ ansible_inventory_sources[0] | basename | regex_replace('\\.(ini|yml|yaml)$', '') }}"
 etcd_pki_key_suffix: -key.pem
 etcd_pki_cert_suffix: .pem
 

@@ -3,8 +3,8 @@
 ## Project Structure
 
 ```
-|-- pg-cluster.yaml			# Main playbook
-|-- pki-dir				# Certificates generated using ssl-gen.sh
+|-- pg-cluster.yaml			            # Main playbook
+|-- pki-dir				                # Folder that store generated certs
 |   |-- .gitkeep
 |-- README.md
 |-- inventory
@@ -17,17 +17,25 @@
 |   |   |-- prepare_nodes.yml
 |   |-- my_inventory
 |-- roles
-|   |-- etcd					# Role that installs etcd-tantor-all package
+|   |-- certificates					# Role that generate TLS certs for etcd and patroni
+|   |   |-- tasks
+|   |   |   `-- main.yml
+|   |   |-- vars
+|   |   |   `-- main.yml
+|   |-- etcd					        # Role that installs etcd-tantor-all package
 |   |   |-- handlers
 |   |   |   `-- main.yml
 |   |   |-- tasks
 |   |   |   |-- main.yml
 |   |   |   |-- pki.yml
+|   |   |   |-- cluster_add.yml
+|   |   |   |-- cluster_del.yml
+|   |   |   |-- cluster_state.yml
 |   |   |   `-- systemd.yml
 |   |   |-- templates
 |   |   |   |-- etcd.conf.j2
 |   |   |   `-- etcd-tantor.service.j2
-|   |-- haproxy					# Role that installs haproxy-tantor-all package
+|   |-- haproxy					        # Role that installs haproxy-tantor-all package
 |   |   |-- handlers
 |   |   |   `-- main.yml
 |   |   |-- tasks
@@ -38,21 +46,25 @@
 |   |   |-- check_scripts
 |   |   |   `-- chk_patroni_leader.sh
 |   |   |-- handlers
-|   |   |   `-- main.yml 					# 
+|   |   |   `-- main.yml 
+|   |   |-- meta
+|   |   |   `-- argument_specs.yml
 |   |   |-- tasks
 |   |   |   `-- main.yml
 |   |   `-- templates
 |   |       `-- keepalived.conf.j2
-|   |-- patroni					# Role that installs patroni-tantor-all package
+|   |-- patroni					        # Role that installs patroni-tantor-all package
 |   |   |-- handlers
 |   |   |   `-- main.yml
 |   |   |-- tasks
 |   |   |   `-- main.yml
 |   |   `-- templates
-|   |       |-- patroni.service.j2
+|   |       |-- patroni_custom_bootstrap_script.sh.j2
+|   |       |-- patroni-tantor.service.j2
 |   |       |-- patroni-watchdog.service.j2
-|   |       `-- patroni.yml.j2
-|   |-- pgbouncer				# Role that installs pgbouncer-tantor-all package
+|   |       |-- patroni.yml.j2
+|   |       `-- walg.json.j2
+|   |-- pgbouncer				        # Role that installs pgbouncer-tantor-all package
 |   |   |-- handlers
 |   |   |   `-- main.yml 
 |   |   |-- sql
@@ -62,22 +74,25 @@
 |   |   `-- templates
 |   |       |-- pgbouncer.ini.j2
 |   |       `-- pgbouncer.service.j2
-|   |-- postgres_classic			# Role that installs postgresql package
+|   |-- postgres_classic			    # Role that installs postgresql package
 |   |   `-- tasks
 |   |       `-- main.yml
-|   |-- postgres_tantordb			# Role that installs tantor-server package
+|   |-- postgres_tantordb			    # Role that installs tantor-server package
 |   |   `-- tasks
 |   |       `-- main.yml
-|   `-- prepare_nodes			# Role for installing basic utils
+|   `-- prepare_nodes			        # Role for installing basic utils
 |       `-- handlers
 |           `-- main.yml
 |       `-- tasks
-|           `-- main.yml
+|           |-- main.yml
+|           |-- debian.yml
+|           `-- rhel.yml
 |-- tools
-|   |-- etcd
-|   |-- etcd.conf
-|   |-- pg_configurator.py
-|   `-- ssl-gen.sh
+|   `-- pg_cluster_backend			    # In progress
+|       |-- conf 
+|       |-- log 
+|       |-- psc 
+|       `-- pg_cluster_backend.py 
 ```
 
 ![Architecture](pg_cluster_architechture.png)
@@ -90,7 +105,7 @@ The following text will present examples of commands to be entered in the termin
 ## Requirements
 
 Playbook requires the following component's version to be installed:
-* Ansible >= 2.9.10
+* Ansible >= 2.9.10 (with collections community.general, community.postgresql, community.crypto)
 * Python3 (with pip module) >= 3.10.0
 * psycopg2 >= 2.5.1 (it's recommended to install via pip)
 * packaging >= 24 (it's recommended to install via pip)
@@ -226,7 +241,7 @@ By default, the playbook does not attempt to connect to Tantor repositories and 
 * wal-g-tantor-all
 * tantor DBMS
 
-Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-15`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-15`` is available in your local repository.  
+Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-16`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-16`` is available in your local repository.  
 
 If the playbook is run in an environment with internet access, you can leverage the most up-to-date components included in the solution. To do this, add the flag ``add_nexus_repo=true`` and provide the connection details for the repositories in the file ``inventory/group_vars/prepare_nodes.yml``.
 
@@ -237,7 +252,7 @@ There are several options to run Ansible: with the option to install TantorDB or
 Use the following command to install TantorDB:
 
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16" pg-cluster.yaml -K
 ```
 
 Use the following command to install the PostgreSQL DBMS:
@@ -252,9 +267,13 @@ In the commands above, replace the value of the ``major_version`` parameter with
 
 It's possible to launch the playbook with external internet access.
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=15 add_nexus_repo=true" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16 add_nexus_repo=true" pg-cluster.yaml -K
 ```
 In that case, make sure that connection details are provided in the file ``inventory/group_vars/prepare_nodes.yml``.
+
+## Component maintenance
+
+The playbook supports both full and partial updates for most components. Each role includes a variable that defines the desired version of a component (e.g., the variable ``pg_configurator_package_version`` corresponds to the ``pg-configurator-tantor-all`` component). These variables are defined in the ``inventory/group_vars`` YAML files. On the first run, the latest versions of the components will be installed. If you need to install a specific version, simply set the appropriate variable and run the playbook again.
 
 ## HOW TO
 
@@ -266,10 +285,10 @@ Below you can find some common commands for working with the software products i
 # on NODE_1
 e_host=(
   /opt/tantor/usr/bin/etcdctl
-  --endpoints=https://<HOST_1_IP>:2379,https://<HOST_2_IP>:2379,https://<HOST_N_IP>:2379
-  --cacert=/opt/tantor/etc/patroni/ca.pem
-  --cert=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>.pem  
-  --key=/opt/tantor/etc/patroni/<NODE1_HOSTNAME>-key.pem
+  --endpoints=https://$(hostname -I | awk '{print $1}'):2379
+  --cacert=/opt/tantor/var/lib/etcd/pg-cluster.pki/ca.pem
+  --cert=/opt/tantor/var/lib/etcd/pg-cluster.pki/$(hostname).pem  
+  --key=/opt/tantor/var/lib/etcd/pg-cluster.pki/$(hostname)-key.pem
 )
 
 # list etcd members

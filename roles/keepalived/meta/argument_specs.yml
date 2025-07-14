@@ -1,0 +1,11 @@
+---
+
+argument_specs:
+  main:
+    short_description: Validating pg_cluster variables for keepalived role
+    description: Checks presence and types of all required variables for pg_cluster deployment
+    options:
+      cluster_vip_1:
+        type: "str"
+        required: true
+        format: ipv4

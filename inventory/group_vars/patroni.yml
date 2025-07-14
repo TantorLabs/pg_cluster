@@ -4,7 +4,7 @@ pg_configurator_package_version: ""
 patroni_pg_exists: false #**
 patroni_pg_port: 5432
 
-patroni_config_dir: /opt/tantor/etc/patroni
+patroni_config_dir: "/opt/tantor/etc/patroni"
 patroni_system_user: postgres
 patroni_system_group: postgres
 
@@ -63,9 +63,9 @@ patroni_etcd3_srv: ""
 patroni_etcd3_protocol: https
 patroni_etcd3_username: ""
 patroni_etcd3_password: ""
-patroni_etcd3_cacert: "/opt/tantor/etc/patroni/ca.pem"
-patroni_etcd3_cert: "/opt/tantor/etc/patroni/{{ inventory_hostname }}.pem"
-patroni_etcd3_key: "/opt/tantor/etc/patroni/{{ inventory_hostname }}-key.pem"
+patroni_etcd3_cacert: "{{ patroni_config_dir }}/ca.pem"
+patroni_etcd3_cert: "{{ patroni_config_dir }}/{{ inventory_hostname }}.pem"
+patroni_etcd3_key: "{{ patroni_config_dir }}/{{ inventory_hostname }}-key.pem"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#bootstrap-configuration
 # dcs (Dynamic Configuration settings): This section will be written into /<namespace>/<scope>/config of the

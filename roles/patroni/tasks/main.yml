@@ -356,13 +356,13 @@
       --min-conns=200 \
       --max-conns=200 \
       --common-conf \
-      --output-file-name=/opt/tantor/etc/patroni/postgresql.json
+      --output-file-name='{{ patroni_config_dir }}/postgresql.json'
   args:
-    creates: /opt/tantor/etc/patroni/postgresql.json
+    creates: '{{ patroni_config_dir }}/postgresql.json'
 
 - name: Get content of remote file
   ansible.builtin.slurp:
-    src: /opt/tantor/etc/patroni/postgresql.json
+    src: '{{ patroni_config_dir }}/postgresql.json'
   register: remote_yaml
 
 - name: Interpret remote file content as yaml
@@ -437,13 +437,13 @@
   become_user: root
   with_items:
     - f: '{{ etcd_pki_key_src }}'
-      d: /opt/tantor/etc/patroni
+      d: '{{ patroni_config_dir }}'
       m: '0400'
     - f: '{{ etcd_pki_cert_src }}'
-      d: /opt/tantor/etc/patroni
+      d: '{{ patroni_config_dir }}'
       m: '0600'
     - f: '{{ etcd_pki_ca_cert_src }}'
-      d: /opt/tantor/etc/patroni
+      d: '{{ patroni_config_dir }}'
       m: '0600'
   ansible.builtin.copy:
     src: '{{ item.f }}'
@@ -451,6 +451,7 @@
     owner: postgres
     group: postgres
     mode: '{{ item.m }}'
+  notify: Restart patroni
 
 - name: Ensure patroni is running
   ansible.builtin.systemd_service:

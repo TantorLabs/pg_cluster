@@ -10,14 +10,16 @@
     - 'inventory/group_vars/prepare_nodes.yml'
   roles:
     - prepare_nodes
+  any_errors_fatal: true
 
-- name: Generage SSL certs for etcd
+- name: Generage certs
   hosts: localhost
   connection: local
   become: true
-  tags: etcd
+  tags: certificates
   roles:
-    - role: etcd-ssl
+    - role: certificates
+  any_errors_fatal: true
 
 - name: Install etcd
   hosts: inv_etcd
@@ -27,6 +29,7 @@
     - 'inventory/group_vars/etcd.yml'
   roles:
     - role: etcd
+  any_errors_fatal: true
 
 - name: Install PostgreSQL Tantordb
   hosts: inv_pg
@@ -37,6 +40,7 @@
     - 'inventory/group_vars/tantordb.yml'
   roles:
     - postgres_tantordb
+  any_errors_fatal: true
 
 - name: Install PostgreSQL Classic
   hosts: inv_pg
@@ -47,6 +51,7 @@
     - 'inventory/group_vars/postgres_classic.yml'
   roles:
     - postgres_classic
+  any_errors_fatal: true
 
 - name: Install Patroni
   hosts: inv_pg
@@ -59,6 +64,7 @@
     - 'inventory/group_vars/postgres_classic.yml'
   roles:
     - patroni
+  any_errors_fatal: true
 
 - name: Install PGBouncer
   hosts: inv_pg
@@ -70,6 +76,7 @@
     - 'inventory/group_vars/patroni.yml'
   roles:
     - pgbouncer
+  any_errors_fatal: true
 
 - name: Install Haproxy
   hosts: inv_pg
@@ -82,6 +89,7 @@
     - 'inventory/group_vars/pgbouncer.yml'
   roles:
     - haproxy
+  any_errors_fatal: true
 
 - name: Install Keepalived
   hosts: inv_keepalived
@@ -89,6 +97,8 @@
   tags: keepalived
   vars_files:
     - 'inventory/group_vars/etcd.yml'
+    - 'inventory/group_vars/patroni.yml'
     - 'inventory/group_vars/keepalived.yml'
   roles:
     - keepalived
+  any_errors_fatal: true
