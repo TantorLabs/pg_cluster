@@ -12,27 +12,33 @@
     - /etc/apt/trusted.gpg.d
     - /etc/apt/auth.conf.d
 
-- name: Configure nexus repository key
+
+- name: Ensure APT keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
   when:
-    - add_nexus_repo == 'true'
+    - add_nexus_repo | bool
     - ansible_os_family != 'Altlinux'
-  ansible.builtin.apt_key:
+
+- name: Download Tantor GPG key (ASCII)
+  ansible.builtin.get_url:
     url: "{{ nexus_key_url }}"
-    state: present
-
-- name: Configure APT authentication for Tantor Nexus repositories
+    dest: /etc/apt/keyrings/tantor-nexus.asc
+    mode: '0644'
   when:
-    - add_nexus_repo == 'true'
-  ansible.builtin.copy:
-    dest: "/etc/apt/auth.conf.d/tantor_auth.conf"
-    content: |
-      machine nexus.tantorlabs.ru
-      login {{ nexus_username }}
-      password {{ nexus_password }}
-    owner: root
-    group: root
-    mode: "0644"
+    - add_nexus_repo | bool
+    - ansible_os_family != 'Altlinux'
 
+- name: Convert Tantor GPG key to binary .gpg format
+  ansible.builtin.command: >
+    gpg --dearmor -o /etc/apt/keyrings/tantor-nexus.gpg /etc/apt/keyrings/tantor-nexus.asc
+  args:
+    creates: /etc/apt/keyrings/tantor-nexus.gpg
+  when:
+    - add_nexus_repo | bool
+    - ansible_os_family != 'Altlinux'
 - name: Block for Altlinux
   when:
     - add_nexus_repo == 'true'

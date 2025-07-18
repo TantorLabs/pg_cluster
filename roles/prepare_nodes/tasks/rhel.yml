@@ -29,8 +29,6 @@
         name: tantorlabs
         description: Tantorlabs repository for RedOS 7.3
         baseurl: "{{ nexus_yum_redos_7_3 }}"
-        username: "{{ nexus_username }}"
-        password: "{{ nexus_password }}"
         gpgcheck: true
         gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
       when:
@@ -42,8 +40,6 @@
         name: tantorlabs
         description: Tantorlabs repository for RedOS 8.0
         baseurl: "{{ nexus_yum_redos_8_0 }}"
-        username: "{{ nexus_username }}"
-        password: "{{ nexus_password }}"
         gpgcheck: true
         gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
       when:
