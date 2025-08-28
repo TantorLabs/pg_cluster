@@ -2,7 +2,7 @@
 
 - name: Install pgbouncer-tantor-all (RHEL-like systems)
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: >-
       {{
         'pgbouncer-tantor-all-' + pgbouncer_package_version

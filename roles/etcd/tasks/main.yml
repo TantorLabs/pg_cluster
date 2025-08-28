@@ -24,7 +24,7 @@
 
 - name: Install etcd-tantor-all (RHEL-like systems)
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: >-
       {{
         'etcd-tantor-all-' + etcd_package_version
@@ -89,13 +89,13 @@
 - name: Set etcd configuration parameters
   ansible.builtin.set_fact:
     etcd_initial_cluster_state: >-
-      {%- if cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
+      {%- if etcd_cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
       existing
       {%- else -%}
       new
       {%- endif -%}
     etcd_use_initial_token: >-
-      {%- if cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
+      {%- if etcd_cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
       false
       {%- else -%}
       true

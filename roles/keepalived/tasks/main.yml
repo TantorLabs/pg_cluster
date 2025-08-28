@@ -2,7 +2,7 @@
 
 - name: Install keepalived-tantor-all (RHEL-like systems)
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: >-
       {{
         'keepalived-tantor-all-' + keepalived_package_version

@@ -3,9 +3,11 @@
 - name: Collect facts for Alt linux
   when: ansible_os_family in ["Altlinux"]
   block:
-    - name: Collect installed RPM packages
+    - name: Collect installed RPM packages # noqa: command-instead-of-module
       ansible.builtin.command: rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n'
       register: rpm_output
+      changed_when: false
+      failed_when: rpm_output.rc != 0
 
     - name: Parse installed packages into a dictionary
       ansible.builtin.set_fact:
@@ -48,21 +50,22 @@
     src: /lib/systemd/system/watchdog.service
     dest: /etc/systemd/system/multi-user.target.wants/watchdog.service
     state: link
-  when: ansible_distribution in ('Ubuntu', 'Debian') and
-        ansible_distribution_release in ('xenial', 'jessie')
+  when:
+    - ansible_distribution in ('Ubuntu', 'Debian')
+    - ansible_distribution_release in ('xenial', 'jessie')
 
 - name: Force systemd to reread configs
   ansible.builtin.systemd_service:
     daemon_reload: true
 
 - name: Install patroni-tantor-all package if not installed
-  when: #('patroni-tantor-all' not in ansible_facts.packages) or ('patroni-tantor-all' not in installed_packages)
-      - ('patroni-tantor-all' not in (ansible_facts.packages | default({})))
-      - ('patroni-tantor-all' not in (installed_packages | default({})))
+  when: # ('patroni-tantor-all' not in ansible_facts.packages) or ('patroni-tantor-all' not in installed_packages)
+    - ('patroni-tantor-all' not in (ansible_facts.packages | default({})))
+    - ('patroni-tantor-all' not in (installed_packages | default({})))
   block:
     - name: Install patroni-tantor-all (RHEL-like systems)
       when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-      ansible.builtin.yum:
+      ansible.builtin.dnf:
         name: >-
           {{
             'patroni-tantor-all-' + patroni_package_version
@@ -112,6 +115,7 @@
         -f json
       register: patroni_status
       changed_when: false
+      failed_when: patroni_status.rc != 0
 
     - name: Set is_master fact
       ansible.builtin.set_fact:
@@ -162,7 +166,7 @@
 
         - name: Install patroni-tantor-all (RHEL-like systems)
           when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-          ansible.builtin.yum:
+          ansible.builtin.dnf:
             name: >-
               {{
                 'patroni-tantor-all-' + patroni_package_version
@@ -217,6 +221,7 @@
               {{ patroni_scope }}
           register: switchover_result
           changed_when: switchover_result.changed
+          failed_when: switchover_result.rc != 0
 
         - name: Wait for switchover to complete
           ansible.builtin.pause:
@@ -231,7 +236,7 @@
 
         - name: Install patroni-tantor-all (RHEL-like systems) at previous master
           when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-          ansible.builtin.yum:
+          ansible.builtin.dnf:
             name: >-
               {{
                 'patroni-tantor-all-' + patroni_package_version

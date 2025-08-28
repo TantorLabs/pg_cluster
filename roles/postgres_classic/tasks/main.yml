@@ -22,7 +22,7 @@
           changed_when: false
 
         - name: Do system update (yum)
-          ansible.builtin.yum:
+          ansible.builtin.dnf:
             update_cache: true
           when: (ansible_pkg_mgr == 'yum')
           changed_when: false
@@ -100,9 +100,10 @@
           ansible.builtin.service:
             state: stopped
             name: firewalld
-          when: (ansible_facts['os_family'] == "RedHat") and
-                (ansible_distribution == "Rocky" ) and
-                (ansible_distribution_major_version == "8")
+          when:
+            - ansible_facts['os_family'] == "RedHat"
+            - ansible_distribution == "Rocky"
+            - ansible_distribution_major_version == "8"
 
     - name: Block for Debian and Ubuntu
       when: (ansible_facts['os_family'] == "Debian") or (ansible_facts['os_family'] == "Ubuntu")
@@ -112,6 +113,7 @@
             cmd: lsb_release -cs
           register: debian_release
           changed_when: false
+          failed_when: debian_release.rc != 0
 
         - name: Add repository key (Debian)
           ansible.builtin.apt_key:
@@ -134,10 +136,10 @@
             state: present
 
     - name: Block for Centos-7 , RedOS , Rocky
-      when: (ansible_distribution == "CentOS") or (ansible_distribution == "RED") or (ansible_distribution == "Rocky")
+      when: ansible_distribution in ["CentOS", "RED", "Rocky"]
       block:
         - name: "Setting up PostgreSQL repository (yum)"
-          ansible.builtin.yum:
+          ansible.builtin.dnf:
             name: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
             state: present
             disable_gpg_check: true
@@ -167,7 +169,9 @@
         - name: Disable postgresql module at Rocky linux
           ansible.builtin.command:
             cmd: dnf -qy module disable postgresql
-          when: (ansible_distribution == "Rocky") and ("postgresql" in rocky_enabled_modules.stdout)
+          when:
+            - ansible_distribution == "Rocky"
+            - ("postgresql" in rocky_enabled_modules.stdout)
           changed_when: ("postgresql" in rocky_enabled_modules.stdout)
 
         - name: Install PostgreSQL
@@ -257,7 +261,9 @@
           with_items:
             - "/var/lib/postgresql/"
             - "/etc/postgresql/"
-          when: (services['patroni-tantor.service']['state'] | d()) != 'running' and ('patroni-tantor.service' not in services)
+          when:
+            - (services['patroni-tantor.service']['state'] | d()) != 'running'
+            - ('patroni-tantor.service' not in services)
 
         - name: Create cluster data folders
           ansible.builtin.file:

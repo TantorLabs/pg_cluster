@@ -1,7 +1,7 @@
 ---
 
 - name: Get current cluster members
-  when: cluster_exists
+  when: etcd_cluster_exists
   ansible.builtin.shell: |
     ETCDCTL_API=3 {{ etcd_bin_path }} \
       --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
@@ -9,17 +9,18 @@
       --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}.pem \
       --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}-key.pem \
       member list --write-out=json
-  register: current_members
+  register: etcd_current_members
   delegate_to: "{{ etcd_leader }}"
   run_once: true
   changed_when: false
+  failed_when: etcd_current_members.rc != 0
 
 - name: Parse current members
-  when: cluster_exists and current_members is defined
+  when: etcd_cluster_exists and etcd_current_members is defined
   ansible.builtin.set_fact:
-    existing_member_names: >-
+    etcd_existing_member_names: >-
       {{
-        (current_members.stdout | from_json).members |
+        (etcd_current_members.stdout | from_json).members |
         map(attribute='name') |
         list
       }}
@@ -27,8 +28,8 @@
 
 - name: Add new etcd members to cluster
   when:
-    - cluster_exists
-    - ansible_hostname not in existing_member_names
+    - etcd_cluster_exists
+    - ansible_hostname not in etcd_existing_member_names
     - inventory_hostname != etcd_leader
   ansible.builtin.shell: |
     ETCDCTL_API=3 {{ etcd_bin_path }} \
@@ -39,4 +40,6 @@
       member add {{ ansible_hostname }} \
       --peer-urls=https://{{ ansible_default_ipv4.address }}:{{ etcd_port_peer }}
   delegate_to: "{{ etcd_leader }}"
-  register: member_add_result
+  register: etcd_member_add_result
+  changed_when: true
+  failed_when: etcd_member_add_result.rc != 0
