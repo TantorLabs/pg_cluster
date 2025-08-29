@@ -1,3 +1,4 @@
+---
 - name: Install haproxy-tantor-all (RHEL-like systems)
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
   ansible.builtin.dnf:

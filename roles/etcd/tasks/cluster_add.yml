@@ -1,5 +1,4 @@
 ---
-
 - name: Get current cluster members
   when: etcd_cluster_exists
   ansible.builtin.shell: |

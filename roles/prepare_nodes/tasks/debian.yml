@@ -1,5 +1,4 @@
 ---
-
 - name: Create folders if not exists
   ansible.builtin.file:
     state: directory
@@ -11,7 +10,6 @@
     - /etc/apt/sources.list.d
     - /etc/apt/trusted.gpg.d
     - /etc/apt/auth.conf.d
-
 
 - name: Ensure APT keyrings directory exists
   ansible.builtin.file:
@@ -88,7 +86,6 @@
           - libpq-dev
         state: present
         update_cache: true
-
 
     - name: Ensure the locale exists
       community.general.locale_gen:

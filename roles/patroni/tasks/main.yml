@@ -1,27 +1,26 @@
 ---
-
 - name: Collect facts for Alt linux
   when: ansible_os_family in ["Altlinux"]
   block:
     - name: Collect installed RPM packages # noqa: command-instead-of-module
       ansible.builtin.command: rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n'
-      register: rpm_output
+      register: patroni_rpm_output
       changed_when: false
-      failed_when: rpm_output.rc != 0
+      failed_when: patroni_rpm_output.rc != 0
 
     - name: Parse installed packages into a dictionary
       ansible.builtin.set_fact:
-        installed_packages: >-
+        patroni_installed_packages: >-
           {{
             dict(
-              rpm_output.stdout_lines | map('split', ' ', 1) | list
+              patroni_rpm_output.stdout_lines | map('split', ' ', 1) | list
             )
           }}
 
 - name: Collect package facts
   when: not ansible_os_family in ["Altlinux"]
   ansible.builtin.package_facts:
-  register: package_facts_result
+  register: patroni_package_facts_result
 
 - name: Load watchdog kernel module
   community.general.modprobe:
@@ -59,9 +58,9 @@
     daemon_reload: true
 
 - name: Install patroni-tantor-all package if not installed
-  when: # ('patroni-tantor-all' not in ansible_facts.packages) or ('patroni-tantor-all' not in installed_packages)
+  when: # ('patroni-tantor-all' not in ansible_facts.packages) or ('patroni-tantor-all' not in patroni_installed_packages)
     - ('patroni-tantor-all' not in (ansible_facts.packages | default({})))
-    - ('patroni-tantor-all' not in (installed_packages | default({})))
+    - ('patroni-tantor-all' not in (patroni_installed_packages | default({})))
   block:
     - name: Install patroni-tantor-all (RHEL-like systems)
       when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
@@ -103,9 +102,9 @@
 
 - name: Upgrade patroni-tantor-all package if it is installed
   when:
-    - ('patroni-tantor-all' in (ansible_facts.packages | default({}))) or ('patroni-tantor-all' in (installed_packages | default({})))
+    - ('patroni-tantor-all' in (ansible_facts.packages | default({}))) or ('patroni-tantor-all' in (patroni_installed_packages | default({})))
     - patroni_package_version != ""
-    - ('patroni-tantor-all' not in (ansible_facts.packages | default({}))) or ('patroni-tantor-all' not in (installed_packages | default({})))
+    - ('patroni-tantor-all' not in (ansible_facts.packages | default({}))) or ('patroni-tantor-all' not in (patroni_installed_packages | default({})))
 
   block:
     - name: Check if this node is the master
@@ -117,9 +116,9 @@
       changed_when: false
       failed_when: patroni_status.rc != 0
 
-    - name: Set is_master fact
+    - name: Set patroni_is_master fact
       ansible.builtin.set_fact:
-        is_master: >-
+        patroni_is_master: >-
           {{
             (patroni_status.stdout
             | from_json
@@ -131,7 +130,7 @@
 
     - name: Set current master
       ansible.builtin.set_fact:
-        current_master: >-
+        patroni_current_master: >-
           {{
             (patroni_status.stdout
             | from_json
@@ -140,11 +139,11 @@
             | list
             | first)
           }}
-      when: is_master
+      when: patroni_is_master
 
     - name: Choose new leader
       ansible.builtin.set_fact:
-        new_leader: >-
+        patroni_new_leader: >-
           {{
             (patroni_status.stdout
             | from_json
@@ -153,10 +152,10 @@
             | difference([inventory_hostname])
             | first)
           }}
-      when: is_master
+      when: patroni_is_master
 
     - name: Block for replica nodes
-      when: not is_master
+      when: not patroni_is_master
       block:
         - name: Stop Patroni service on replica
           ansible.builtin.service:
@@ -208,20 +207,20 @@
             state: started
 
     - name: Block for master node
-      when: is_master
+      when: patroni_is_master
       block:
         - name: Perform switchover if this node is the master
           ansible.builtin.command: >-
             /opt/tantor/usr/bin/patronictl
               -c {{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml
               switchover
-              --leader {{ current_master }}
-              --candidate {{ new_leader }}
+              --leader {{ patroni_current_master }}
+              --candidate {{ patroni_new_leader }}
               --force
               {{ patroni_scope }}
-          register: switchover_result
-          changed_when: switchover_result.changed
-          failed_when: switchover_result.rc != 0
+          register: patroni_switchover_result
+          changed_when: patroni_switchover_result.changed
+          failed_when: patroni_switchover_result.rc != 0
 
         - name: Wait for switchover to complete
           ansible.builtin.pause:
@@ -231,7 +230,7 @@
           ansible.builtin.service:
             name: patroni-tantor
             state: stopped
-          when: is_master
+          when: patroni_is_master
           register: patroni_stop_result
 
         - name: Install patroni-tantor-all (RHEL-like systems) at previous master
@@ -276,7 +275,7 @@
           ansible.builtin.service:
             name: patroni-tantor
             state: started
-          when: is_master
+          when: patroni_is_master
 
 - name: Create patroni unit file
   ansible.builtin.template:
@@ -351,28 +350,28 @@
   become: true
   become_user: root
   ansible.builtin.command: |
-      /opt/tantor/usr/bin/pg_configurator \
-      --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
-      --db-ram="{{ pg_conf_db_ram }}" \
-      --db-disk-type="{{ pg_conf_db_disk_type }}" \
-      --db-duty="{{ pg_conf_db_duty }}" \
-      --pg-version="{{ major_version }}" \
-      --output-format=patroni-json \
-      --min-conns=200 \
-      --max-conns=200 \
-      --common-conf \
-      --output-file-name='{{ patroni_config_dir }}/postgresql.json'
+    /opt/tantor/usr/bin/pg_configurator \
+    --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
+    --db-ram="{{ pg_conf_db_ram }}" \
+    --db-disk-type="{{ pg_conf_db_disk_type }}" \
+    --db-duty="{{ pg_conf_db_duty }}" \
+    --pg-version="{{ major_version }}" \
+    --output-format=patroni-json \
+    --min-conns=200 \
+    --max-conns=200 \
+    --common-conf \
+    --output-file-name='{{ patroni_config_dir }}/postgresql.json'
   args:
     creates: '{{ patroni_config_dir }}/postgresql.json'
 
 - name: Get content of remote file
   ansible.builtin.slurp:
     src: '{{ patroni_config_dir }}/postgresql.json'
-  register: remote_yaml
+  register: patroni_remote_yaml
 
 - name: Interpret remote file content as yaml
   ansible.builtin.set_fact:
-    pg_conf_data: '{{ remote_yaml.content | b64decode | from_json }}'
+    patroni_pg_conf_data: '{{ patroni_remote_yaml.content | b64decode | from_json }}'
 
 - name: Check if patoni conf file exists
   ansible.builtin.stat:
@@ -385,7 +384,7 @@
     regexp: '(bulk_wal_dir|log_directory:\spg_log)'
     state: absent
   check_mode: true
-  register: pg_wal_log_conf
+  register: patroni_pg_wal_log_conf
   changed_when: false
   when: patroni_conf.stat.exists
 
@@ -421,7 +420,7 @@
     owner: "{{ patroni_system_user }}"
     group: "{{ patroni_system_group }}"
     mode: "0600"
-  when: (not patroni_conf.stat.exists) or (pg_wal_log_conf.found)
+  when: (not patroni_conf.stat.exists) or (patroni_pg_wal_log_conf.found)
 
 - name: Replace patroni_pg_wal_dir string from the patroni template to real variable
   ansible.builtin.replace:
@@ -488,18 +487,18 @@
   when: ( patroni_bootstrap_method_name == "wal-g" ) or ( patroni_bootstrap_method_name == "walg" )
   ansible.builtin.command:
     cmd: /opt/tantor/usr/bin/wal-g --config /var/lib/postgresql/.walg.json backup-list
-  register: if_backup_exists
+  register: patroni_if_backup_exists
   changed_when: false
 
 - name: Perform initial fullbackup
   when:
     - ( patroni_bootstrap_method_name == "wal-g" ) or ( patroni_bootstrap_method_name == "walg" )
-    - "'No backups found' in if_backup_exists.stderr"
+    - "'No backups found' in patroni_if_backup_exists.stderr"
   ansible.builtin.shell:
     cmd: >
       /opt/tantor/usr/bin/wal-g
       --config /var/lib/postgresql/.walg.json
       backup-push $(/opt/tantor/db/{{ major_version }}/bin/psql -d postgres -c "SHOW data_directory;" -t -A)
-  changed_when: "'No backups found' in if_backup_exists.stderr"
+  changed_when: "'No backups found' in patroni_if_backup_exists.stderr"
   become: true
   become_user: postgres

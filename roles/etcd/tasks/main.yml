@@ -3,24 +3,24 @@
   ansible.builtin.set_fact:
     cacheable: true
     etcd_listen_public: >-
-        {{ "0.0.0.0" if etcd_iface_public == "all" else
-          (ansible_default_ipv4.address if etcd_iface_public == "default"
-            else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
+      {{ "0.0.0.0" if etcd_iface_public == "all" else
+        (ansible_default_ipv4.address if etcd_iface_public == "default"
+        else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
 
     etcd_listen_cluster: >-
-        {{ "0.0.0.0" if etcd_iface_cluster == "all" else
-          (ansible_default_ipv4.address if etcd_iface_cluster == "default"
-           else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
+      {{ "0.0.0.0" if etcd_iface_cluster == "all" else
+        (ansible_default_ipv4.address if etcd_iface_cluster == "default"
+         else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
 
     etcd_address_public: >-
-        {{ ansible_hostname if not etcd_use_ips | bool else
-          (ansible_default_ipv4.address if etcd_iface_public is in [ "all", "default" ]
-           else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
+      {{ ansible_hostname if not etcd_use_ips | bool else
+        (ansible_default_ipv4.address if etcd_iface_public is in [ "all", "default" ]
+         else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
 
     etcd_address_cluster: >-
-        {{ ansible_hostname if not etcd_use_ips | bool else
-          (ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ]
-           else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
+      {{ ansible_hostname if not etcd_use_ips | bool else
+        (ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ]
+         else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
 
 - name: Install etcd-tantor-all (RHEL-like systems)
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
@@ -85,8 +85,7 @@
   ansible.builtin.include_tasks: pki.yml
   when: etcd_secure | bool
 
-
-- name: Set etcd configuration parameters
+- name: Set etcd configuration parameters # noqa: jinja[spacing]
   ansible.builtin.set_fact:
     etcd_initial_cluster_state: >-
       {%- if etcd_cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}

@@ -104,7 +104,7 @@ bootstrap:
         {{ item.option }}: {{ item.value }}
       {% endfor %}
     {% endif %}
-    {% for key,value in pg_conf_data.postgresql.parameters.items() %}
+    {% for key,value in patroni_pg_conf_data.postgresql.parameters.items() %}
         {{key}}: {{value}}
     {% endfor %}
     {% if patroni_bootstrap_dcs_pg_hba |d([], true) |length > 0 %}

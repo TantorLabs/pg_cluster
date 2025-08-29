@@ -1,3 +1,4 @@
+---
 - name: Generate inventory-specific certificate directory name
   ansible.builtin.set_fact:
     certificates_inventory_name: "{{ ansible_inventory_sources[0] | basename | regex_replace('\\.(ini|yml|yaml)$', '') }}"

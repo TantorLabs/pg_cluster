@@ -1,5 +1,4 @@
 ---
-
 - name: Populate service facts
   ansible.builtin.service_facts:
 
@@ -111,9 +110,9 @@
         - name: Get system release (Debian)
           ansible.builtin.command:
             cmd: lsb_release -cs
-          register: debian_release
+          register: postgres_classic_debian_release
           changed_when: false
-          failed_when: debian_release.rc != 0
+          failed_when: postgres_classic_debian_release.rc != 0
 
         - name: Add repository key (Debian)
           ansible.builtin.apt_key:
@@ -122,7 +121,7 @@
 
         - name: Add PostgreSQL repo (Debian)
           ansible.builtin.apt_repository:
-            repo: deb https://apt.postgresql.org/pub/repos/apt {{ debian_release.stdout }}-pgdg main
+            repo: deb https://apt.postgresql.org/pub/repos/apt {{ postgres_classic_debian_release.stdout }}-pgdg main
             state: present
             filename: postgresql-classic
 
@@ -163,7 +162,7 @@
           ansible.builtin.command:
             cmd: dnf -qy module list --enabled
           changed_when: false
-          register: rocky_enabled_modules
+          register: postgres_classic_rocky_enabled_modules
           when: ( ansible_distribution == "Rocky" )
 
         - name: Disable postgresql module at Rocky linux
@@ -171,8 +170,8 @@
             cmd: dnf -qy module disable postgresql
           when:
             - ansible_distribution == "Rocky"
-            - ("postgresql" in rocky_enabled_modules.stdout)
-          changed_when: ("postgresql" in rocky_enabled_modules.stdout)
+            - ("postgresql" in postgres_classic_rocky_enabled_modules.stdout)
+          changed_when: ("postgresql" in postgres_classic_rocky_enabled_modules.stdout)
 
         - name: Install PostgreSQL
           ansible.builtin.package:
@@ -216,7 +215,6 @@
     - name: Block for AltLinux
       when: (ansible_facts['os_family'] == "Altlinux")
       block:
-
         - name: Install postgresql repo
           community.general.apt_rpm:
             pkg: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm"

@@ -1,5 +1,4 @@
 ---
-
 - name: Identify nodes to remove
   ansible.builtin.set_fact:
     etcd_nodes_to_remove: >-

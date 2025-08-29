@@ -1,5 +1,4 @@
 ---
-
 - name: Install keepalived-tantor-all (RHEL-like systems)
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
   ansible.builtin.dnf:
@@ -12,8 +11,8 @@
       }}
     state: present
     allow_downgrade: true
-  register: package_status
-  until: package_status is success
+  register: keepalived_package_status
+  until: keepalived_package_status is success
   delay: 5
   retries: 3
   environment: "{{ proxy_env | default({}) }}"
@@ -30,8 +29,8 @@
         'keepalived-tantor-all'
       }}
     state: present
-  register: package_status
-  until: package_status is success
+  register: keepalived_package_status
+  until: keepalived_package_status is success
   delay: 5
   retries: 3
   environment: "{{ proxy_env | default({}) }}"
@@ -49,8 +48,8 @@
       }}
     state: present
     allow_downgrade: true
-  register: package_status
-  until: package_status is success
+  register: keepalived_package_status
+  until: keepalived_package_status is success
   delay: 5
   retries: 3
   environment: "{{ proxy_env | default({}) }}"
@@ -105,7 +104,7 @@
 - name: Block for tasks with balancer
   when: add_balancer is defined and add_balancer|bool
   tags: keepalived_conf, keepalived
-  block:  # for add_balancer.yml
+  block: # for add_balancer.yml
     - name: "Fetch keepalived.conf conf file from {{ groups.balancers[0] }}"
       run_once: true
       ansible.builtin.fetch:

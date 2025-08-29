@@ -1,5 +1,4 @@
 ---
-
 - name: Check existing etcd cluster members
   ansible.builtin.shell: |
     ETCDCTL_API=3 {{ etcd_bin_path }} \
