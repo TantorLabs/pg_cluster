@@ -127,7 +127,7 @@
         filename: tantorlabs
       when:
         - ansible_distribution == "Ubuntu"
-        - ansible_distribution_version == "22.04"
+        - ansible_distribution_major_version == "22"
 
     - name: Configure nexus repository (Ubuntu 20.04)
       ansible.builtin.apt_repository:
@@ -136,4 +136,4 @@
         filename: tantorlabs
       when:
         - ansible_distribution == "Ubuntu"
-        - ansible_distribution_version == "20.04"
+        - ansible_distribution_major_version == "20"
