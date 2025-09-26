@@ -1,6 +1,7 @@
+---
 - name: Generate inventory-specific certificate directory name
   ansible.builtin.set_fact:
-    inventory_name: "{{ ansible_inventory_sources[0] | basename | regex_replace('\\.(ini|yml|yaml)$', '') }}"
+    certificates_inventory_name: "{{ ansible_inventory_sources[0] | basename | regex_replace('\\.(ini|yml|yaml)$', '') }}"
 
 - name: Create inventory-specific certificate directory
   ansible.builtin.file:
@@ -10,7 +11,7 @@
 
 - name: Get etcd nodes from inventory
   ansible.builtin.set_fact:
-    etcd_nodes: "{{ groups['inv_etcd'] | default([]) }}"
+    certificates_etcd_nodes: "{{ groups['inv_etcd'] | default([]) }}"
 
 - name: Debug etcd nodes count
   ansible.builtin.debug:
@@ -19,19 +20,19 @@
 - name: Check if CA certificate exists
   ansible.builtin.stat:
     path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.pem"
-  register: ca_cert_check
+  register: certificates_ca_cert_check
 
 - name: Check if CA key exists
   ansible.builtin.stat:
     path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
-  register: ca_key_check
+  register: certificates_ca_key_check
 
 - name: Generate CA private key
   community.crypto.openssl_privatekey:
     path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
     size: 2048
     type: RSA
-  when: not ca_key_check.stat.exists
+  when: not certificates_ca_key_check.stat.exists
 
 - name: Generate CA CSR
   community.crypto.openssl_csr:
@@ -46,7 +47,7 @@
       - keyCertSign
       - cRLSign
     key_usage_critical: true
-  when: not ca_cert_check.stat.exists
+  when: not certificates_ca_cert_check.stat.exists
 
 - name: Generate CA certificate
   community.crypto.x509_certificate:
@@ -54,49 +55,49 @@
     csr_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.csr"
     privatekey_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
     provider: selfsigned
-  when: not ca_cert_check.stat.exists
+  when: not certificates_ca_cert_check.stat.exists
 
 - name: Clean up CA CSR
   ansible.builtin.file:
     path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.csr"
     state: absent
-  when: not ca_cert_check.stat.exists
+  when: not certificates_ca_cert_check.stat.exists
 
 - name: Check existing node certificates
   ansible.builtin.stat:
     path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}.pem"
-  register: node_cert_files_check
+  register: certificates_node_cert_files_check
   loop: "{{ etcd_nodes }}"
 
 - name: Check existing node private keys
   ansible.builtin.stat:
     path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}-key.pem"
-  register: node_key_files_check
+  register: certificates_node_key_files_check
   loop: "{{ etcd_nodes }}"
 
 - name: Initialize missing certificates list
   ansible.builtin.set_fact:
-    missing_cert_nodes: []
+    certificates_missing_cert_nodes: []
 
 - name: Find nodes missing certificates
   ansible.builtin.set_fact:
-    missing_cert_nodes: "{{ missing_cert_nodes + [item.item] }}"
-  loop: "{{ node_cert_files_check.results }}"
+    certificates_missing_cert_nodes: "{{ certificates_missing_cert_nodes + [item.item] }}"
+  loop: "{{ certificates_node_cert_files_check.results }}"
   when: not item.stat.exists
 
 - name: Find nodes missing private keys
   ansible.builtin.set_fact:
-    missing_cert_nodes: "{{ missing_cert_nodes + [item.item] }}"
-  loop: "{{ node_key_files_check.results }}"
+    certificates_missing_cert_nodes: "{{ certificates_missing_cert_nodes + [item.item] }}"
+  loop: "{{ certificates_node_key_files_check.results }}"
   when: not item.stat.exists
 
 - name: Remove duplicates from missing nodes list
   ansible.builtin.set_fact:
-    missing_cert_nodes: "{{ missing_cert_nodes | unique }}"
+    certificates_missing_cert_nodes: "{{ certificates_missing_cert_nodes | unique }}"
 
 - name: Debug missing certificates
   ansible.builtin.debug:
-    msg: "Nodes missing certificates: {{ missing_cert_nodes }}"
+    msg: "Nodes missing certificates: {{ certificates_missing_cert_nodes }}"
 
 - name: Generate private keys for missing nodes
   community.crypto.openssl_privatekey:
@@ -104,8 +105,8 @@
     size: 2048
     type: RSA
     mode: '0644'
-  loop: "{{ missing_cert_nodes }}"
-  when: missing_cert_nodes | length > 0
+  loop: "{{ certificates_missing_cert_nodes }}"
+  when: certificates_missing_cert_nodes | length > 0
 
 - name: Generate CSR for missing nodes
   community.crypto.openssl_csr:
@@ -126,8 +127,8 @@
     extended_key_usage:
       - serverAuth
       - clientAuth
-  loop: "{{ missing_cert_nodes }}"
-  when: missing_cert_nodes | length > 0
+  loop: "{{ certificates_missing_cert_nodes }}"
+  when: certificates_missing_cert_nodes | length > 0
 
 - name: Generate certificates for missing nodes
   community.crypto.x509_certificate:
@@ -137,28 +138,28 @@
     ownca_privatekey_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
     provider: ownca
     mode: '0644'
-  loop: "{{ missing_cert_nodes }}"
-  when: missing_cert_nodes | length > 0
+  loop: "{{ certificates_missing_cert_nodes }}"
+  when: certificates_missing_cert_nodes | length > 0
 
 - name: Clean up CSR files
   ansible.builtin.file:
     path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}.csr"
     state: absent
-  loop: "{{ missing_cert_nodes }}"
-  when: missing_cert_nodes | length > 0
+  loop: "{{ certificates_missing_cert_nodes }}"
+  when: certificates_missing_cert_nodes | length > 0
 
 - name: Final certificate count check
   ansible.builtin.find:
     paths: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}"
     patterns: "*.pem"
     excludes: "*-key.pem,ca-key.pem"
-  register: final_cert_count
+  register: certificates_final_cert_count
 
 - name: Display certificate generation summary
   ansible.builtin.debug:
     msg: |
       Certificate generation completed:
       - Expected certificates: {{ etcd_nodes | length + 1 }} ({{ etcd_nodes | length }} nodes + 1 CA)
-      - Generated certificates: {{ final_cert_count.matched }}
+      - Generated certificates: {{ certificates_final_cert_count.matched }}
       - etcd nodes: {{ etcd_nodes | join(', ') }}
-      - Generated for new nodes: {{ missing_cert_nodes | join(', ') if missing_cert_nodes | length > 0 else 'none' }}
+      - Generated for new nodes: {{ certificates_missing_cert_nodes | join(', ') if certificates_missing_cert_nodes | length > 0 else 'none' }}

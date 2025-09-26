@@ -1,5 +1,4 @@
 ---
-
 - name: Create folders if not exists
   ansible.builtin.file:
     state: directory
@@ -11,7 +10,6 @@
     - /etc/apt/sources.list.d
     - /etc/apt/trusted.gpg.d
     - /etc/apt/auth.conf.d
-
 
 - name: Ensure APT keyrings directory exists
   ansible.builtin.file:
@@ -89,8 +87,7 @@
         state: present
         update_cache: true
 
-
-    - name: Ensure the locale exists 
+    - name: Ensure the locale exists
       community.general.locale_gen:
         name: "{{ item }}"
         state: present
@@ -100,7 +97,7 @@
 
 - name: Block for Astra
   when:
-    - ansible_os_family in ("Astra Linux", "Astra Linux (Orel)")
+    - ansible_os_family in ["Astra Linux", "Astra Linux (Orel)"]
     - add_nexus_repo == 'true'
   block:
     - name: Configure nexus repository (Astra 1.7)

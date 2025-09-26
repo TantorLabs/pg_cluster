@@ -1,8 +1,7 @@
 ---
-
 - name: Install pgbouncer-tantor-all (RHEL-like systems)
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: >-
       {{
         'pgbouncer-tantor-all-' + pgbouncer_package_version
@@ -72,7 +71,7 @@
   ansible.builtin.command:
     cmd: su - postgres -s /bin/bash -c "psql -A -t -d postgres -c \"SELECT pg_is_in_recovery();\""
   changed_when: false
-  register: psql_node_status
+  register: pgbouncer_psql_node_status
 
 - name: Create pgbouncer role
   vars:
@@ -88,7 +87,7 @@
     port: "5432"
   become: true
   become_user: postgres
-  when: psql_node_status.stdout == 'f'
+  when: pgbouncer_psql_node_status.stdout == 'f'
 
 - name: Create userlist for PGbouncer
   ansible.builtin.file:
@@ -141,7 +140,7 @@
     db: postgres
     path: /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql
   changed_when: false
-  when: psql_node_status.stdout == 'f'
+  when: pgbouncer_psql_node_status.stdout == 'f'
 
 - name: Create pgbouncer unit file
   ansible.builtin.template:

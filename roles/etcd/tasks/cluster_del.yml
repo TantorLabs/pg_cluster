@@ -1,33 +1,36 @@
 ---
-
 - name: Identify nodes to remove
   ansible.builtin.set_fact:
-    nodes_to_remove: >-
+    etcd_nodes_to_remove: >-
       {{
         existing_member_names | default([]) |
         difference(groups['inv_etcd'] | map('extract', hostvars, 'ansible_hostname') | list)
       }}
-  when: cluster_exists
+  when: etcd_cluster_exists
   run_once: true
 
 - name: Get member HEX IDs for removal
-  when: cluster_exists and nodes_to_remove | length > 0
+  when:
+    - etcd_cluster_exists
+    - etcd_nodes_to_remove | length > 0
   ansible.builtin.shell: |
+    set -o pipefail
     ETCDCTL_API=3 {{ etcd_bin_path }} \
       --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
       --cacert={{ etcd_conf_dir }}/ca.pem \
       --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}.pem \
       --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}-key.pem \
       member list | grep "{{ item }}" | cut -d',' -f1
-  register: member_hex_ids_to_remove
+  register: etcd_member_hex_ids_to_remove
   delegate_to: "{{ etcd_leader }}"
-  with_items: "{{ nodes_to_remove }}"
-  failed_when: false
+  with_items: "{{ etcd_nodes_to_remove }}"
+  changed_when: false
+  failed_when: etcd_member_hex_ids_to_remove.rc != 0
 
 - name: Remove etcd members from cluster
-  when: 
-    - cluster_exists 
-    - nodes_to_remove | length > 0
+  when:
+    - etcd_cluster_exists
+    - etcd_nodes_to_remove | length > 0
     - item.stdout != ""
     - item.rc == 0
   ansible.builtin.shell: |
@@ -38,5 +41,6 @@
       --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}-key.pem \
       member remove {{ item.stdout }}
   delegate_to: "{{ etcd_leader }}"
-  with_items: "{{ member_hex_ids_to_remove.results }}"
+  with_items: "{{ etcd_member_hex_ids_to_remove.results }}"
   run_once: true
+  changed_when: true

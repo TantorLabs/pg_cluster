@@ -8,4 +8,3 @@ argument_specs:
       cluster_vip_1:
         type: "str"
         required: true
-        format: ipv4

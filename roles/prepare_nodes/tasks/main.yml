@@ -1,5 +1,4 @@
 ---
-
 - name: "Configure hostname"
   ansible.builtin.hostname:
     name: "{{ inventory_hostname }}"
@@ -39,7 +38,7 @@
     regexp: '(postgres\shard)|(postgres\ssoft)'
     state: absent
   check_mode: true
-  register: sec_limit
+  register: prepare_nodes_sec_limit
   changed_when: false
 
 - name: Add secure limits for postgres if not exists
@@ -47,7 +46,7 @@
     path: /etc/security/limits.conf
     line: "{{ item }}"
     state: present
-  when: not sec_limit.found
+  when: not prepare_nodes_sec_limit.found
   with_items:
     - "postgres soft    nofile   65536"
     - "postgres hard    nofile   100000"

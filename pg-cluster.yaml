@@ -1,3 +1,4 @@
+---
 - name: Tasks for group inv_cluster
   hosts: inv_cluster
   tasks: []
