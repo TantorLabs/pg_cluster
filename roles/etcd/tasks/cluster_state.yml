@@ -2,10 +2,10 @@
 - name: Check existing etcd cluster members
   ansible.builtin.shell: |
     ETCDCTL_API=3 {{ etcd_bin_path }} \
-      --endpoints=https://{{ ansible_default_ipv4.address }}:{{ etcd_port_client }} \
+      --endpoints=https://{{ hostvars[item]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
       --cacert={{ etcd_conf_dir }}/ca.pem \
-      --cert={{ etcd_conf_dir }}/{{ ansible_hostname }}.pem \
-      --key={{ etcd_conf_dir }}/{{ ansible_hostname }}-key.pem \
+      --cert={{ etcd_conf_dir }}/{{ hostvars[item]['unified_hostname'] }}.pem \
+      --key={{ etcd_conf_dir }}/{{ hostvars[item]['unified_hostname'] }}-key.pem \
       member list --write-out=json
   register: etcd_member_list
   failed_when: false

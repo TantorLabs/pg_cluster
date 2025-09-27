@@ -1,4 +1,36 @@
 ---
+- name: Ensure unified hostname is available (fallback if not set by prepare_nodes)
+  block:
+    - name: Check if unified_hostname is already set
+      ansible.builtin.debug:
+        var: unified_hostname
+      failed_when: false
+
+    - name: Set unified hostname fallback based on inventory format
+      ansible.builtin.set_fact:
+        has_domain: "{{ '.' in inventory_hostname }}"
+      when: unified_hostname is not defined or unified_hostname != inventory_hostname.split('.')[0]
+
+    - name: Set unified hostname for FQDN inventory (fallback)
+      ansible.builtin.set_fact:
+        unified_hostname: "{{ ansible_fqdn }}"
+        cacheable: true
+      when:
+        - (unified_hostname is not defined or unified_hostname != inventory_hostname.split('.')[0])
+        - has_domain | default(false)
+
+    - name: Set unified hostname for non-FQDN inventory (fallback)
+      ansible.builtin.set_fact:
+        unified_hostname: "{{ inventory_hostname }}"
+        cacheable: true
+      when:
+        - (unified_hostname is not defined or unified_hostname != inventory_hostname)
+        - not (has_domain | default(false))
+
+    - name: Debug final unified hostname
+      ansible.builtin.debug:
+        msg: "Final unified_hostname: {{ unified_hostname }}"
+
 - name: Collect facts for etcd
   ansible.builtin.set_fact:
     cacheable: true
@@ -13,92 +45,50 @@
          else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
 
     etcd_address_public: >-
-      {{ ansible_hostname if not etcd_use_ips | bool else
+      {{ unified_hostname if not etcd_use_ips | bool else
         (ansible_default_ipv4.address if etcd_iface_public is in [ "all", "default" ]
          else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
 
     etcd_address_cluster: >-
-      {{ ansible_hostname if not etcd_use_ips | bool else
+      {{ unified_hostname if not etcd_use_ips | bool else
         (ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ]
          else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
 
-- name: Install etcd-tantor-all (RHEL-like systems)
-  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-  ansible.builtin.dnf:
+- name: Install etcd package
+  ansible.builtin.package:
     name: >-
       {{
-        'etcd-tantor-all-' + etcd_package_version
-        if etcd_package_version | length > 0
-        else
-        'etcd-tantor-all'
-      }}
-    state: present
-    allow_downgrade: true
-
-- name: Install etcd-tantor-all (Debian-like systems)
-  when: ansible_os_family in ["Astra Linux", "Debian"]
-  ansible.builtin.apt:
-    name: >-
-      {{
-        'etcd-tantor-all=' + etcd_package_version
-        if etcd_package_version | length > 0
-        else
-        'etcd-tantor-all'
-      }}
-    state: present
-    allow_downgrade: true
-
-- name: Install etcd-tantor-all (Alt Linux)
-  when: ansible_os_family in ["Altlinux"]
-  community.general.apt_rpm:
-    name: >-
-      {{
-        'etcd-tantor-all-' + etcd_package_version
-        if etcd_package_version | length > 0
-        else
-        'etcd-tantor-all'
+        'etcd-tantor-all' + ('-' + etcd_package_version if etcd_package_version | length > 0 else '')
       }}
     state: present
 
-- name: Create dirs
-  become: true
-  become_user: root
+- name: Create etcd directories
   ansible.builtin.file:
     state: directory
-    path: '{{ item }}'
+    path: '{{ etcd_cluster_pki_dir }}'
     owner: '{{ etcd_user }}'
     group: '{{ etcd_group }}'
     mode: "0755"
-  with_items:
-    - '{{ etcd_cluster_pki_dir }}'
 
-- name: Add tasks for checking ETCD cluster
-  ansible.builtin.include_tasks: cluster_state.yml
+- name: Discover etcd cluster state
+  ansible.builtin.include_tasks: cluster_discovery.yml
 
-- name: Add nodes into ETCD cluster
-  ansible.builtin.include_tasks: cluster_add.yml
+- name: Manage cluster membership
+  ansible.builtin.include_tasks: cluster_manage.yml
+  when: etcd_cluster_exists | default(false)
 
-- name: Remove nodes into ETCD cluster
-  ansible.builtin.include_tasks: cluster_del.yml
-
-- name: Add tasks for secure ETCD connection
+- name: Set up PKI for etcd
   ansible.builtin.include_tasks: pki.yml
   when: etcd_secure | bool
 
-- name: Set etcd configuration parameters # noqa: jinja[spacing]
+- name: Set etcd configuration parameters
   ansible.builtin.set_fact:
     etcd_initial_cluster_state: >-
-      {%- if etcd_cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
-      existing
-      {%- else -%}
-      new
-      {%- endif -%}
+      {%- if (etcd_cluster_exists | default(false)) and unified_hostname not in (etcd_member_names | default([])) -%}
+      existing{%- else -%}new{%- endif -%}
     etcd_use_initial_token: >-
-      {%- if etcd_cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
-      false
-      {%- else -%}
-      true
-      {%- endif -%}
+      {%- if (etcd_cluster_exists | default(false)) and unified_hostname not in (etcd_member_names | default([])) -%}
+      false{%- else -%}true{%- endif -%}
 
 - name: Copy etcd configuration
   ansible.builtin.template:
@@ -107,7 +97,7 @@
     mode: "0644"
   notify: Restart etcd-tantor.service
 
-- name: Configure etcd-tantor.service
+- name: Configure etcd service
   ansible.builtin.template:
     src: etcd-tantor.service.j2
     dest: /etc/systemd/system/etcd-tantor.service

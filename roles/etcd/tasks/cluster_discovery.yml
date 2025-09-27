@@ -1,0 +1,39 @@
+---
+- name: Check existing etcd cluster members
+  ansible.builtin.shell: |
+    ETCDCTL_API=3 {{ etcd_bin_path }} \
+      --endpoints=https://{{ hostvars[item]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
+      --cacert={{ etcd_conf_dir }}/ca.pem \
+      --cert={{ etcd_conf_dir }}/{{ hostvars[item]['unified_hostname'] }}.pem \
+      --key={{ etcd_conf_dir }}/{{ hostvars[item]['unified_hostname'] }}-key.pem \
+      member list --write-out=json
+  register: etcd_probe_results
+  failed_when: false
+  changed_when: false
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['inv_etcd'] }}"
+
+- name: Parse cluster state and set global facts
+  ansible.builtin.set_fact:
+    etcd_cluster_exists: "{{ etcd_probe_results.results | selectattr('rc', 'equalto', 0) | list | length > 0 }}"
+    etcd_leader: "{{ (etcd_probe_results.results | selectattr('rc', 'equalto', 0) | map(attribute='item') | first) | default(groups['inv_etcd'] | first) }}"
+    etcd_cluster_info: "{{ (etcd_probe_results.results | selectattr('rc', 'equalto', 0) | map(attribute='stdout') | map('from_json') | first) | default({}) }}"
+
+- name: Extract member names for easy reference
+  ansible.builtin.set_fact:
+    etcd_member_names: >-
+      {{
+        etcd_cluster_info.members | default([]) |
+        selectattr('name', 'defined') |
+        selectattr('name', 'ne', '') |
+        map(attribute='name') | list
+      }}
+  when: etcd_cluster_exists
+
+- name: Debug cluster state
+  ansible.builtin.debug:
+    msg:
+      - "Cluster exists: {{ etcd_cluster_exists | default(false) }}"
+      - "Leader/Admin node: {{ etcd_leader | default('none') }}"
+      - "Current members: {{ etcd_member_names | default([]) }}"
+      - "This node ({{ unified_hostname }}) in cluster: {{ unified_hostname in (etcd_member_names | default([])) }}"
