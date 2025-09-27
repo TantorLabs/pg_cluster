@@ -33,10 +33,10 @@
   vars:
     target_node_ip: >-
       {{
-        groups['inv_etcd'] | 
-        map('extract', hostvars) | 
-        selectattr('unified_hostname', 'equalto', item) | 
-        map(attribute='ansible_default_ipv4.address') | 
+        groups['inv_etcd'] |
+        map('extract', hostvars) |
+        selectattr('unified_hostname', 'equalto', item) |
+        map(attribute='ansible_default_ipv4.address') |
         first
       }}
   delegate_to: "{{ etcd_leader }}"
@@ -45,6 +45,7 @@
   failed_when:
     - add_results.rc != 0
     - "'already exists' not in add_results.stderr"
+  changed_when: add_results.rc == 0
   when: nodes_to_add | length > 0
   run_once: true
 

@@ -85,16 +85,10 @@
   ansible.builtin.set_fact:
     etcd_initial_cluster_state: >-
       {%- if (etcd_cluster_exists | default(false)) and unified_hostname not in (etcd_member_names | default([])) -%}
-      existing
-      {%- else -%}
-      new
-      {%- endif -%}
+      existing{%- else -%}new{%- endif -%}
     etcd_use_initial_token: >-
       {%- if (etcd_cluster_exists | default(false)) and unified_hostname not in (etcd_member_names | default([])) -%}
-      false
-      {%- else -%}
-      true
-      {%- endif -%}
+      false{%- else -%}true{%- endif -%}
 
 - name: Copy etcd configuration
   ansible.builtin.template:
