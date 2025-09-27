@@ -1,12 +1,12 @@
 ---
-- name: Get current cluster members
+- name: Get current cluster members for addition check
   when: etcd_cluster_exists
   ansible.builtin.shell: |
     ETCDCTL_API=3 {{ etcd_bin_path }} \
       --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
       --cacert={{ etcd_conf_dir }}/ca.pem \
-      --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}.pem \
-      --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}-key.pem \
+      --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}.pem \
+      --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}-key.pem \
       member list --write-out=json
   register: etcd_current_members
   delegate_to: "{{ etcd_leader }}"
@@ -14,31 +14,124 @@
   changed_when: false
   failed_when: etcd_current_members.rc != 0
 
-- name: Parse current members
+- name: Parse current members and identify unnamed members
   when: etcd_cluster_exists and etcd_current_members is defined
   ansible.builtin.set_fact:
     etcd_existing_member_names: >-
       {{
         (etcd_current_members.stdout | from_json).members |
+        selectattr('name', 'defined') |
+        selectattr('name', 'ne', '') |
         map(attribute='name') |
+        list
+      }}
+    etcd_unnamed_members: >-
+      {{
+        (etcd_current_members.stdout | from_json).members |
+        rejectattr('name', 'defined') |
+        map(attribute='ID') |
         list
       }}
   run_once: true
 
+- name: Show cluster state for addition
+  ansible.builtin.debug:
+    msg:
+      - "Current named members: {{ etcd_existing_member_names | default([]) }}"
+      - "Unnamed/zombie members: {{ etcd_unnamed_members | default([]) }}"
+      - >-
+        Nodes to potentially add: {{ groups['inv_etcd'] |
+        map('extract', hostvars, 'unified_hostname') | list |
+        difference(etcd_existing_member_names | default([])) }}
+  when: etcd_cluster_exists
+  run_once: true
+
+- name: Clean up unnamed members before adding new ones
+  when:
+    - etcd_cluster_exists
+    - etcd_unnamed_members is defined
+    - etcd_unnamed_members | length > 0
+    - etcd_cleanup_unnamed_members | default(true) | bool
+  ansible.builtin.shell: |
+    ETCDCTL_API=3 {{ etcd_bin_path }} \
+      --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
+      --cacert={{ etcd_conf_dir }}/ca.pem \
+      --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}.pem \
+      --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}-key.pem \
+      member remove {{ '%x' | format(item | int) }}
+  delegate_to: "{{ etcd_leader }}"
+  with_items: "{{ etcd_unnamed_members }}"
+  register: cleanup_unnamed_results
+  failed_when: false
+  changed_when: cleanup_unnamed_results.rc == 0
+  run_once: true
+
+- name: Show cleanup results
+  ansible.builtin.debug:
+    msg: >-
+      Cleaned up unnamed member {{ item.item }}: {{ 'SUCCESS' if item.rc == 0
+      else 'FAILED - ' + (item.stderr | default('Unknown error')) }}
+  with_items: "{{ cleanup_unnamed_results.results | default([]) }}"
+  when: cleanup_unnamed_results is defined
+  run_once: true
+
+- name: Verify current hostname is not already in cluster
+  ansible.builtin.debug:
+    msg:
+      - "Current host unified_hostname: {{ unified_hostname }}"
+      - "Already in cluster: {{ unified_hostname in (etcd_existing_member_names | default([])) }}"
+      - "Is cluster leader: {{ inventory_hostname == etcd_leader }}"
+
 - name: Add new etcd members to cluster
   when:
     - etcd_cluster_exists
-    - ansible_hostname not in etcd_existing_member_names
+    - unified_hostname not in (etcd_existing_member_names | default([]))
     - inventory_hostname != etcd_leader
   ansible.builtin.shell: |
     ETCDCTL_API=3 {{ etcd_bin_path }} \
       --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
       --cacert={{ etcd_conf_dir }}/ca.pem \
-      --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}.pem \
-      --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['ansible_hostname'] }}-key.pem \
-      member add {{ ansible_hostname }} \
+      --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}.pem \
+      --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}-key.pem \
+      member add {{ unified_hostname }} \
       --peer-urls=https://{{ ansible_default_ipv4.address }}:{{ etcd_port_peer }}
   delegate_to: "{{ etcd_leader }}"
   register: etcd_member_add_result
-  changed_when: true
-  failed_when: etcd_member_add_result.rc != 0
+  changed_when: etcd_member_add_result.rc == 0
+  failed_when:
+    - etcd_member_add_result.rc != 0
+    - "'already exists' not in etcd_member_add_result.stderr"
+    - "'already a member' not in etcd_member_add_result.stderr"
+
+- name: Show member addition results
+  ansible.builtin.debug:
+    msg: >-
+      Member addition for {{ unified_hostname }}: {{ 'SUCCESS' if
+      (etcd_member_add_result.rc | default(1)) == 0 else 'FAILED/SKIPPED - ' +
+      (etcd_member_add_result.stderr | default('Not executed on this host')) }}
+  when: etcd_member_add_result is defined
+
+- name: Verify cluster state after additions
+  when: etcd_cluster_exists
+  ansible.builtin.shell: |
+    ETCDCTL_API=3 {{ etcd_bin_path }} \
+      --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
+      --cacert={{ etcd_conf_dir }}/ca.pem \
+      --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}.pem \
+      --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}-key.pem \
+      member list --write-out=json
+  register: etcd_post_add_members
+  delegate_to: "{{ etcd_leader }}"
+  run_once: true
+  changed_when: false
+  failed_when: false
+
+- name: Show final cluster state
+  ansible.builtin.debug:
+    msg:
+      - "Final cluster members: {{ (etcd_post_add_members.stdout | from_json).members | selectattr('name', 'defined') | map(attribute='name') | list }}"
+      - "Any remaining unnamed members: {{ (etcd_post_add_members.stdout | from_json).members | rejectattr('name', 'defined') | map(attribute='ID') | list }}"
+  when:
+    - etcd_post_add_members is defined
+    - etcd_post_add_members.rc == 0
+  run_once: true

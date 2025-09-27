@@ -13,12 +13,12 @@
          else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
 
     etcd_address_public: >-
-      {{ ansible_hostname if not etcd_use_ips | bool else
+      {{ unified_hostname if not etcd_use_ips | bool else
         (ansible_default_ipv4.address if etcd_iface_public is in [ "all", "default" ]
          else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
 
     etcd_address_cluster: >-
-      {{ ansible_hostname if not etcd_use_ips | bool else
+      {{ unified_hostname if not etcd_use_ips | bool else
         (ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ]
          else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
 
@@ -88,13 +88,13 @@
 - name: Set etcd configuration parameters # noqa: jinja[spacing]
   ansible.builtin.set_fact:
     etcd_initial_cluster_state: >-
-      {%- if etcd_cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
+      {%- if etcd_cluster_exists and unified_hostname not in (existing_member_names | default([])) -%}
       existing
       {%- else -%}
       new
       {%- endif -%}
     etcd_use_initial_token: >-
-      {%- if etcd_cluster_exists and ansible_hostname not in (existing_member_names | default([])) -%}
+      {%- if etcd_cluster_exists and unified_hostname not in (existing_member_names | default([])) -%}
       false
       {%- else -%}
       true

@@ -5,7 +5,7 @@
 
 - name: Create inventory-specific certificate directory
   ansible.builtin.file:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}"
     state: directory
     mode: '0755'
 
@@ -15,29 +15,29 @@
 
 - name: Debug etcd nodes count
   ansible.builtin.debug:
-    msg: "Found {{ etcd_nodes | length }} etcd nodes: {{ etcd_nodes }}"
+    msg: "Found {{ certificates_etcd_nodes | length }} etcd nodes: {{ certificates_etcd_nodes }}"
 
 - name: Check if CA certificate exists
   ansible.builtin.stat:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca.pem"
   register: certificates_ca_cert_check
 
 - name: Check if CA key exists
   ansible.builtin.stat:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca-key.pem"
   register: certificates_ca_key_check
 
 - name: Generate CA private key
   community.crypto.openssl_privatekey:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca-key.pem"
     size: 2048
     type: RSA
   when: not certificates_ca_key_check.stat.exists
 
 - name: Generate CA CSR
   community.crypto.openssl_csr:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.csr"
-    privatekey_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca.csr"
+    privatekey_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca-key.pem"
     common_name: "etcd-ca"
     organization_name: "etcd"
     basic_constraints:
@@ -51,29 +51,29 @@
 
 - name: Generate CA certificate
   community.crypto.x509_certificate:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.pem"
-    csr_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.csr"
-    privatekey_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca.pem"
+    csr_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca.csr"
+    privatekey_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca-key.pem"
     provider: selfsigned
   when: not certificates_ca_cert_check.stat.exists
 
 - name: Clean up CA CSR
   ansible.builtin.file:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.csr"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca.csr"
     state: absent
   when: not certificates_ca_cert_check.stat.exists
 
 - name: Check existing node certificates
   ansible.builtin.stat:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}.pem"
   register: certificates_node_cert_files_check
-  loop: "{{ etcd_nodes }}"
+  loop: "{{ certificates_etcd_nodes }}"
 
 - name: Check existing node private keys
   ansible.builtin.stat:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}-key.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}-key.pem"
   register: certificates_node_key_files_check
-  loop: "{{ etcd_nodes }}"
+  loop: "{{ certificates_etcd_nodes }}"
 
 - name: Initialize missing certificates list
   ansible.builtin.set_fact:
@@ -101,7 +101,7 @@
 
 - name: Generate private keys for missing nodes
   community.crypto.openssl_privatekey:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}-key.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}-key.pem"
     size: 2048
     type: RSA
     mode: '0644'
@@ -110,8 +110,8 @@
 
 - name: Generate CSR for missing nodes
   community.crypto.openssl_csr:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}.csr"
-    privatekey_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}-key.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}.csr"
+    privatekey_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}-key.pem"
     common_name: "{{ item }}"
     organization_name: "etcd"
     subject_alt_name:
@@ -132,10 +132,10 @@
 
 - name: Generate certificates for missing nodes
   community.crypto.x509_certificate:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}.pem"
-    csr_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}.csr"
-    ownca_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca.pem"
-    ownca_privatekey_path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/ca-key.pem"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}.pem"
+    csr_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}.csr"
+    ownca_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca.pem"
+    ownca_privatekey_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca-key.pem"
     provider: ownca
     mode: '0644'
   loop: "{{ certificates_missing_cert_nodes }}"
@@ -143,14 +143,14 @@
 
 - name: Clean up CSR files
   ansible.builtin.file:
-    path: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}/{{ item }}.csr"
+    path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}.csr"
     state: absent
   loop: "{{ certificates_missing_cert_nodes }}"
   when: certificates_missing_cert_nodes | length > 0
 
 - name: Final certificate count check
   ansible.builtin.find:
-    paths: "{{ playbook_dir }}/pki-dir/{{ inventory_name }}"
+    paths: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}"
     patterns: "*.pem"
     excludes: "*-key.pem,ca-key.pem"
   register: certificates_final_cert_count
@@ -159,7 +159,7 @@
   ansible.builtin.debug:
     msg: |
       Certificate generation completed:
-      - Expected certificates: {{ etcd_nodes | length + 1 }} ({{ etcd_nodes | length }} nodes + 1 CA)
+      - Expected certificates: {{ certificates_etcd_nodes | length + 1 }} ({{ certificates_etcd_nodes | length }} nodes + 1 CA)
       - Generated certificates: {{ certificates_final_cert_count.matched }}
-      - etcd nodes: {{ etcd_nodes | join(', ') }}
+      - etcd nodes: {{ certificates_etcd_nodes | join(', ') }}
       - Generated for new nodes: {{ certificates_missing_cert_nodes | join(', ') if certificates_missing_cert_nodes | length > 0 else 'none' }}
