@@ -2,7 +2,8 @@
 - name: Collect facts for Alt linux
   when: ansible_os_family in ["Altlinux"]
   block:
-    - name: Collect installed RPM packages # noqa: command-instead-of-module
+    - name: Collect installed RPM packages
+      # noqa: command-instead-of-module
       ansible.builtin.command: rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n'
       register: patroni_rpm_output
       changed_when: false
