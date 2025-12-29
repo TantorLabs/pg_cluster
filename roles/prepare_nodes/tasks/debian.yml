@@ -37,6 +37,7 @@
   when:
     - add_nexus_repo | bool
     - ansible_os_family != 'Altlinux'
+
 - name: Block for Altlinux
   when:
     - add_nexus_repo == 'true'
