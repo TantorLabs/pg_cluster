@@ -4,7 +4,7 @@
   tasks: []
 
 - name: Install basic soft
-  hosts: inv_cluster
+  hosts: all
   become: true
   tags: prepare_nodes
   vars_files:

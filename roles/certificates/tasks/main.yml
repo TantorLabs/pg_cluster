@@ -117,7 +117,7 @@
     subject_alt_name:
       - "DNS:{{ item }}"
       - "DNS:{{ hostvars[item]['ansible_fqdn'] | default(item) }}"
-      - "IP:{{ hostvars[item]['ansible_default_ipv4']['address'] | default('127.0.0.1') }}"
+      - "IP:{{ hostvars[item]['ansible_host'] }}"
       - "IP:127.0.0.1"
       - "DNS:localhost"
     key_usage:
