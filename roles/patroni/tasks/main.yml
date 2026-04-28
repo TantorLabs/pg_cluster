@@ -294,6 +294,17 @@
     owner: "{{ patroni_system_user }}"
     group: "{{ patroni_system_group }}"
 
+- name: Create patroni data directories
+  ansible.builtin.file:
+    state: directory
+    path: "{{ item }}"
+    owner: "postgres"
+    group: "postgres"
+    mode: '0750'
+  loop:
+    - "{{ patroni_pg_data_dir }}"
+    - "{{ patroni_pg_config_dir }}"
+
 - name: Create patroni config directory
   ansible.builtin.file:
     path: "{{ patroni_config_dir }}"
