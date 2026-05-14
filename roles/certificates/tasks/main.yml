@@ -9,13 +9,13 @@
     state: directory
     mode: '0755'
 
-- name: Get etcd nodes from inventory
+- name: Get all nodes from inventory
   ansible.builtin.set_fact:
-    certificates_etcd_nodes: "{{ groups['inv_etcd'] | default([]) }}"
+    certificates_all_nodes: "{{ groups['all'] | default([]) }}"
 
-- name: Debug etcd nodes count
+- name: Debug all nodes count
   ansible.builtin.debug:
-    msg: "Found {{ certificates_etcd_nodes | length }} etcd nodes: {{ certificates_etcd_nodes }}"
+    msg: "Found {{ certificates_all_nodes | length }} all nodes: {{ certificates_all_nodes }}"
 
 - name: Check if CA certificate exists
   ansible.builtin.stat:
@@ -67,13 +67,13 @@
   ansible.builtin.stat:
     path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}.pem"
   register: certificates_node_cert_files_check
-  loop: "{{ certificates_etcd_nodes }}"
+  loop: "{{ certificates_all_nodes }}"
 
 - name: Check existing node private keys
   ansible.builtin.stat:
     path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}-key.pem"
   register: certificates_node_key_files_check
-  loop: "{{ certificates_etcd_nodes }}"
+  loop: "{{ certificates_all_nodes }}"
 
 - name: Initialize missing certificates list
   ansible.builtin.set_fact:
@@ -159,7 +159,7 @@
   ansible.builtin.debug:
     msg: |
       Certificate generation completed:
-      - Expected certificates: {{ certificates_etcd_nodes | length + 1 }} ({{ certificates_etcd_nodes | length }} nodes + 1 CA)
+      - Expected certificates: {{ certificates_all_nodes | length + 1 }} ({{ certificates_all_nodes | length }} nodes + 1 CA)
       - Generated certificates: {{ certificates_final_cert_count.matched }}
-      - etcd nodes: {{ certificates_etcd_nodes | join(', ') }}
+      - all nodes: {{ certificates_all_nodes | join(', ') }}
       - Generated for new nodes: {{ certificates_missing_cert_nodes | join(', ') if certificates_missing_cert_nodes | length > 0 else 'none' }}
