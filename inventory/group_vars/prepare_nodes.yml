@@ -11,3 +11,6 @@ nexus_apt_ubuntu_20_04: "deb [arch=amd64 signed-by=/etc/apt/keyrings/tantor-nexu
 nexus_yum_redos_7_3: "https://nexus-public.tantorlabs.ru/repository/redos-7.3/"
 nexus_yum_redos_8_0: "https://nexus-public.tantorlabs.ru/repository/redos-8/"
 nexus_yum_altlinux_c10f2: "https://nexus-public.tantorlabs.ru/repository/altrepo_c10f2/"
+# Placeholder: the repository is expected to become available at this URL.
+# Override with -e nexus_zypper_mosos_15_5=<url> if the published URL differs.
+nexus_zypper_mosos_15_5: "https://nexus-public.tantorlabs.ru/repository/mosos-15.5/"

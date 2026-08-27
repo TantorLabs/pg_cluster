@@ -5,6 +5,33 @@
 - name: Installation block
   when: postgresql_vendor == 'classic'
   block:
+    - name: Validate classic PostgreSQL package parameters
+      ansible.builtin.assert:
+        that:
+          - (major_version | string) is match('^[0-9]+$')
+          - postgresql_package_version | default('') is string
+          - postgresql_package_version | default('') is not search('\\s')
+          - ansible_pkg_mgr in ['apt', 'apt_rpm', 'dnf', 'yum', 'zypper']
+        fail_msg: >-
+          Invalid classic PostgreSQL package parameters. major_version must be
+          numeric and postgresql_package_version must be a package version
+          without whitespace.
+
+    - name: Build classic PostgreSQL package specifications
+      ansible.builtin.set_fact:
+        postgresql_deb_package_spec: >-
+          {{ 'postgresql-' ~ major_version ~
+             (('=' ~ postgresql_package_version)
+              if postgresql_package_version | default('') | length > 0 else '') }}
+        postgresql_rpm_server_package_spec: >-
+          {{ 'postgresql' ~ major_version ~ '-server' ~
+             (('-' ~ postgresql_package_version)
+              if postgresql_package_version | default('') | length > 0 else '') }}
+        postgresql_rpm_contrib_package_spec: >-
+          {{ 'postgresql' ~ major_version ~ '-contrib' ~
+             (('-' ~ postgresql_package_version)
+              if postgresql_package_version | default('') | length > 0 else '') }}
+
     - name: Prerequisite block
       block:
         - name: Add Epel repository
@@ -126,13 +153,14 @@
             filename: postgresql-classic
 
         - name: Install postgresql-server (Debian)
-          ansible.builtin.package:
+          ansible.builtin.apt:
             name:
-              - postgresql-{{ major_version }}
+              - "{{ postgresql_deb_package_spec }}"
               - postgresql-contrib
               - libpq-dev
               - python3-psycopg2
             state: present
+            allow_downgrade: true
 
     - name: Block for Centos-7 , RedOS , Rocky
       when: ansible_distribution in ["CentOS", "RED", "Rocky"]
@@ -174,13 +202,14 @@
           changed_when: ("postgresql" in postgres_classic_rocky_enabled_modules.stdout)
 
         - name: Install PostgreSQL
-          ansible.builtin.package:
+          ansible.builtin.dnf:
             name:
-              - postgresql{{ major_version }}-server
-              - postgresql{{ major_version }}-contrib
+              - "{{ postgresql_rpm_server_package_spec }}"
+              - "{{ postgresql_rpm_contrib_package_spec }}"
               - postgresql-libs
               - python3-psycopg2
             state: present
+            allow_downgrade: true
 
         - name: Install PostgreSQL extentions
           ansible.builtin.package:
@@ -205,12 +234,13 @@
             filename: postgresql-classic
 
         - name: Install postgresql-server (Astra)
-          ansible.builtin.package:
+          ansible.builtin.apt:
             name:
-              - postgresql-{{ major_version }}
+              - "{{ postgresql_deb_package_spec }}"
               - postgresql-contrib
               - libpq-dev
             state: present
+            allow_downgrade: true
 
     - name: Block for AltLinux
       when: (ansible_facts['os_family'] == "Altlinux")
@@ -221,10 +251,10 @@
             state: present
 
         - name: Install PostgreSQL
-          ansible.builtin.package:
+          community.general.apt_rpm:
             name:
-              - postgresql{{ major_version }}-server
-              - postgresql{{ major_version }}-contrib
+              - "{{ postgresql_rpm_server_package_spec }}"
+              - "{{ postgresql_rpm_contrib_package_spec }}"
               - python3-module-psycopg2
             state: present
 
@@ -235,6 +265,15 @@
             mode: '0755'
             owner: postgres
             group: postgres
+
+    - name: Install classic PostgreSQL (MosOS)
+      community.general.zypper:
+        name:
+          - "{{ postgresql_rpm_server_package_spec }}"
+          - "{{ postgresql_rpm_contrib_package_spec }}"
+        state: present
+        force_resolution: true
+      when: ansible_pkg_mgr == 'zypper'
 
     - name: Block for Cleanup for Debian-like systems
       when: (ansible_facts['os_family'] == "Astra Linux") or

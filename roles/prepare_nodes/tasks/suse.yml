@@ -1,0 +1,35 @@
+---
+- name: Install prerequisite packages (zypper)
+  community.general.zypper:
+    name:
+      - openssl
+      - ca-certificates
+      - gpg2
+      - libpq5
+    state: present
+
+- name: Disable firewalld on MosOS
+  ansible.builtin.service:
+    name: firewalld
+    state: stopped
+    enabled: false
+
+- name: Add Tantor repository key for Zypper-based systems
+  ansible.builtin.rpm_key:
+    key: "{{ nexus_key_url }}"
+    state: present
+  when: add_nexus_repo | bool
+
+- name: Configure Tantor Nexus repository for MosOS 15.5
+  community.general.zypper_repository:
+    name: tantorlabs
+    description: Tantorlabs repository for MosOS 15.5
+    repo: "{{ nexus_zypper_mosos_15_5 }}"
+    autorefresh: true
+    auto_import_keys: true
+    disable_gpg_check: false
+    runrefresh: true
+    state: present
+  when:
+    - add_nexus_repo | bool
+    - ansible_distribution_version is version('15.5', '==')

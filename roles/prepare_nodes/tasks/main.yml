@@ -89,6 +89,10 @@
   ansible.builtin.include_tasks: rhel.yml
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
 
+- name: Include task for SUSE-like systems (MosOS)
+  ansible.builtin.include_tasks: suse.yml
+  when: ansible_pkg_mgr == 'zypper'
+
 - name: Get content of /etc/security/limits.conf file
   ansible.builtin.lineinfile:
     path: /etc/security/limits.conf

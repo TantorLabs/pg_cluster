@@ -37,6 +37,16 @@
     state: present
     allow_downgrade: true
 
+- name: Install haproxy-tantor-all (MosOS)
+  when: ansible_pkg_mgr == 'zypper'
+  community.general.zypper:
+    name: >-
+      {{ 'haproxy-tantor-all-' ~ haproxy_package_version
+         if haproxy_package_version | length > 0
+         else 'haproxy-tantor-all' }}
+    state: present
+    force_resolution: true
+
 - name: Create config file for haproxy
   ansible.builtin.template:
     src: haproxy.cfg.j2

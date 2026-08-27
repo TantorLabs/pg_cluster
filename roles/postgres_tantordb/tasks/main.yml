@@ -1,6 +1,59 @@
 ---
-- name: Install tantor-server
-  ansible.builtin.package:
-    name: "tantor-{{ edition | d('be', true) }}-server-{{ major_version | d('16', true) }}"
-    state: present
+- name: Validate TantorDB package parameters
+  ansible.builtin.assert:
+    that:
+      - (major_version | string) is match('^[0-9]+$')
+      - edition is string
+      - edition is match('^[a-z0-9][a-z0-9-]*$')
+      - tantordb_package_version | default('') is string
+      - tantordb_package_version | default('') is not search('\\s')
+      - ansible_pkg_mgr in ['apt', 'apt_rpm', 'dnf', 'yum', 'zypper']
+    fail_msg: >-
+      Invalid TantorDB package parameters. major_version must be numeric,
+      edition must contain lowercase letters, digits or hyphens, and
+      tantordb_package_version must be a package version without whitespace.
   when: postgresql_vendor == 'tantordb'
+
+- name: Build TantorDB package specification
+  ansible.builtin.set_fact:
+    tantordb_package_name: "tantor-{{ edition }}-server-{{ major_version }}"
+    tantordb_package_spec: >-
+      {{ 'tantor-' ~ edition ~ '-server-' ~ major_version ~
+         (('=' if ansible_pkg_mgr == 'apt' else '-') ~ tantordb_package_version
+          if tantordb_package_version | default('') | length > 0 else '') }}
+  when: postgresql_vendor == 'tantordb'
+
+- name: Install TantorDB server (Debian package)
+  ansible.builtin.apt:
+    name: "{{ tantordb_package_spec }}"
+    state: present
+    allow_downgrade: true
+  when:
+    - postgresql_vendor == 'tantordb'
+    - ansible_pkg_mgr == 'apt'
+
+- name: Install TantorDB server (RPM package)
+  ansible.builtin.dnf:
+    name: "{{ tantordb_package_spec }}"
+    state: present
+    allow_downgrade: true
+  when:
+    - postgresql_vendor == 'tantordb'
+    - ansible_pkg_mgr in ['dnf', 'yum']
+
+- name: Install TantorDB server (ALT RPM package)
+  community.general.apt_rpm:
+    name: "{{ tantordb_package_spec }}"
+    state: present
+  when:
+    - postgresql_vendor == 'tantordb'
+    - ansible_pkg_mgr == 'apt_rpm'
+
+- name: Install TantorDB server (MosOS)
+  community.general.zypper:
+    name: "{{ tantordb_package_spec }}"
+    state: present
+    force_resolution: true
+  when:
+    - postgresql_vendor == 'tantordb'
+    - ansible_pkg_mgr == 'zypper'
