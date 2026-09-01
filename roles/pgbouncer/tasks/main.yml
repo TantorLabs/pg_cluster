@@ -51,8 +51,8 @@
   ansible.builtin.file:
     path: "/opt/tantor/etc/pgbouncer"
     state: directory
-    owner: "postgres"
-    group: "postgres"
+    owner: "root"
+    group: "root"
     mode: "0755"
 
 - name: Write pgbouncer.ini
@@ -60,21 +60,27 @@
     src: pgbouncer.ini.j2
     dest: /opt/tantor/etc/pgbouncer/pgbouncer.ini
     backup: true
-    owner: "postgres"
-    group: "postgres"
-    mode: "0755"
+    owner: "pgbouncer"
+    group: "pgbouncer"
+    mode: "0600"
   notify: Restart pgbouncer-tantor
 
-- name: Create log and pid directories
+- name: Create PgBouncer log directory
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "/opt/tantor/var/log/pgbouncer"
     state: directory
-    owner: "postgres"
-    group: "postgres"
+    owner: "pgbouncer"
+    group: "pgbouncer"
+    mode: "0700"
+  notify: Restart pgbouncer-tantor
+
+- name: Create PgBouncer PID directory
+  ansible.builtin.file:
+    path: "/var/run/pgbouncer-tantor"
+    state: directory
+    owner: "pgbouncer"
+    group: "pgbouncer"
     mode: "0755"
-  with_items:
-    - "/opt/tantor/var/log/pgbouncer"
-    - "/var/run/pgbouncer-tantor"
   notify: Restart pgbouncer-tantor
 
 - name: Check if postgresql node is in master state
@@ -103,8 +109,8 @@
   ansible.builtin.file:
     path: /opt/tantor/etc/pgbouncer/userlist.txt
     owner: "postgres"
-    group: "postgres"
-    mode: "0644"
+    group: "pgbouncer"
+    mode: "0640"
 
 - name: Check if pgbouncer missing in /opt/tantor/etc/pgbouncer/userlist.txt file
   ansible.builtin.lineinfile:
@@ -152,22 +158,13 @@
   changed_when: false
   when: pgbouncer_psql_node_status.stdout == 'f'
 
-- name: Create pgbouncer unit file
-  ansible.builtin.template:
-    src: pgbouncer.service.j2
-    dest: /etc/systemd/system/pgbouncer-tantor.service
-    owner: root
-    group: root
-    mode: "0644"
+- name: Remove legacy PgBouncer systemd override
+  ansible.builtin.file:
+    path: /etc/systemd/system/pgbouncer-tantor.service
+    state: absent
   notify: Restart pgbouncer-tantor
 
-- name: Override tmpfiles.d configuration for pgbouncer-tantor
-  ansible.builtin.copy:
-    dest: /etc/tmpfiles.d/pgbouncer-tantor.conf
-    content: |
-      d /run/pgbouncer-tantor 0755 postgres postgres -
-    owner: root
-    group: root
-    mode: '0644'
-  register: pgbouncer_override
-  notify: Restart pgbouncer-tantor
+- name: Remove legacy PgBouncer tmpfiles override
+  ansible.builtin.file:
+    path: /etc/tmpfiles.d/pgbouncer-tantor.conf
+    state: absent
