@@ -105,35 +105,45 @@
   become_user: postgres
   when: pgbouncer_psql_node_status.stdout == 'f'
 
-- name: Create userlist for PGbouncer
-  ansible.builtin.file:
-    path: /opt/tantor/etc/pgbouncer/userlist.txt
-    owner: "postgres"
-    group: "pgbouncer"
-    mode: "0640"
-
-- name: Check if pgbouncer missing in /opt/tantor/etc/pgbouncer/userlist.txt file
-  ansible.builtin.lineinfile:
-    path: /opt/tantor/etc/pgbouncer/userlist.txt
-    regexp: '\"pgbouncer\"\s\"(?:md5\w+\"|SCRAM-SHA-256.*\")'
-    state: absent
-  check_mode: true
-  register: pgbouncer_userlist
-  changed_when: false
-
-- name: Run query for creation of userlist.txt
+- name: Read current PgBouncer authentication data
   vars:
     ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_query:
     login_db: postgres
-    query: |
-      COPY (SELECT usename, passwd FROM pg_shadow WHERE usename='pgbouncer')
-      TO '/opt/tantor/etc/pgbouncer/userlist.txt'
-      WITH (FORMAT CSV, DELIMITER ' ', FORCE_QUOTE *)
-  when: ( groups['inv_cluster'] | length == 1  ) or (not pgbouncer_userlist.found)
+    query: >-
+      SELECT usename, passwd
+      FROM pg_catalog.pg_shadow
+      WHERE usename = %(pgbouncer_username)s
+    named_args:
+      pgbouncer_username: "{{ pgbouncer_auth_user }}"
   become: true
   become_user: postgres
+  register: pgbouncer_auth_data
+  changed_when: false
+  no_log: true
+
+- name: Validate PgBouncer authentication data
+  ansible.builtin.assert:
+    that:
+      - pgbouncer_auth_data.query_result | length == 1
+      - pgbouncer_auth_data.query_result[0].usename == pgbouncer_auth_user
+      - pgbouncer_auth_data.query_result[0].passwd is string
+      - pgbouncer_auth_data.query_result[0].passwd | length > 0
+    fail_msg: >-
+      Unable to create userlist.txt: PostgreSQL must return exactly one
+      PgBouncer role with a non-empty password hash.
+  no_log: true
+
+- name: Write PgBouncer userlist
+  ansible.builtin.copy:
+    content: |
+      "{{ pgbouncer_auth_data.query_result[0].usename }}" "{{ pgbouncer_auth_data.query_result[0].passwd }}"
+    dest: /opt/tantor/etc/pgbouncer/userlist.txt
+    owner: "postgres"
+    group: "pgbouncer"
+    mode: "0640"
   notify: Restart pgbouncer-tantor
+  no_log: true
 
 - name: Upload pgbouncer_prepare.sql
   become: true
