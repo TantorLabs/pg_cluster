@@ -1,0 +1,121 @@
+# Fixture variables for patroni template rendering tests
+# These supplement/override group_vars for template rendering
+
+patroni_scope: main
+patroni_namespace: /service/
+patroni_name: pg-node1
+patroni_log_destination: log
+patroni_log_level: INFO
+patroni_log_format: "%(asctime)s %(levelname)s: %(message)s"
+patroni_log_dateformat: ""
+patroni_log_max_queue_size: 1000
+patroni_log_dir: /opt/tantor/var/log/patroni
+patroni_log_file_num: 4
+patroni_log_file_size: 25000000
+patroni_log_loggers:
+  - { module: "patroni.postmaster", level: "WARNING" }
+  - { module: "urllib3", level: "WARNING" }
+patroni_restapi_listen: "0.0.0.0:8008"
+patroni_restapi_connect_address: "10.20.0.11:8008"
+patroni_restapi_certfile: ""
+patroni_restapi_keyfile: ""
+patroni_restapi_cafile: ""
+patroni_restapi_username: "test_user"
+patroni_restapi_password: "test_pass"
+patroni_etcd3_host: ""
+patroni_etcd3_hosts: "10.20.0.11:2379,10.20.0.12:2379,10.20.0.13:2379"
+patroni_etcd3_use_proxies: false
+patroni_etcd3_url: ""
+patroni_etcd3_proxy: ""
+patroni_etcd3_srv: ""
+patroni_etcd3_protocol: https
+patroni_etcd3_username: ""
+patroni_etcd3_password: ""
+patroni_etcd3_cacert: "/opt/tantor/etc/patroni/etcd-ca.pem"
+patroni_etcd3_cert: "/opt/tantor/etc/patroni/etcd-client.pem"
+patroni_etcd3_key: "/opt/tantor/etc/patroni/etcd-client-key.pem"
+patroni_bootstrap_dcs_ttl: 30
+patroni_bootstrap_dcs_loop_wait: 10
+patroni_bootstrap_dcs_retry_timeout: 10
+patroni_bootstrap_dcs_maximum_lag_on_failover: 1048576
+patroni_bootstrap_dcs_master_start_timeout: 300
+patroni_bootstrap_dcs_synchronous_mode: false
+patroni_bootstrap_dcs_synchronous_mode_strict: false
+patroni_bootstrap_dcs_check_timeline: false
+patroni_bootstrap_dcs_standby_cluster: []
+patroni_bootstrap_dcs_pg_use_pg_rewind: true
+patroni_bootstrap_dcs_pg_use_slots: true
+patroni_bootstrap_dcs_pg_parameters:
+  - { option: "max_connections", value: "100" }
+  - { option: "max_wal_senders", value: "10" }
+  - { option: "wal_level", value: "replica" }
+  - { option: "hot_standby", value: "on" }
+patroni_bootstrap_dcs_pg_recovery_conf: []
+patroni_bootstrap_dcs_pg_hba:
+  - { type: "host", database: "all", user: "all", address: "0.0.0.0/0", method: "scram-sha-256" }
+patroni_pg_authentication:
+  - { type: "superuser", username: "postgres", password: "supersecretpostgrespasswd" }
+  - { type: "replication", username: "replicator", password: "repuserpasswd" }
+patroni_bootstrap_users:
+  - { name: "postgres", password: "supersecretpostgrespasswd", options: [] }
+  - { name: "replicator", password: "repuserpasswd", options: ['replication'] }
+patroni_pg_callbacks:
+  - { event: "on_reload", script: "" }
+  - { event: "on_restart", script: "" }
+  - { event: "on_role_change", script: "" }
+  - { event: "on_start", script: "" }
+  - { event: "on_stop", script: "" }
+patroni_pg_create_replica_methods:
+  - basebackup
+patroni_pg_basebackup: []
+patroni_pg_wal_e: []
+patroni_pg_wal_g: []
+patroni_pg_barman: []
+patroni_pg_pgbackrest: []
+patroni_pg_recovery_conf: []
+patroni_pg_custom_conf: ""
+patroni_pg_parameters:
+  - { option: "unix_socket_directories", value: "/var/run/postgresql" }
+patroni_pg_hba: []
+patroni_pg_ident: []
+patroni_pg_ctl_timeout: 60
+patroni_pg_remove_data_directory_on_rewind_failure: false
+patroni_pg_remove_data_directory_on_diverged_timelines: false
+patroni_watchdog_mode: "off"
+patroni_watchdog_device: /dev/watchdog
+patroni_watchdog_safety_margin: 5
+patroni_tags:
+  - { name: "nofailover", value: "false" }
+  - { name: "noloadbalance", value: "false" }
+  - { name: "clonefrom", value: "false" }
+  - { name: "nosync", value: "false" }
+  - { name: "replicatefrom", value: "" }
+patroni_pg_bin_dir: "/usr/lib/postgresql/16/bin"
+patroni_pg_pgpass: /var/lib/postgresql/.pgpass
+patroni_bin_dir: /usr/bin
+patroni_config_dir: "/opt/tantor/etc/patroni"
+patroni_system_user: postgres
+patroni_system_group: postgres
+patroni_pg_port: 5432
+patroni_pg_listen: "0.0.0.0:5432"
+patroni_pg_connect_address: "10.20.0.11:5432"
+patroni_pg_data_dir: "/var/lib/postgresql/tantor-be-16/main/pg-node1"
+patroni_pg_config_dir: "/var/lib/postgresql/tantor-be-16/main/pg-node1"
+patroni_exec_start_pre: "/bin/mkdir -m 2750 -p /var/run/postgresql/16-main.pg_stat_tmp"
+patroni_superuser_username: postgres
+patroni_superuser_password: supersecretpostgrespasswd
+patroni_replication_username: replicator
+patroni_replication_password: repuserpasswd
+pg_conf_db_cpu: 2
+pg_conf_db_ram: "1024Mi"
+pg_conf_db_disk_type: SSD
+pg_conf_db_duty: mixed
+patroni_pg_conf_data:
+  postgresql:
+    parameters:
+      max_connections: 100
+      shared_buffers: 256MB
+      effective_cache_size: 768MB
+      wal_level: replica
+      hot_standby: on
+      unix_socket_directories: /var/run/postgresql

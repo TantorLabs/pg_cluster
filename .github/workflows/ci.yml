@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  static-tests:
+    name: Static and template tests
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -r tests/requirements.txt 'ansible==9.6.1' 'ansible-core==2.16.19'
+          pip check
+      - name: Validate and export version matrix
+        id: matrix
+        run: echo "value=$(python3 tests/run_version_matrix.py --list-json)" >> "$GITHUB_OUTPUT"
+      - name: Mandatory lint and local tests
+        run: make lint test
+
+  version-matrix:
+    name: "Static matrix: ${{ matrix.name }}"
+    runs-on: ubuntu-22.04
+    needs: static-tests
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.static-tests.outputs.matrix) }}
+    env:
+      PYTHON_VERSION: ${{ matrix.python }}
+      ANSIBLE_VERSION: ${{ matrix.ansible }}
+      ANSIBLE_CORE_VERSION: ${{ matrix.ansible_core }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install exact matrix versions together
+        run: |
+          pip install -r tests/requirements.txt "ansible==$ANSIBLE_VERSION" "ansible-core==$ANSIBLE_CORE_VERSION"
+          pip check
+          python3 tests/check_versions.py
+      - name: Run local tests
+        run: make test
+
+  integration:
+    name: "Integration: ${{ matrix.name }}"
+    runs-on: ubuntu-22.04
+    # Cheap per-entry checks (pip resolution, lint, syntax) run first in
+    # version-matrix; only pay for a full Docker deploy once those pass.
+    needs: [static-tests, version-matrix]
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.static-tests.outputs.matrix) }}
+    env:
+      COMPOSE_PROJECT_NAME: pg-cluster-ci
+      PYTHON_VERSION: ${{ matrix.python }}
+      ANSIBLE_VERSION: ${{ matrix.ansible }}
+      ANSIBLE_CORE_VERSION: ${{ matrix.ansible_core }}
+      PATRONI_VERSION: ${{ matrix.patroni }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start cluster
+        run: make up
+      - name: Deploy and verify cluster
+        run: docker compose -f tests/docker/docker-compose.yml exec -T ansible-controller make -f /opt/Makefile.controller test
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p test-artifacts
+          docker compose -f tests/docker/docker-compose.yml logs --no-color > test-artifacts/compose.log 2>&1 || true
+          docker compose -f tests/docker/docker-compose.yml cp ansible-controller:/tmp/ansible/ansible.log test-artifacts/ansible.log || true
+          for node in pg-node1 pg-node2 pg-node3; do
+            docker compose -f tests/docker/docker-compose.yml exec -T "$node" journalctl --no-pager > "test-artifacts/$node.log" 2>&1 || true
+            docker compose -f tests/docker/docker-compose.yml exec -T "$node" \
+              sh -c 'systemctl status pgbouncer-tantor --no-pager; ls -la /opt/tantor/etc/pgbouncer /opt/tantor/var/log/pgbouncer /var/run/pgbouncer-tantor' \
+              > "test-artifacts/$node-pgbouncer-status.log" 2>&1 || true
+            docker compose -f tests/docker/docker-compose.yml cp "$node:/opt/tantor/etc/pgbouncer/pgbouncer.ini" "test-artifacts/$node-pgbouncer.ini" || true
+            docker compose -f tests/docker/docker-compose.yml cp "$node:/opt/tantor/etc/pgbouncer/userlist.txt" "test-artifacts/$node-pgbouncer-userlist.txt" || true
+            docker compose -f tests/docker/docker-compose.yml cp "$node:/opt/tantor/var/log/pgbouncer/pgbouncer.log" "test-artifacts/$node-pgbouncer.log" || true
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-diagnostics-${{ matrix.name }}
+          path: test-artifacts/
+      - name: Tear down
+        if: always()
+        run: make down
+
+  integration-astra:
+    name: "Integration: Astra Linux 1.7 (target Python 3.7)"
+    runs-on: ubuntu-22.04
+    # Pay for the heavy Astra deploy only after the cheap checks pass.
+    needs: [static-tests, version-matrix]
+    # The Astra node image pulls from registry.astralinux.ru and
+    # download.astralinux.ru (external registries outside this
+    # repository's control), so a registry outage must not fail the
+    # whole CI — same policy as the package-policy job.
+    continue-on-error: true
+    timeout-minutes: 60
+    env:
+      COMPOSE_PROJECT_NAME: pg-cluster-astra-ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start Astra cluster
+        run: make astra-up
+      - name: Deploy and verify cluster
+        run: make test-astra-deploy
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p test-artifacts
+          docker compose -f tests/docker/docker-compose.astra.yml logs --no-color > test-artifacts/compose.log 2>&1 || true
+          docker compose -f tests/docker/docker-compose.astra.yml cp ansible-controller:/tmp/ansible/ansible.log test-artifacts/ansible.log || true
+          for node in pg-node1 pg-node2 pg-node3; do
+            docker compose -f tests/docker/docker-compose.astra.yml exec -T "$node" journalctl --no-pager > "test-artifacts/$node.log" 2>&1 || true
+            docker compose -f tests/docker/docker-compose.astra.yml exec -T "$node" \
+              sh -c '/opt/tantor/usr/bin/patronictl -c /opt/tantor/etc/patroni/'"$node"'.yml list 2>&1; \
+                     systemctl --no-pager status patroni-tantor etcd-tantor haproxy-tantor pgbouncer-tantor keepalived-tantor' \
+              > "test-artifacts/$node-status.log" 2>&1 || true
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-integration-diagnostics
+          path: test-artifacts/
+      - name: Tear down
+        if: always()
+        run: docker compose -f tests/docker/docker-compose.astra.yml down -v
+
+  package-policy:
+    name: "Package policy: Astra 1.7 / RedOS 7 / ALT p10"
+    runs-on: ubuntu-22.04
+    # The images live in external registries (astralinux, red-soft,
+    # altlinux); their availability is outside this repository's control,
+    # so a registry outage must not fail the whole CI.
+    continue-on-error: true
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -r tests/requirements.txt 'ansible-core==2.16.19'
+          ansible-galaxy collection install 'community.docker==3.12.0' 'community.general==8.6.0'
+      - name: Run libpq-dev package-policy checks
+        run: python3 tests/docker/test_package_policy.py

@@ -1,0 +1,229 @@
+---
+# Package-policy integration test for the libpq dev packages.
+#
+# Runs the REAL roles/prepare_nodes task files against a target container
+# (Astra Linux 1.7, ALT Linux p10, RED OS 7) and asserts the libpq-dev
+# policy: the dev package (libpq-dev / libpq5-devel) is installed only
+# when the OS provides no psycopg2 package (python3-psycopg2 or similar).
+#
+# Executed by tests/docker/test_package_policy.py in up to three phases:
+#   1. natural      — image state as pulled; policy invariant must hold
+#   2. fallback     — apt-cache hidden; dev package must be installed
+#   3. idempotency  — natural again; the run must change nothing
+# Phases 2-3 apply to apt-family images only; RED OS (dnf) instead checks
+# that the role installs runtime libpq and no devel package.
+- name: libpq dev-package policy
+  hosts: all
+  gather_facts: true
+  become: false
+  # Tantor nexus URLs used by the role (public repository, test-safe).
+  vars_files:
+    - "{{ playbook_dir }}/../../inventory/group_vars/prepare_nodes.yml"
+  vars:
+    policy_force_fallback: false
+    # Normalization removes the dev package so the test verifies the
+    # role's own decision rather than a possibly preinstalled package.
+    policy_normalize: true
+  tasks:
+    - name: Classify target OS for the policy test
+      ansible.builtin.set_fact:
+        policy_family: >-
+          {{ 'alt' if ansible_facts.os_family == 'Altlinux'
+             else 'apt' if ansible_facts.os_family in ['Astra Linux', 'Astra Linux (Orel)', 'Debian']
+             else 'rhel' if ansible_facts.os_family in ['RED', 'Centos', 'Rocky', 'RedHat']
+             else 'unsupported' }}
+        policy_dev_pkg: >-
+          {{ 'libpq5-devel' if ansible_facts.os_family == 'Altlinux'
+             else 'libpq-devel' if ansible_facts.os_family in ['RED', 'Centos', 'Rocky', 'RedHat']
+             else 'libpq-dev' }}
+
+    - name: Stop on unsupported OS family
+      ansible.builtin.fail:
+        msg: "Policy test does not support OS family: {{ ansible_facts.os_family }}"
+      when: policy_family == 'unsupported'
+
+    # The role's psycopg2 check reads apt-cache, which needs package lists;
+    # a freshly started container may have none yet.
+    - name: Refresh apt metadata (policy precondition)
+      when: policy_family in ['apt', 'alt']
+      ansible.builtin.command: apt-get update
+      changed_when: false
+
+    - name: Normalize initial state (remove the dev package)
+      when:
+        - policy_normalize | bool
+        - policy_family in ['apt', 'alt', 'rhel']
+      ansible.builtin.package:
+        name: "{{ policy_dev_pkg }}"
+        state: absent
+
+    - name: Run prepare_nodes policy tasks (Debian/ALT path)
+      when:
+        - policy_family in ['apt', 'alt']
+        - not policy_force_fallback | bool
+      ansible.builtin.import_tasks: "{{ playbook_dir }}/../../roles/prepare_nodes/tasks/debian.yml"
+      vars:
+        add_nexus_repo: "{{ policy_add_nexus_repo }}"
+
+    - name: Run prepare_nodes policy tasks (RHEL-like path)
+      when: policy_family == 'rhel'
+      ansible.builtin.import_tasks: "{{ playbook_dir }}/../../roles/prepare_nodes/tasks/rhel.yml"
+      vars:
+        add_nexus_repo: "{{ policy_add_nexus_repo }}"
+
+    - name: Forced-fallback phase
+      when:
+        - policy_family in ['apt', 'alt']
+        - policy_force_fallback | bool
+      block:
+        # The apt/apt-rpm tooling itself needs apt-cache (the apt_rpm module
+        # runs `apt-cache policy`), so instead of hiding the binary we wrap
+        # it: apt-cache sees no package lists (psycopg2 becomes
+        # undetectable) while apt-get keeps working off the real lists.
+        - name: Make psycopg2 undetectable via an apt-cache wrapper
+          ansible.builtin.shell: |
+            mv /usr/bin/apt-cache /usr/bin/apt-cache.policy-real
+            printf '#!/bin/sh\nexec /usr/bin/apt-cache.policy-real -o Dir::State::lists=/nonexistent "$@"\n' > /usr/bin/apt-cache
+            chmod +x /usr/bin/apt-cache
+          args:
+            executable: /bin/sh
+          changed_when: true
+
+        - name: Re-run prepare_nodes policy tasks with psycopg2 undetectable
+          ansible.builtin.import_tasks: "{{ playbook_dir }}/../../roles/prepare_nodes/tasks/debian.yml"
+          vars:
+            add_nexus_repo: "{{ policy_add_nexus_repo }}"
+
+        - name: Detect dev package state (dpkg, fallback proof)
+          when: policy_family == 'apt'
+          # The package name must be a separate argument: inside the -f
+          # format string dpkg-query treats it as literal text and lists
+          # every installed package instead.
+          ansible.builtin.command: "dpkg-query -W -f='${db:Status-Abbrev}' {{ policy_dev_pkg }}"
+          register: policy_fallback_dpkg
+          changed_when: false
+          failed_when: false
+
+        - name: Detect dev package state (rpm, fallback proof)
+          when: policy_family == 'alt'
+          ansible.builtin.command: "rpm -q {{ policy_dev_pkg }}"
+          register: policy_fallback_rpm
+          changed_when: false
+          failed_when: false
+
+        - name: Assert fallback installed the dev package
+          ansible.builtin.assert:
+            that: >-
+              (policy_family == 'apt'
+               and (policy_fallback_dpkg.stdout | d('') | trim is match('ii')))
+              or (policy_family == 'alt' and policy_fallback_rpm.rc | d(1) == 0)
+            success_msg: "Fallback OK: {{ policy_dev_pkg }} installed without detectable psycopg2"
+      always:
+        - name: Restore real apt-cache binary
+          ansible.builtin.shell: |
+            rm -f /usr/bin/apt-cache
+            mv /usr/bin/apt-cache.policy-real /usr/bin/apt-cache
+          args:
+            executable: /bin/sh
+          changed_when: false
+          failed_when: false
+
+        - name: Recompute psycopg2 reality after restore
+          when: policy_family in ['apt', 'alt']
+          ansible.builtin.command: "apt-cache show {{ item }}"
+          loop:
+            - python3-psycopg2
+            - python3-module-psycopg2
+            - python-psycopg2
+          register: policy_restored_psycopg2_check
+          changed_when: false
+          failed_when: false
+
+        - name: Set psycopg2 reality fact (post-restore)
+          when: policy_family in ['apt', 'alt']
+          ansible.builtin.set_fact:
+            policy_psycopg2_in_reality: >-
+              {{ policy_restored_psycopg2_check.results
+                 | selectattr('rc', 'equalto', 0)
+                 | rejectattr('stdout', 'equalto', '')
+                 | list | length > 0 }}
+
+        - name: Remove fallback-installed dev package when psycopg2 is available
+          when:
+            - policy_family in ['apt', 'alt']
+            - policy_psycopg2_in_reality | bool
+          ansible.builtin.package:
+            name: "{{ policy_dev_pkg }}"
+            state: absent
+
+    - name: Verify psycopg2 reality independently (apt-like)
+      when: policy_family in ['apt', 'alt']
+      ansible.builtin.command: "apt-cache show {{ item }}"
+      loop:
+        - python3-psycopg2
+        - python3-module-psycopg2
+        - python-psycopg2
+      register: policy_psycopg2_check
+      changed_when: false
+      failed_when: false
+
+    - name: Set psycopg2 reality fact
+      when: policy_family in ['apt', 'alt']
+      ansible.builtin.set_fact:
+        policy_psycopg2_in_reality: >-
+          {{ policy_psycopg2_check.results
+             | selectattr('rc', 'equalto', 0)
+             | rejectattr('stdout', 'equalto', '')
+             | list | length > 0 }}
+
+    - name: Detect dev package install state (dpkg)
+      when: policy_family == 'apt'
+      ansible.builtin.command: "dpkg-query -W -f='${db:Status-Abbrev}' {{ policy_dev_pkg }}"
+      register: policy_final_dpkg
+      changed_when: false
+      failed_when: false
+
+    - name: Detect dev package install state (rpm)
+      when: policy_family in ['alt', 'rhel']
+      ansible.builtin.command: "rpm -q {{ policy_dev_pkg }}"
+      register: policy_final_rpm
+      changed_when: false
+      failed_when: false
+
+    - name: Set final dev-package installed fact
+      ansible.builtin.set_fact:
+        policy_dev_installed: >-
+          {{ (policy_final_dpkg.stdout | d('') | trim is match('ii'))
+             or (policy_final_rpm.rc | d(1) == 0) }}
+
+    - name: Assert role psycopg2 decision matches OS reality
+      when:
+        - policy_family in ['apt', 'alt']
+        - not policy_force_fallback | bool
+      ansible.builtin.assert:
+        that: (prepare_nodes_psycopg2_in_os | bool) == (policy_psycopg2_in_reality | bool)
+        success_msg: "Role decision matches OS reality (psycopg2 available: {{ policy_psycopg2_in_reality | bool }})"
+
+    - name: Assert dev-package policy invariant
+      when: policy_family in ['apt', 'alt']
+      ansible.builtin.assert:
+        that: (policy_dev_installed | bool) != (policy_psycopg2_in_reality | bool)
+        success_msg: >-
+          Policy OK: {{ policy_dev_pkg }} {{ 'installed' if policy_dev_installed | bool else 'absent' }},
+          psycopg2 {{ 'available' if policy_psycopg2_in_reality | bool else 'not available' }}
+
+    - name: Check runtime libpq (RHEL-like)
+      when: policy_family == 'rhel'
+      ansible.builtin.command: rpm -q libpq
+      register: policy_libpq_runtime
+      changed_when: false
+      failed_when: false
+
+    - name: Assert RHEL-like policy (runtime libpq installed, devel absent)
+      when: policy_family == 'rhel'
+      ansible.builtin.assert:
+        that:
+          - policy_libpq_runtime.rc | d(1) == 0
+          - not (policy_dev_installed | bool)
+        success_msg: >-
+          RHEL policy OK: runtime libpq installed, {{ policy_dev_pkg }} absent

@@ -1,7 +1,7 @@
 ---
 - name: Install prerequisite packages (yum or dnf)
   when:
-    - ansible_pkg_mgr == 'yum' or ansible_pkg_mgr == 'dnf'
+    - ansible_facts.pkg_mgr == 'yum' or ansible_facts.pkg_mgr == 'dnf'
   ansible.builtin.package:
     name:
       - openssl
@@ -14,7 +14,7 @@
 - name: Add Tantor repository key for YUM-based systems
   when:
     - add_nexus_repo == 'true'
-    - ansible_pkg_mgr in ['yum', 'dnf']
+    - ansible_facts.pkg_mgr in ['yum', 'dnf']
   ansible.builtin.get_url:
     url: "{{ nexus_key_url }}"
     dest: "/etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
@@ -31,8 +31,8 @@
         gpgcheck: true
         gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
       when:
-        - ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-        - ansible_distribution_major_version == '7'
+        - ansible_facts.os_family in ["RED", "Centos", "Rocky", "RedHat"]
+        - ansible_facts.distribution_major_version == '7'
 
     - name: Add Tantor repository for RedOS-8.0
       ansible.builtin.yum_repository:
@@ -42,5 +42,5 @@
         gpgcheck: true
         gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
       when:
-        - ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
-        - ansible_distribution_major_version == '8'
+        - ansible_facts.os_family in ["RED", "Centos", "Rocky", "RedHat"]
+        - ansible_facts.distribution_major_version == '8'

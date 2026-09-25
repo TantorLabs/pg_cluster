@@ -1,0 +1,72 @@
+# Makefile.controller — test runner inside the ansible-controller container
+#
+# Targets:
+#   test           — run all tests (lint + syntax + integration)
+#   lint           — yamllint + ansible-lint on playbooks and roles
+#   syntax         — ansible-playbook --syntax-check
+#   template-test  — render Jinja2 templates with fixture vars
+#   integration    — run the full playbook against Docker cluster
+#   check-cluster  — verify Patroni/etcd/services are healthy after deploy
+
+PG_CLUSTER_DIR := /opt/pg_cluster
+INVENTORY      := $(PG_CLUSTER_DIR)/tests/docker/inventory/test_inventory
+PLAYBOOK       := $(PG_CLUSTER_DIR)/pg-cluster.yaml
+EXTRA_VARS     := $(PG_CLUSTER_DIR)/tests/docker/group_vars/all.yml
+
+# Ansible common flags
+ANSIBLE_FLAGS  := -i $(INVENTORY) -e @$(EXTRA_VARS) -e patroni_pip_packages=[] -v
+
+.NOTPARALLEL:
+
+.PHONY: static test lint syntax template-test integration check-cluster clean
+
+## test: Run all test stages
+test: versions lint static syntax template-test integration check-cluster
+	@echo "============================================"
+	@echo "ALL TESTS PASSED"
+	@echo "============================================"
+
+## lint: Use the same mandatory lint checks as the host runner
+lint:
+	$(MAKE) -C $(PG_CLUSTER_DIR) lint
+
+## static: Validate YAML, role structure, handlers and the test harness
+static:
+	$(MAKE) -C $(PG_CLUSTER_DIR) static regression
+
+## syntax: Ansible syntax check
+syntax:
+	@echo "=== Ansible Syntax Check ==="
+	ansible-playbook $(ANSIBLE_FLAGS) --syntax-check $(PLAYBOOK) $(PG_CLUSTER_DIR)/tests/integration/prepare.yml $(PG_CLUSTER_DIR)/tests/integration/check_cluster.yml
+
+## template-test: Render Jinja2 templates with fixture variables
+template-test:
+	@echo "=== Template Rendering Tests ==="
+	python3 $(PG_CLUSTER_DIR)/tests/templates/test_templates.py
+
+## integration: Run the full playbook against Docker cluster
+integration:
+	@echo "=== Integration Test: Deploy Cluster ==="
+	ansible-playbook $(ANSIBLE_FLAGS) $(PG_CLUSTER_DIR)/tests/integration/prepare.yml
+	ansible-playbook $(ANSIBLE_FLAGS) $(PLAYBOOK) \
+		--skip-tags "postgres_tantordb" \
+		-e '{"add_nexus_repo": "false"}'
+
+## check-cluster: Verify cluster health after deployment
+check-cluster:
+	@echo "=== Verifying Cluster Health ==="
+	ansible-playbook $(ANSIBLE_FLAGS) $(PG_CLUSTER_DIR)/tests/integration/check_cluster.yml
+
+## clean: Remove generated PKI and logs
+clean:
+	rm -rf $(PG_CLUSTER_DIR)/pki-dir/*
+	rm -f $(PG_CLUSTER_DIR)/ansible.log
+
+## versions: Verify every runtime before testing compatibility
+.PHONY: versions
+versions:
+	python3 $(PG_CLUSTER_DIR)/tests/check_versions.py
+	@for node in pg-node1 pg-node2 pg-node3; do \
+		ssh -o BatchMode=yes -o ConnectTimeout=3 deploy@$$node \
+			python3 $(PG_CLUSTER_DIR)/tests/check_versions.py --patroni "$$PATRONI_VERSION" || exit $$?; \
+	done

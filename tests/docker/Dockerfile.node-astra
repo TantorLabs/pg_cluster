@@ -1,0 +1,248 @@
+# Target node image — Astra Linux SE 1.7.3 (alse) with systemd for pg_cluster testing
+#
+# Mirrors docker/Dockerfile.node (Ubuntu 22.04) but built on Astra Linux 1.7
+# to validate the playbooks against the oldest supported target Python:
+#   - system python3 is 3.7 (the managed-node interpreter used by Ansible;
+#     requires ansible-core <= 2.17 on the controller)
+#   - Tantor components come from the public Nexus astra-smolensk-1.7 repo
+#     (the same repository the prepare_nodes role configures in production)
+#   - python3-tantor-all ships /opt/tantor/usr/bin/python3 (Python 3.12) —
+#     the interpreter the community.postgresql tasks are pinned to
+#   - Patroni via pip (patroni-tantor-all is not in the public Nexus)
+
+FROM registry.astralinux.ru/library/alse:1.7.3
+
+ARG PATRONI_VERSION=3.3.2
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV container=docker
+
+# Core packages required by the playbooks + cluster components
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    systemd systemd-sysv \
+    dbus \
+    openssh-server sudo \
+    python3 python3-pip python3-venv python3-apt python3-psycopg2 python3-setuptools \
+    jq curl chrony \
+    openssl gnupg gpg locales lsb-release \
+    ca-certificates \
+    apt-utils apt-transport-https \
+    iproute2 iputils-ping dnsutils \
+    telnet wget acl kmod procps \
+  && rm -rf /var/lib/apt/lists/*
+
+# ─────────────────────────────────────────────────────────────
+# Tantor Nexus repository for Astra 1.7 (public, no authentication)
+# Same source the prepare_nodes role configures at runtime
+# (inventory/group_vars/prepare_nodes.yml: nexus_apt_astra_1_7).
+# ─────────────────────────────────────────────────────────────
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://public.tantorlabs.ru/tantorlabs.ru.asc \
+       -o /etc/apt/keyrings/tantor-nexus.asc \
+    && gpg --dearmor -o /etc/apt/keyrings/tantor-nexus.gpg \
+           /etc/apt/keyrings/tantor-nexus.asc \
+    && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/tantor-nexus.gpg] https://nexus-public.tantorlabs.ru/repository/astra-smolensk-1.7/ smolensk main" \
+       > /etc/apt/sources.list.d/tantorlabs.list \
+    && apt-get update
+
+# Install real Tantor packages from Nexus.
+# These packages ship:
+#   - binaries under /opt/tantor/usr/bin|sbin/
+#   - systemd units: etcd-tantor.service, haproxy-tantor.service,
+#     keepalived-tantor.service, pgbouncer-tantor.service
+#   - users/groups: etcd, haproxy, pgbouncer (created by postinst scripts)
+#   - tantor-be-server-16: PostgreSQL-compatible Tantor BE server
+#     (Debian-style packaging: /usr/lib/postgresql/16/bin, cluster main)
+#   - python3-tantor-all: /opt/tantor/usr/bin/python3 (Python 3.12)
+RUN apt-get install -y --no-install-recommends \
+    etcd-tantor-all \
+    haproxy-tantor-all \
+    keepalived-tantor-all \
+    pgbouncer-tantor-all \
+    wal-g-tantor-all \
+    tantor-be-server-16 \
+    python3-tantor-all \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install patroni via pip on the system Python 3.7
+# (patroni-tantor-all is not published in the public Nexus).
+# psycopg2 is provided by the OS package python3-psycopg2 (installed above):
+# Astra 1.7 ships an old pip that cannot consume the manylinux2014
+# psycopg2-binary wheels for cp37 and would try to build from source
+# without pg_config. First upgrade pip to the newest Python-3.7-compatible
+# release so patroni's dependency wheels resolve correctly.
+RUN pip3 install --no-cache-dir --upgrade "pip<24.1" \
+    && pip3 install --no-cache-dir "patroni[etcd]==${PATRONI_VERSION}" \
+    && pip3 check
+
+# Pre-populate apt cache so ansible's update_cache is fast
+RUN apt-get update
+
+# Generate locales used by prepare_nodes role
+RUN sed -i 's/^# *ru_RU.UTF-8/ru_RU.UTF-8/; s/^# *en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen \
+    && locale-gen 2>/dev/null || true
+
+# ─────────────────────────────────────────────────────────────
+# Patroni compatibility layer
+# (identical to docker/Dockerfile.node: pip-installed patroni is
+# exposed under /opt/tantor/usr/bin and a fake .deb marker makes
+# the patroni role's package_facts check see it as installed)
+# ─────────────────────────────────────────────────────────────
+
+# Create /opt/tantor directory tree the playbooks write to
+RUN mkdir -p \
+    /opt/tantor/etc/etcd \
+    /opt/tantor/etc/patroni \
+    /opt/tantor/etc/pgbouncer \
+    /opt/tantor/etc/haproxy \
+    /opt/tantor/etc/keepalived \
+    /opt/tantor/var/lib/etcd \
+    /opt/tantor/var/log/patroni \
+    /opt/tantor/var/log/pgbouncer \
+    /opt/tantor/var/lib/haproxy \
+    /opt/tantor/usr/bin \
+    /opt/tantor/usr/sbin \
+    /opt/tantor/db \
+    /opt/keepalived/scripts \
+    /var/run/postgresql \
+    /var/lib/postgresql \
+    /etc/postgresql \
+    /etc/apt/keyrings \
+    /var/run/pgbouncer-tantor \
+    /run/haproxy
+
+# Symlinks for patroni (pip-installed, not under /opt/tantor by default)
+RUN ln -sf /usr/local/bin/patroni     /opt/tantor/usr/bin/patroni \
+    && ln -sf /usr/local/bin/patronictl  /opt/tantor/usr/bin/patronictl \
+    && ln -sf /usr/local/bin/patroni     /usr/bin/patroni \
+    && ln -sf /usr/local/bin/patronictl  /usr/bin/patronictl
+
+# Dummy pg_configurator — produces a JSON config from input parameters.
+# pg-configurator-tantor-all is not published in the public Nexus.
+RUN printf '#!/bin/bash\n\
+json="{\\"postgresql\\":{\\"parameters\\":{\\"max_connections\\":200,\\"shared_buffers\\":\\"256MB\\",\\"effective_cache_size\\":\\"768MB\\",\\"maintenance_work_mem\\":\\"64MB\\",\\"checkpoint_completion_target\\":0.9,\\"wal_buffers\\":\\"16MB\\",\\"default_statistics_target\\":100,\\"random_page_cost\\":1.1,\\"effective_io_concurrency\\":200,\\"work_mem\\":\\"4MB\\",\\"min_wal_size\\":\\"80MB\\",\\"max_wal_size\\":\\"1GB\\",\\"max_worker_processes\\":8,\\"max_parallel_workers_per_gather\\":2,\\"max_parallel_workers\\":8,\\"max_replication_slots\\":10,\\"max_wal_senders\\":10,\\"wal_level\\":\\"replica\\",\\"hot_standby\\":\\"on\\",\\"wal_log_hints\\":\\"on\\",\\"unix_socket_directories\\":\\"/var/run/postgresql\\"}}}"\n\
+for arg in "$@"; do\n\
+  case "$arg" in\n\
+    --output-file-name=*) outfile="${arg#--output-file-name=}" ;;\n\
+  esac\ndone\n\
+if [ -n "$outfile" ]; then\n\
+  echo "$json" > "$outfile"\nfi\n' > /opt/tantor/usr/bin/pg_configurator \
+    && chmod +x /opt/tantor/usr/bin/pg_configurator
+
+# Build and install a fake patroni-tantor-all .deb so the patroni role's
+# package_facts check sees it as installed and skips apt installation.
+# (pg-configurator-tantor-all is also faked for the same reason.)
+RUN for pkg in patroni-tantor-all pg-configurator-tantor-all; do \
+      dir="/tmp/fake-${pkg}" \
+      && mkdir -p "$dir/DEBIAN" \
+      && printf "Package: %s\nVersion: 1.0-docker\nArchitecture: all\nMaintainer: Docker Test <test@docker>\nPriority: optional\nDescription: Fake Tantor package for Docker testing (pip-installed patroni)\n" "$pkg" > "$dir/DEBIAN/control" \
+      && dpkg-deb --build "$dir" "/tmp/${pkg}.deb" \
+      && dpkg -i "/tmp/${pkg}.deb" \
+      && rm -rf "$dir" "/tmp/${pkg}.deb"; \
+    done
+
+# Fix haproxy chroot directory permissions
+RUN chown haproxy:haproxy /opt/tantor/var/lib/haproxy /run/haproxy 2>/dev/null || true
+
+# Fix etcd data directory permissions (service runs as etcd user)
+RUN chown etcd:etcd /opt/tantor/var/lib/etcd 2>/dev/null || true
+
+# Create deploy user with passwordless sudo.
+# NOTE: on Astra `useradd -m` fails with rc=12 (PARSEC creates private home
+# directories and rolls the user back), so create the home directory manually.
+RUN useradd -d /home/deploy -s /bin/bash deploy \
+    && mkdir -p /home/deploy \
+    && chown deploy:deploy /home/deploy \
+    && chmod 755 /home/deploy \
+    && (cp -r /etc/skel/. /home/deploy/ 2>/dev/null || true) \
+    && chown -R deploy:deploy /home/deploy \
+    && echo 'deploy:deploy' | chpasswd \
+    && echo 'root:root' | chpasswd \
+    && echo 'deploy ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/deploy \
+    && chmod 0440 /etc/sudoers.d/deploy
+
+# Ensure postgres user exists (tantor-be-server postinst normally creates it;
+# the guard keeps the image build working if that ever changes). Same Astra
+# useradd quirk as above: no --create-home, home directory made manually.
+RUN (id postgres 2>/dev/null || useradd --system -d /var/lib/postgresql -s /bin/bash postgres) \
+    && mkdir -p /var/lib/postgresql \
+    && chown postgres:postgres /var/lib/postgresql 2>/dev/null || true
+
+# SSH configuration
+RUN mkdir -p /run/sshd /home/deploy/.ssh \
+    && chmod 700 /home/deploy/.ssh \
+    && chown deploy:deploy /home/deploy/.ssh \
+    && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# Copy entrypoint script that prepares kernel module dir + /dev/watchdog
+COPY docker/entrypoint-node.sh /entrypoint-node.sh
+RUN chmod +x /entrypoint-node.sh
+
+# Remove unnecessary systemd services that fail in containers
+RUN systemctl mask \
+    systemd-resolved.service \
+    systemd-networkd.service \
+    systemd-networkd-wait-online.service \
+    systemd-logind.service \
+    apt-daily.service apt-daily.timer \
+    apt-daily-upgrade.service apt-daily-upgrade.timer \
+  2>/dev/null || true
+# NOTE: systemd-logind is masked because Astra's parsec-integrated logind
+# hangs in "start running" inside the container, which blocks
+# multi-user.target and makes all D-Bus activations (hostnamectl etc.)
+# time out. SSH and the cluster services do not need logind here.
+
+# ─────────────────────────────────────────────────────────────
+# Astra Linux PARSEC workaround
+#
+# Astra's patched systemd (241-7~deb10u8astra.se30) terminates PID 1 with
+# "parsec module missing, terminating to prevent data leakage" unless the
+# PARSEC subsystem reports itself present. A container has no parsec kernel
+# module, but libpdp only reads plain files (verified via disassembly and
+# ctypes):
+#   /parsecfs/mac_enabled == "1"   (parsec_mac_enabled())
+#   /etc/astra_license with "MODE=..." and readable /parsecfs/ctl
+#                                  (parsec_missing())
+# These stubs only exist inside the test container; production nodes run
+# the real PARSEC subsystem.
+# ─────────────────────────────────────────────────────────────
+RUN mkdir -p /parsecfs \
+    && echo -n 1 > /parsecfs/mac_enabled \
+    && touch /parsecfs/ctl \
+    && echo "MODE=0" > /etc/astra_license
+
+# sshd's PAM stack references parsec PAM modules that are not shipped in the
+# public repos; without them pam_open_session() fails ("Module is unknown")
+# and every SSH login is rejected. Drop the parsec lines for the test image.
+RUN sed -i -E '/pam_parsec_[a-z]+\.so/d' /etc/pam.d/sshd
+
+# Astra's systemd cannot service D-Bus activations in this container (the
+# parsec kernel module is absent, so systemd never completes its own bus
+# registration and every hand-off times out after 25s). The ansible hostname
+# module shells out to exactly four hostnamectl subcommands; emulate them
+# with plain files and the hostname(1) utility. The shim lives in
+# /usr/local/bin, shadowing /usr/bin/hostnamectl only inside this test image.
+RUN printf '#!/bin/bash\n\
+# Minimal hostnamectl shim for the Astra pg_cluster test container.\n\
+case "$1 $2" in\n\
+  "--transient status")\n\
+    uname -n\n\
+    ;;\n\
+  "--static status")\n\
+    cat /etc/hostname 2>/dev/null\n\
+    ;;\n\
+  "--transient set-hostname")\n\
+    hostname "$3"\n\
+    ;;\n\
+  "--pretty --static set-hostname")\n\
+    echo "$4" > /etc/hostname\n\
+    ;;\n\
+esac\n\
+exit 0\n' > /usr/local/bin/hostnamectl \
+    && chmod +x /usr/local/bin/hostnamectl
+
+EXPOSE 22 2379 2380 5432 6432 8008 7000 15432 15433 16432 16433
+
+# Start systemd as init
+CMD ["/entrypoint-node.sh"]

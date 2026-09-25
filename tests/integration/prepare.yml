@@ -1,0 +1,39 @@
+---
+# Pre-integration setup: prepare test environment for Docker nodes.
+# Creates files/directories that are absent in the Docker test containers
+# but expected by the playbooks. Real Tantor packages (installed in the
+# node image) already provide the systemd units and /opt/tantor binaries,
+# so this only fills the remaining gaps.
+- name: Prepare test environment on cluster nodes
+  hosts: inv_cluster
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Ensure pgbouncer userlist.txt exists
+      ansible.builtin.file:
+        path: /opt/tantor/etc/pgbouncer/userlist.txt
+        state: touch
+        owner: postgres
+        group: postgres
+        mode: "0600"
+
+    - name: Ensure haproxy chroot directory exists
+      ansible.builtin.file:
+        path: /opt/tantor/var/lib/haproxy
+        state: directory
+        owner: haproxy
+        group: haproxy
+        mode: "0755"
+
+    - name: Ensure pgbouncer log directory is writable by postgres
+      ansible.builtin.file:
+        path: /opt/tantor/var/log/pgbouncer
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: "0755"
+
+  handlers:
+    - name: Daemon-reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true

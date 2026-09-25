@@ -1,4 +1,30 @@
 ---
+# Names of psycopg2 OS packages (Debian/ALT naming variants).
+# libpq-dev is a build-time dependency and is only needed when the OS
+# provides no psycopg2 package at all; python3-psycopg2 already pulls in
+# the libpq runtime library.
+- name: Check for psycopg2 packages in the OS (apt)
+  ansible.builtin.command:
+    cmd: "apt-cache show {{ item }}"
+  loop:
+    - python3-psycopg2
+    - python3-module-psycopg2
+    - python-psycopg2
+  register: prepare_nodes_psycopg2_apt_check
+  changed_when: false
+  failed_when: false
+
+- name: Set psycopg2 availability fact
+  # A package counts as present only when apt-cache show succeeds AND
+  # prints a record: with empty apt lists apt-cache may return rc=0
+  # while producing no output at all.
+  ansible.builtin.set_fact:
+    prepare_nodes_psycopg2_in_os: >-
+      {{ prepare_nodes_psycopg2_apt_check.results
+         | selectattr('rc', 'equalto', 0)
+         | rejectattr('stdout', 'equalto', '')
+         | list | length > 0 }}
+
 - name: Create folders if not exists
   ansible.builtin.file:
     state: directory
@@ -18,7 +44,7 @@
     mode: '0755'
   when:
     - add_nexus_repo | bool
-    - ansible_os_family != 'Altlinux'
+    - ansible_facts.os_family != 'Altlinux'
 
 - name: Download Tantor GPG key (ASCII)
   ansible.builtin.get_url:
@@ -27,7 +53,7 @@
     mode: '0644'
   when:
     - add_nexus_repo | bool
-    - ansible_os_family != 'Altlinux'
+    - ansible_facts.os_family != 'Altlinux'
 
 - name: Convert Tantor GPG key to binary .gpg format
   ansible.builtin.command: >
@@ -36,12 +62,12 @@
     creates: /etc/apt/keyrings/tantor-nexus.gpg
   when:
     - add_nexus_repo | bool
-    - ansible_os_family != 'Altlinux'
+    - ansible_facts.os_family != 'Altlinux'
 
 - name: Block for Altlinux
   when:
     - add_nexus_repo == 'true'
-    - ansible_os_family == 'Altlinux'
+    - ansible_facts.os_family == 'Altlinux'
   block:
     - name: Add Tantor repository key for ALT Linux
       ansible.builtin.get_url:
@@ -51,7 +77,7 @@
 
     - name: Add Tantor repository for Alt Linux c10f2
       when:
-        - ansible_distribution_version == '10.2'
+        - ansible_facts.distribution_version == '10.2'
       ansible.builtin.copy:
         dest: "/etc/apt/sources.list.d/tantorlabs.list"
         content: |
@@ -60,7 +86,7 @@
 
     - name: Install prerequisite packages (apt_rpm)
       when:
-        - ansible_pkg_mgr == 'apt_rpm'
+        - ansible_facts.pkg_mgr == 'apt_rpm'
       ansible.builtin.package:
         name:
           - glibc-locales
@@ -68,22 +94,43 @@
           - ca-certificates
           - gnupg
           - libpq5
+        state: present
+
+    # Same rule as for apt: libpq5-devel (libpq-dev analogue on ALT)
+    # is only needed when the OS ships no psycopg2 package.
+    - name: Install libpq5-devel when no psycopg2 package in OS
+      when:
+        - ansible_facts.pkg_mgr == 'apt_rpm'
+        - not prepare_nodes_psycopg2_in_os
+      ansible.builtin.package:
+        name:
           - libpq5-devel
         state: present
 
 - name: Block for Debian-like systems
   when:
-    - ansible_os_family != 'Altlinux'
+    - ansible_facts.os_family != 'Altlinux'
   block:
     - name: Install prerequisite packages
       when:
-        - ansible_pkg_mgr == 'apt'
+        - ansible_facts.pkg_mgr == 'apt'
       ansible.builtin.package:
         name:
           - openssl
           - gnupg
           - gpg
           - locales
+        state: present
+        update_cache: true
+
+    # libpq-dev is installed only when the OS has no psycopg2 package
+    # (python3-psycopg2 or similar); otherwise it is unnecessary.
+    - name: Install libpq-dev when no psycopg2 package in OS
+      when:
+        - ansible_facts.pkg_mgr == 'apt'
+        - not prepare_nodes_psycopg2_in_os
+      ansible.builtin.package:
+        name:
           - libpq-dev
         state: present
         update_cache: true
@@ -98,40 +145,66 @@
 
 - name: Block for Astra
   when:
-    - ansible_os_family in ["Astra Linux", "Astra Linux (Orel)"]
+    - ansible_facts.os_family in ["Astra Linux", "Astra Linux (Orel)"]
     - add_nexus_repo == 'true'
   block:
     - name: Configure nexus repository (Astra 1.7)
-      ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_astra_1_7 }}"
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/nexus_public_tantorlabs_ru_repository_astra_smolensk_1_7.list
+        content: "{{ nexus_apt_astra_1_7 }}\n"
+        mode: "0644"
+      register: prepare_nodes_repo_astra_1_7
       when:
-        - ansible_distribution == "Astra Linux"
-        - ansible_distribution_version == "1.7_x86-64"
+        - ansible_facts.distribution == "Astra Linux"
+        - ansible_facts.distribution_version == "1.7_x86-64"
 
     - name: Configure nexus repository (Astra 1.8)
-      ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_astra_1_8 }}"
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/nexus_public_tantorlabs_ru_repository_astra_1_8.list
+        content: "{{ nexus_apt_astra_1_8 }}\n"
+        mode: "0644"
+      register: prepare_nodes_repo_astra_1_8
       when:
-        - ansible_distribution == "Astra Linux"
-        - ansible_distribution_version == "1.8_x86-64"
+        - ansible_facts.distribution == "Astra Linux"
+        - ansible_facts.distribution_version == "1.8_x86-64"
+
+    - name: Update APT cache (Astra)
+      ansible.builtin.apt:
+        update_cache: true
+      register: prepare_nodes_apt_update_astra
+      until: prepare_nodes_apt_update_astra is succeeded
+      retries: 5
+      delay: 5
+      when: prepare_nodes_repo_astra_1_7 is changed or prepare_nodes_repo_astra_1_8 is changed
 
 - name: Block for Ubuntu
-  when: (ansible_distribution == "Ubuntu") and (add_nexus_repo == 'true')
+  when: (ansible_facts.distribution == "Ubuntu") and (add_nexus_repo == 'true')
   block:
     - name: Configure nexus repository (Ubuntu 22.04)
-      ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_ubuntu_22_04 }}"
-        state: present
-        filename: tantorlabs
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/tantorlabs.list
+        content: "{{ nexus_apt_ubuntu_22_04 }}\n"
+        mode: "0644"
+      register: prepare_nodes_repo_ubuntu_22_04
       when:
-        - ansible_distribution == "Ubuntu"
-        - ansible_distribution_major_version == "22"
+        - ansible_facts.distribution == "Ubuntu"
+        - ansible_facts.distribution_major_version == "22"
 
     - name: Configure nexus repository (Ubuntu 20.04)
-      ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_ubuntu_20_04 }}"
-        state: present
-        filename: tantorlabs
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/tantorlabs.list
+        content: "{{ nexus_apt_ubuntu_20_04 }}\n"
+        mode: "0644"
+      register: prepare_nodes_repo_ubuntu_20_04
       when:
-        - ansible_distribution == "Ubuntu"
-        - ansible_distribution_major_version == "20"
+        - ansible_facts.distribution == "Ubuntu"
+        - ansible_facts.distribution_major_version == "20"
+
+    - name: Update APT cache (Ubuntu)
+      ansible.builtin.apt:
+        update_cache: true
+      register: prepare_nodes_apt_update_ubuntu
+      until: prepare_nodes_apt_update_ubuntu is succeeded
+      retries: 5
+      delay: 5
+      when: prepare_nodes_repo_ubuntu_22_04 is changed or prepare_nodes_repo_ubuntu_20_04 is changed

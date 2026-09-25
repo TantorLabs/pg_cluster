@@ -1,0 +1,10 @@
+# Fixture variables for pgbouncer template rendering tests
+
+pgbouncer_listen_port: 6432
+pgbouncer_log_file: "/opt/tantor/var/log/pgbouncer/pgbouncer.log"
+pgbouncer_conf_file: "/opt/tantor/etc/pgbouncer/pgbouncer.ini"
+pgbouncer_pid_file: "/var/run/pgbouncer-tantor/pgbouncer.pid"
+pgbouncer_auth_user: pgbouncer
+pgbouncer_auth_user_passw: pgbouncer819mQ
+patroni_pg_port: 5432
+major_version: "16"

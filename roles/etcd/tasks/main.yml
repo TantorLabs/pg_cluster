@@ -8,24 +8,26 @@
 
     - name: Set unified hostname fallback based on inventory format
       ansible.builtin.set_fact:
-        has_domain: "{{ '.' in inventory_hostname }}"
+        etcd_has_domain: "{{ '.' in inventory_hostname }}"
       when: unified_hostname is not defined or unified_hostname != inventory_hostname.split('.')[0]
 
-    - name: Set unified hostname for FQDN inventory (fallback)
+    # unified_hostname is intentionally unprefixed: it's a shared, inventory-overridable
+    # variable read by prepare_nodes, etcd tasks/templates, and group_vars/etcd.yml.
+    - name: Set unified hostname for FQDN inventory (fallback)  # noqa: var-naming[no-role-prefix]
       ansible.builtin.set_fact:
-        unified_hostname: "{{ ansible_fqdn }}"
+        unified_hostname: "{{ ansible_facts.fqdn }}"
         cacheable: true
       when:
         - (unified_hostname is not defined or unified_hostname != inventory_hostname.split('.')[0])
-        - has_domain | default(false)
+        - etcd_has_domain | default(false)
 
-    - name: Set unified hostname for non-FQDN inventory (fallback)
+    - name: Set unified hostname for non-FQDN inventory (fallback)  # noqa: var-naming[no-role-prefix]
       ansible.builtin.set_fact:
         unified_hostname: "{{ inventory_hostname }}"
         cacheable: true
       when:
         - (unified_hostname is not defined or unified_hostname != inventory_hostname)
-        - not (has_domain | default(false))
+        - not (etcd_has_domain | default(false))
 
     - name: Debug final unified hostname
       ansible.builtin.debug:
@@ -36,23 +38,23 @@
     cacheable: true
     etcd_listen_public: >-
       {{ "0.0.0.0" if etcd_iface_public == "all" else
-        (ansible_default_ipv4.address if etcd_iface_public == "default"
-        else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
+        (ansible_facts.default_ipv4.address if etcd_iface_public == "default"
+        else hostvars[inventory_hostname]["ansible_facts"][etcd_iface_public]["ipv4"]["address"]) }}
 
     etcd_listen_cluster: >-
       {{ "0.0.0.0" if etcd_iface_cluster == "all" else
-        (ansible_default_ipv4.address if etcd_iface_cluster == "default"
-         else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
+        (ansible_facts.default_ipv4.address if etcd_iface_cluster == "default"
+         else hostvars[inventory_hostname]["ansible_facts"][etcd_iface_cluster]["ipv4"]["address"]) }}
 
     etcd_address_public: >-
       {{ unified_hostname if not etcd_use_ips | bool else
-        (ansible_default_ipv4.address if etcd_iface_public is in [ "all", "default" ]
-         else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_public]["ipv4"]["address"]) }}
+        (ansible_facts.default_ipv4.address if etcd_iface_public is in [ "all", "default" ]
+         else hostvars[inventory_hostname]["ansible_facts"][etcd_iface_public]["ipv4"]["address"]) }}
 
     etcd_address_cluster: >-
       {{ unified_hostname if not etcd_use_ips | bool else
-        (ansible_default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ]
-         else hostvars[inventory_hostname]["ansible_" ~ etcd_iface_cluster]["ipv4"]["address"]) }}
+        (ansible_facts.default_ipv4.address if etcd_iface_cluster is in [ "all", "default" ]
+         else hostvars[inventory_hostname]["ansible_facts"][etcd_iface_cluster]["ipv4"]["address"]) }}
 
 - name: Install etcd package
   ansible.builtin.package:

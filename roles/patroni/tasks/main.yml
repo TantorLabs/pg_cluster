@@ -1,6 +1,6 @@
 ---
 - name: Collect facts for Alt linux
-  when: ansible_os_family in ["Altlinux"]
+  when: ansible_facts.os_family in ["Altlinux"]
   block:
     - name: Collect installed RPM packages
       # noqa: command-instead-of-module
@@ -19,7 +19,7 @@
           }}
 
 - name: Collect package facts
-  when: not ansible_os_family in ["Altlinux"]
+  when: not ansible_facts.os_family in ["Altlinux"]
   ansible.builtin.package_facts:
   register: patroni_package_facts_result
 
@@ -51,8 +51,8 @@
     dest: /etc/systemd/system/multi-user.target.wants/watchdog.service
     state: link
   when:
-    - ansible_distribution in ('Ubuntu', 'Debian')
-    - ansible_distribution_release in ('xenial', 'jessie')
+    - ansible_facts.distribution in ('Ubuntu', 'Debian')
+    - ansible_facts.distribution_release in ('xenial', 'jessie')
 
 - name: Force systemd to reread configs
   ansible.builtin.systemd_service:
@@ -64,7 +64,7 @@
     - ('patroni-tantor-all' not in (patroni_installed_packages | default({})))
   block:
     - name: Install patroni-tantor-all (RHEL-like systems)
-      when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+      when: ansible_facts.os_family in ["RED", "Centos", "Rocky", "RedHat"]
       ansible.builtin.dnf:
         name: >-
           {{
@@ -77,7 +77,7 @@
         allow_downgrade: true
 
     - name: Install patroni-tantor-all (Alt Linux)
-      when: ansible_os_family in ["Altlinux"]
+      when: ansible_facts.os_family in ["Altlinux"]
       community.general.apt_rpm:
         name: >-
           {{
@@ -89,7 +89,7 @@
         state: present
 
     - name: Install patroni-tantor-all (Debian-like systems)
-      when: ansible_os_family in ["Astra Linux", "Debian"]
+      when: ansible_facts.os_family in ["Astra Linux", "Debian"]
       ansible.builtin.apt:
         name: >-
           {{
@@ -165,7 +165,7 @@
           register: patroni_stop_result
 
         - name: Install patroni-tantor-all (RHEL-like systems)
-          when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+          when: ansible_facts.os_family in ["RED", "Centos", "Rocky", "RedHat"]
           ansible.builtin.dnf:
             name: >-
               {{
@@ -178,7 +178,7 @@
             allow_downgrade: true
 
         - name: Install patroni-tantor-all (Alt linux)
-          when: ansible_os_family in ["Altlinux"]
+          when: ansible_facts.os_family in ["Altlinux"]
           community.general.apt_rpm:
             name: >-
               {{
@@ -190,7 +190,7 @@
             state: present
 
         - name: Install patroni-tantor-all (Debian-like systems)
-          when: ansible_os_family in ["Astra Linux", "Debian"]
+          when: ansible_facts.os_family in ["Astra Linux", "Debian"]
           ansible.builtin.apt:
             name: >-
               {{
@@ -235,7 +235,7 @@
           register: patroni_stop_result
 
         - name: Install patroni-tantor-all (RHEL-like systems) at previous master
-          when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+          when: ansible_facts.os_family in ["RED", "Centos", "Rocky", "RedHat"]
           ansible.builtin.dnf:
             name: >-
               {{
@@ -248,7 +248,7 @@
             allow_downgrade: true
 
         - name: Install patroni-tantor-all (Alt linux) at previous master
-          when: ansible_os_family in ["Altlinux"]
+          when: ansible_facts.os_family in ["Altlinux"]
           community.general.apt_rpm:
             name: >-
               {{
@@ -260,7 +260,7 @@
             state: present
 
         - name: Install patroni-tantor-all (Debian-like systems) at previous master
-          when: ansible_os_family in ["Astra Linux", "Debian"]
+          when: ansible_facts.os_family in ["Astra Linux", "Debian"]
           ansible.builtin.apt:
             name: >-
               {{
@@ -344,7 +344,7 @@
         'pg-configurator-tantor-all'
       }}
     state: present
-  when: ansible_os_family in ["Astra Linux", "Debian"]
+  when: ansible_facts.os_family in ["Astra Linux", "Debian"]
 
 - name: Install pg_configurator for RHEL-like systems
   ansible.builtin.package:
@@ -356,14 +356,14 @@
         'pg_configurator-tantor-all'
       }}
     state: present
-  when: ansible_distribution in ["RED", "Centos", "Rocky", "Altlinux"]
+  when: ansible_facts.distribution in ["RED", "Centos", "Rocky", "Altlinux"]
 
 - name: Create json configuration from local installation of pg_configurator
   become: true
   become_user: root
   ansible.builtin.command: |
     /opt/tantor/usr/bin/pg_configurator \
-    --db-cpu="{{ hostvars[inventory_hostname]['ansible_processor_count'] }}" \
+    --db-cpu="{{ hostvars[inventory_hostname]['ansible_facts']['processor_count'] }}" \
     --db-ram="{{ pg_conf_db_ram }}" \
     --db-disk-type="{{ pg_conf_db_disk_type }}" \
     --db-duty="{{ pg_conf_db_duty }}" \
@@ -485,13 +485,13 @@
   vars:
     ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_user:
-    db: postgres
+    login_db: postgres
     name: "{{ patroni_replication_username }}"
     password: "{{ patroni_replication_password }}"
     encrypted: true
     role_attr_flags: REPLICATION
     state: present
-    port: "5432"
+    login_port: "5432"
   become: true
   become_user: postgres
 

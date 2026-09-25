@@ -1,0 +1,18 @@
+---
+# Extra vars for the Astra Linux 1.7 integration run
+# (tests/docker/docker-compose.astra.yml, nodes based on ALSE 1.7.3).
+#
+# The run uses the production Tantor path on Astra:
+#   - tantor-be-server-{{ major_version }} from the Nexus astra-smolensk-1.7
+#     repository (postgres_tantordb role, add_nexus_repo=true);
+#   - Tantor BE binaries live under /opt/tantor/db/{{ major_version }}/bin
+#     (production default from inventory/group_vars/patroni.yml), while the
+#     Docker test default (tests/docker/group_vars/all.yml) points to the
+#     PGDG layout /usr/lib/postgresql/{{ major_version }}/bin;
+#   - patroni is pre-installed in the node image via pip (py3.7), so the
+#     role's pip installation is disabled, mirroring the Ubuntu Docker run.
+postgresql_vendor: tantordb
+patroni_pg_bin_dir: "/opt/tantor/db/{{ major_version }}/bin"
+patroni_pip_packages: []
+# String, not boolean: prepare_nodes compares `add_nexus_repo == 'true'`.
+add_nexus_repo: "true"

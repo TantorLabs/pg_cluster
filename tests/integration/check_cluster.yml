@@ -1,0 +1,297 @@
+---
+# Integration test: verify cluster health after playbook deployment
+#
+# This playbook checks:
+# 1. etcd cluster is healthy and all members are reachable
+# 2. Patroni API responds on all nodes
+# 3. A Patroni leader exists
+# 4. PostgreSQL is accepting connections
+# 5. HAProxy is running and routing traffic
+# 6. PgBouncer is running and listening
+# 7. Keepalived VIP is accessible
+# 8. All expected systemd services are active
+# 9. Replicas exist and cluster has minimum 3 members
+
+- name: Check cluster health
+  hosts: inv_cluster
+  become: true
+  gather_facts: true
+  tasks:
+
+    # --- etcd health ---
+    - name: Check etcd cluster health
+      ansible.builtin.command: >
+        /opt/tantor/usr/bin/etcdctl
+        --endpoints={% for host in groups['inv_etcd'] %}https://{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}:{{ etcd_port_client }}{% if not loop.last %},{% endif %}{% endfor %}
+        --cacert={{ etcd_pki_ca_cert_dest }}
+        --cert={{ etcd_pki_cert_dest }}
+        --key={{ etcd_pki_key_dest }}
+        endpoint health
+      environment:
+        ETCDCTL_API: "3"
+      register: etcd_health
+      changed_when: false
+      failed_when: etcd_health.rc != 0
+      run_once: true
+      when: etcd_secure | bool
+      tags: etcd_health
+
+    - name: Check etcd cluster health (insecure)
+      ansible.builtin.command: >
+        /opt/tantor/usr/bin/etcdctl
+        --endpoints={% for host in groups['inv_etcd'] %}http://{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}:{{ etcd_port_client }}{% if not loop.last %},{% endif %}{% endfor %}
+        endpoint health
+      environment:
+        ETCDCTL_API: "3"
+      register: etcd_health_insecure
+      changed_when: false
+      failed_when: etcd_health_insecure.rc != 0
+      run_once: true
+      when: not (etcd_secure | bool)
+      tags: etcd_health
+
+    - name: Report etcd health
+      ansible.builtin.debug:
+        msg: "etcd cluster is healthy"
+      when: etcd_health.rc is defined and etcd_health.rc == 0 or (etcd_health_insecure.rc is defined and etcd_health_insecure.rc == 0)
+      tags: etcd_health
+
+    # --- Patroni API ---
+    - name: Check Patroni API on each node
+      ansible.builtin.uri:
+        url: "http://{{ ansible_facts.default_ipv4.address }}:8008/health"
+        method: GET
+        return_content: true
+        status_code: 200
+        url_username: "{{ patroni_restapi_username | default('') }}"
+        url_password: "{{ patroni_restapi_password | default('') }}"
+        force_basic_auth: true
+      register: patroni_health
+      retries: 10
+      delay: 5
+      until: patroni_health is success
+      tags: patroni_health
+
+    - name: Report Patroni health
+      ansible.builtin.debug:
+        msg: "Patroni API healthy on {{ inventory_hostname }}: {{ patroni_health.content }}"
+      tags: patroni_health
+
+    # --- Patroni cluster status ---
+    - name: Get Patroni cluster status
+      ansible.builtin.command: >
+        /opt/tantor/usr/bin/patronictl
+        -c {{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml list --format json
+      register: patroni_status
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: >-
+        patroni_status.rc == 0 and
+        patroni_status.stdout | from_json | length == groups['inv_pg'] | length and
+        patroni_status.stdout | from_json | selectattr('Role', 'equalto', 'Leader') | list | length == 1
+      run_once: true
+      tags: [patroni_status, pg_connectivity, replication, haproxy, pgbouncer]
+
+    - name: Display Patroni cluster status
+      ansible.builtin.debug:
+        var: patroni_status.stdout
+      run_once: true
+      tags: [patroni_status, pg_connectivity, replication, haproxy, pgbouncer]
+
+    - name: Decode cluster membership
+      ansible.builtin.set_fact:
+        cluster_members: "{{ patroni_status.stdout | from_json }}"
+      run_once: true
+      tags: [patroni_status, pg_connectivity, replication, haproxy, pgbouncer]
+
+    - name: Verify exact membership and one leader
+      ansible.builtin.assert:
+        that:
+          - cluster_members | map(attribute='Member') | sort == groups['inv_pg'] | sort
+          - cluster_members | selectattr('Role', 'equalto', 'Leader') | list | length == 1
+          - cluster_members | rejectattr('Role', 'equalto', 'Leader') | list | length == groups['inv_pg'] | length - 1
+        fail_msg: "Unexpected Patroni membership: {{ cluster_members }}"
+      run_once: true
+      tags: [patroni_status, pg_connectivity, replication, haproxy, pgbouncer]
+
+    - name: Remember the elected leader
+      ansible.builtin.set_fact:
+        leader_name: "{{ (cluster_members | selectattr('Role', 'equalto', 'Leader') | first).Member }}"
+      run_once: true
+      tags: [patroni_status, pg_connectivity, replication, haproxy, pgbouncer]
+
+    - name: Check the PostgreSQL role on each node
+      ansible.builtin.command: >-
+        {{ patroni_pg_bin_dir }}/psql -X -A -t -w -v ON_ERROR_STOP=1
+        -h 127.0.0.1 -p {{ patroni_pg_port }}
+        -U {{ patroni_superuser_username }} -d postgres
+        -c "SELECT pg_is_in_recovery();"
+      environment:
+        PGPASSWORD: "{{ patroni_superuser_password }}"
+        PGCONNECT_TIMEOUT: "5"
+      register: pg_conn_check
+      changed_when: false
+      failed_when: >-
+        pg_conn_check.rc != 0 or
+        pg_conn_check.stdout | trim != ('f' if inventory_hostname == leader_name else 't')
+      tags: pg_connectivity
+
+    # --- HAProxy routing ---
+    - name: Check HAProxy is listening on write port
+      ansible.builtin.wait_for:
+        host: "{{ ansible_facts.default_ipv4.address }}"
+        port: "{{ haproxy_postgresql_port_rewritten }}"
+        timeout: 10
+      tags: haproxy
+
+    - name: Check HAProxy is listening on read-only port
+      ansible.builtin.wait_for:
+        host: "{{ ansible_facts.default_ipv4.address }}"
+        port: "{{ haproxy_postgresql_port_readonly }}"
+        timeout: 10
+      tags: haproxy
+
+    - name: Check HAProxy stats endpoint
+      ansible.builtin.uri:
+        url: "http://{{ ansible_facts.default_ipv4.address }}:{{ haproxy_stats_port | default(7000) }}/stats"
+        method: GET
+        url_username: "{{ haproxy_stat_user | default('admin') }}"
+        url_password: "{{ haproxy_stat_password | default('admin') }}"
+        force_basic_auth: true
+        status_code: 200
+      register: haproxy_stats_check
+      retries: 3
+      delay: 3
+      until: haproxy_stats_check is success
+      tags: haproxy
+
+    - name: Report HAProxy health
+      ansible.builtin.debug:
+        msg: "HAProxy is healthy and listening on {{ ansible_facts.default_ipv4.address }}"
+      tags: haproxy
+
+    # --- PgBouncer connectivity ---
+    - name: Check PgBouncer is listening
+      ansible.builtin.wait_for:
+        host: "{{ ansible_facts.default_ipv4.address }}"
+        port: "{{ pgbouncer_listen_port }}"
+        timeout: 10
+      tags: pgbouncer
+
+    - name: Verify SQL routing through HAProxy and PgBouncer on every node
+      ansible.builtin.command: >-
+        {{ patroni_pg_bin_dir }}/psql -X -A -t -w -v ON_ERROR_STOP=1
+        -h {{ ansible_facts.default_ipv4.address }} -p {{ item.port }}
+        -U {{ patroni_superuser_username }} -d postgres
+        -c "SELECT pg_is_in_recovery();"
+      environment:
+        PGPASSWORD: "{{ patroni_superuser_password }}"
+        PGCONNECT_TIMEOUT: "5"
+      loop:
+        - {port: "{{ haproxy_postgresql_port_rewritten }}", recovery: "f"}
+        - {port: "{{ haproxy_postgresql_port_readonly }}", recovery: "t"}
+        - {port: "{{ haproxy_pool_postgresql_port_rewritten }}", recovery: "f"}
+        - {port: "{{ haproxy_pool_postgresql_port_readonly }}", recovery: "t"}
+        - {port: "{{ pgbouncer_listen_port }}", recovery: "{{ 'f' if inventory_hostname == leader_name else 't' }}"}
+      register: routed_sql
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: routed_sql.rc == 0 and routed_sql.stdout | trim == item.recovery
+      tags: [haproxy, pgbouncer]
+
+    - name: Verify SQL routing through the VIP
+      ansible.builtin.command: >-
+        {{ patroni_pg_bin_dir }}/psql -X -A -t -w -v ON_ERROR_STOP=1
+        -h {{ cluster_vip_1 }} -p {{ item.port }}
+        -U {{ patroni_superuser_username }} -d postgres
+        -c "SELECT pg_is_in_recovery();"
+      environment:
+        PGPASSWORD: "{{ patroni_superuser_password }}"
+        PGCONNECT_TIMEOUT: "5"
+      loop:
+        - {port: "{{ haproxy_postgresql_port_rewritten }}", recovery: "f"}
+        - {port: "{{ haproxy_postgresql_port_readonly }}", recovery: "t"}
+        - {port: "{{ haproxy_pool_postgresql_port_rewritten }}", recovery: "f"}
+        - {port: "{{ haproxy_pool_postgresql_port_readonly }}", recovery: "t"}
+      register: vip_sql
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: vip_sql.rc == 0 and vip_sql.stdout | trim == item.recovery
+      run_once: true
+      tags: keepalived
+
+    - name: Choose an isolated replication probe table
+      ansible.builtin.set_fact:
+        probe_table: "pg_cluster_probe_{{ 1000000000000 | random }}"
+      run_once: true
+      tags: replication
+
+    - name: Verify committed data reaches all replicas
+      environment:
+        PGPASSWORD: "{{ patroni_superuser_password }}"
+        PGCONNECT_TIMEOUT: "5"
+      tags: replication
+      block:
+        - name: Commit a probe through the VIP write endpoint
+          ansible.builtin.command: >-
+            {{ patroni_pg_bin_dir }}/psql -X -w -v ON_ERROR_STOP=1
+            -h {{ cluster_vip_1 }} -p {{ haproxy_postgresql_port_rewritten }}
+            -U {{ patroni_superuser_username }} -d postgres
+            -c "CREATE TABLE public.{{ probe_table }} (value text PRIMARY KEY);
+            INSERT INTO public.{{ probe_table }} VALUES ('{{ probe_table }}');"
+          changed_when: true
+          run_once: true
+
+        - name: Wait for the committed probe on every PostgreSQL node
+          ansible.builtin.command: >-
+            {{ patroni_pg_bin_dir }}/psql -X -A -t -w -v ON_ERROR_STOP=1
+            -h 127.0.0.1 -p {{ patroni_pg_port }}
+            -U {{ patroni_superuser_username }} -d postgres
+            -c "SELECT value FROM public.{{ probe_table }};"
+          register: replicated_probe
+          changed_when: false
+          retries: 12
+          delay: 5
+          until: replicated_probe.rc == 0 and replicated_probe.stdout | trim == probe_table
+      always:
+        - name: Remove the replication probe
+          ansible.builtin.command: >-
+            {{ patroni_pg_bin_dir }}/psql -X -w -v ON_ERROR_STOP=1
+            -h {{ cluster_vip_1 }} -p {{ haproxy_postgresql_port_rewritten }}
+            -U {{ patroni_superuser_username }} -d postgres
+            -c "DROP TABLE IF EXISTS public.{{ probe_table }};"
+          changed_when: true
+          run_once: true
+
+    # --- Keepalived VIP ---
+    - name: Check VIP is accessible from cluster nodes
+      ansible.builtin.command: >
+        ping -c 1 -W 2 {{ cluster_vip_1 }}
+      register: vip_check
+      changed_when: false
+      failed_when: vip_check.rc != 0
+      run_once: true
+      tags: keepalived
+
+    - name: Report VIP accessibility
+      ansible.builtin.debug:
+        msg: "VIP {{ cluster_vip_1 }} is accessible"
+      tags: keepalived
+
+    # --- systemd services ---
+    - name: Get systemd services status
+      ansible.builtin.service_facts:
+      tags: services
+
+    - name: Verify expected services are running
+      ansible.builtin.assert:
+        that:
+          - item in ansible_facts.services
+          - ansible_facts.services[item]['state'] == 'running'
+        fail_msg: "Service {{ item }} is not running (state: {{ ansible_facts.services[item]['state'] | default('not found') }})"
+        success_msg: "Service {{ item }} is running"
+      loop: "{{ expected_services }}"
+      tags: services

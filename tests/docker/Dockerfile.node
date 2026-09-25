@@ -1,0 +1,178 @@
+# Target node image — Ubuntu 22.04 with systemd for pg_cluster testing
+#
+# Provides:
+#   - systemd as PID 1 (required for service management by Ansible)
+#   - SSH server for ansible connections
+#   - sudo without password for the deploy user
+#   - Python 3 for ansible modules
+#   - Real Tantor packages from the public Nexus repository:
+#     etcd-tantor-all, haproxy-tantor-all, keepalived-tantor-all,
+#     pgbouncer-tantor-all, wal-g-tantor-all
+#   - Patroni via pip (patroni-tantor-all is not published in the public Nexus)
+#   - Dummy pg_configurator (pg-configurator-tantor-all is not in the public Nexus)
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV container=docker
+
+# Core packages required by the playbooks + cluster components
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    systemd systemd-sysv \
+    dbus \
+    openssh-server sudo \
+    python3 python3-pip python3-venv python3-psycopg2 python3-setuptools \
+    jq curl chrony \
+    openssl gnupg gpg locales \
+    ca-certificates \
+    apt-utils apt-transport-https software-properties-common \
+   iproute2 iputils-ping dnsutils \
+  telnet wget acl \
+  kmod \
+  && rm -rf /var/lib/apt/lists/*
+
+# ─────────────────────────────────────────────────────────────
+# Tantor Nexus repository (public, no authentication required)
+# ─────────────────────────────────────────────────────────────
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://public.tantorlabs.ru/tantorlabs.ru.asc \
+       -o /etc/apt/keyrings/tantor-nexus.asc \
+    && gpg --dearmor -o /etc/apt/keyrings/tantor-nexus.gpg \
+           /etc/apt/keyrings/tantor-nexus.asc \
+    && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/tantor-nexus.gpg] https://nexus-public.tantorlabs.ru/repository/ubuntu-22.04 jammy main" \
+       > /etc/apt/sources.list.d/tantorlabs.list \
+    && apt-get update
+
+# Install real Tantor packages from Nexus.
+# These packages ship:
+#   - binaries under /opt/tantor/usr/bin|sbin/
+#   - systemd units: etcd-tantor.service, haproxy-tantor.service,
+#     keepalived-tantor.service, pgbouncer-tantor.service
+#   - users/groups: etcd, haproxy, pgbouncer (created by postinst scripts)
+RUN apt-get install -y --no-install-recommends \
+    etcd-tantor-all \
+    haproxy-tantor-all \
+    keepalived-tantor-all \
+    pgbouncer-tantor-all \
+    wal-g-tantor-all \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install patroni via pip (patroni-tantor-all is not in the public Nexus).
+# Complete the distro Python dependency set before checking pip metadata.
+RUN apt-get update && apt-get install -y --no-install-recommends python3-cairo \
+    && rm -rf /var/lib/apt/lists/*
+ARG PATRONI_VERSION=3.3.2
+RUN pip3 install --no-cache-dir "patroni[etcd]==${PATRONI_VERSION}" "psycopg2-binary>=2.9,<3" \
+    && pip3 check
+
+# Pre-populate apt cache so ansible's update_cache is fast
+RUN apt-get update
+
+# Generate locales used by prepare_nodes role
+RUN locale-gen ru_RU.UTF-8 en_US.UTF-8
+
+# ─────────────────────────────────────────────────────────────
+# Patroni compatibility layer
+#
+# Patroni is installed via pip because patroni-tantor-all is not
+# available in the public Nexus. The production playbooks expect the
+# binary under /opt/tantor/usr/bin/patroni and check package_facts for
+# patroni-tantor-all, so we provide both: symlinks and a fake .deb
+# marker so the role sees it as installed and skips apt installation.
+# ─────────────────────────────────────────────────────────────
+
+# Create /opt/tantor directory tree the playbooks write to
+RUN mkdir -p \
+    /opt/tantor/etc/etcd \
+    /opt/tantor/etc/patroni \
+    /opt/tantor/etc/pgbouncer \
+    /opt/tantor/etc/haproxy \
+    /opt/tantor/etc/keepalived \
+    /opt/tantor/var/lib/etcd \
+    /opt/tantor/var/log/patroni \
+    /opt/tantor/var/log/pgbouncer \
+    /opt/tantor/var/lib/haproxy \
+    /opt/tantor/usr/bin \
+    /opt/tantor/usr/sbin \
+    /opt/tantor/db \
+    /opt/keepalived/scripts \
+    /var/run/postgresql \
+    /var/lib/postgresql \
+    /etc/postgresql \
+    /etc/apt/keyrings \
+    /var/run/pgbouncer-tantor \
+    /run/haproxy
+
+# Symlinks for patroni (pip-installed, not under /opt/tantor by default)
+RUN ln -sf /usr/local/bin/patroni     /opt/tantor/usr/bin/patroni \
+    && ln -sf /usr/local/bin/patronictl  /opt/tantor/usr/bin/patronictl \
+    && ln -sf /usr/local/bin/patroni     /usr/bin/patroni \
+    && ln -sf /usr/local/bin/patronictl  /usr/bin/patronictl
+
+# Dummy pg_configurator — produces a JSON config from input parameters.
+# pg-configurator-tantor-all is not published in the public Nexus.
+RUN printf '#!/bin/bash\n\
+json="{\\"postgresql\\":{\\"parameters\\":{\\"max_connections\\":200,\\"shared_buffers\\":\\"256MB\\",\\"effective_cache_size\\":\\"768MB\\",\\"maintenance_work_mem\\":\\"64MB\\",\\"checkpoint_completion_target\\":0.9,\\"wal_buffers\\":\\"16MB\\",\\"default_statistics_target\\":100,\\"random_page_cost\\":1.1,\\"effective_io_concurrency\\":200,\\"work_mem\\":\\"4MB\\",\\"min_wal_size\\":\\"80MB\\",\\"max_wal_size\\":\\"1GB\\",\\"max_worker_processes\\":8,\\"max_parallel_workers_per_gather\\":2,\\"max_parallel_workers\\":8,\\"max_replication_slots\\":10,\\"max_wal_senders\\":10,\\"wal_level\\":\\"replica\\",\\"hot_standby\\":\\"on\\",\\"wal_log_hints\\":\\"on\\",\\"unix_socket_directories\\":\\"/var/run/postgresql\\"}}}"\n\
+for arg in "$@"; do\n\
+  case "$arg" in\n\
+    --output-file-name=*) outfile="${arg#--output-file-name=}" ;;\n\
+  esac\ndone\n\
+if [ -n "$outfile" ]; then\n\
+  echo "$json" > "$outfile"\nfi\n' > /opt/tantor/usr/bin/pg_configurator \
+    && chmod +x /opt/tantor/usr/bin/pg_configurator
+
+# Build and install a fake patroni-tantor-all .deb so the patroni role's
+# package_facts check sees it as installed and skips apt installation.
+# (pg-configurator-tantor-all is also faked for the same reason.)
+RUN for pkg in patroni-tantor-all pg-configurator-tantor-all; do \
+      dir="/tmp/fake-${pkg}" \
+      && mkdir -p "$dir/DEBIAN" \
+      && printf "Package: %s\nVersion: 1.0-docker\nArchitecture: all\nMaintainer: Docker Test <test@docker>\nPriority: optional\nDescription: Fake Tantor package for Docker testing (pip-installed patroni)\n" "$pkg" > "$dir/DEBIAN/control" \
+      && dpkg-deb --build "$dir" "/tmp/${pkg}.deb" \
+      && dpkg -i "/tmp/${pkg}.deb" \
+      && rm -rf "$dir" "/tmp/${pkg}.deb"; \
+    done
+
+# Fix haproxy chroot directory permissions
+RUN chown haproxy:haproxy /opt/tantor/var/lib/haproxy /run/haproxy 2>/dev/null || true
+
+# Fix etcd data directory permissions (service runs as etcd user)
+RUN chown etcd:etcd /opt/tantor/var/lib/etcd 2>/dev/null || true
+
+# Create deploy user with passwordless sudo
+RUN useradd -m -s /bin/bash deploy \
+    && echo 'deploy:deploy' | chpasswd \
+    && echo 'root:root' | chpasswd \
+    && echo 'deploy ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/deploy \
+    && chmod 0440 /etc/sudoers.d/deploy
+
+# Ensure postgres user exists (needed by patroni/pgbouncer roles)
+RUN id postgres 2>/dev/null || useradd --system --create-home --shell /bin/bash postgres
+
+# SSH configuration
+RUN mkdir -p /run/sshd /home/deploy/.ssh \
+    && chmod 700 /home/deploy/.ssh \
+    && chown deploy:deploy /home/deploy/.ssh \
+    && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# Copy entrypoint script that prepares kernel module dir + /dev/watchdog
+COPY docker/entrypoint-node.sh /entrypoint-node.sh
+RUN chmod +x /entrypoint-node.sh
+
+# Remove unnecessary systemd services that fail in containers
+RUN systemctl mask \
+    systemd-resolved.service \
+    systemd-networkd.service \
+    systemd-networkd-wait-online.service \
+    apt-daily.service apt-daily.timer \
+   apt-daily-upgrade.service apt-daily-upgrade.timer \
+  2>/dev/null || true
+
+# The Tantor packages create *-tantor.service units; there are no stock
+# etcd/haproxy/keepalived/pgbouncer services to mask anymore.
+
+EXPOSE 22 2379 2380 5432 6432 8008 7000 15432 15433 16432 16433
+
+# Start systemd as init
+CMD ["/entrypoint-node.sh"]

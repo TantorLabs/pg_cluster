@@ -1,0 +1,22 @@
+# yamllint configuration for pg_cluster tests
+extends: default
+
+rules:
+  line-length:
+    max: 200
+    level: warning
+  truthy:
+    level: warning
+  document-start:
+    level: warning
+  comments:
+    level: warning
+  comments-indentation:
+    level: warning
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+  brackets:
+    level: warning
+  braces:
+    level: warning

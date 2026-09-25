@@ -1,0 +1,122 @@
+# Test cluster for pg_cluster Ansible playbooks
+#
+# Spins up:
+#   - 3 target nodes (pg-node1/2/3) with systemd, acting as inv_cluster/inv_etcd/inv_pg/inv_keepalived
+#   - 1 controller node (ansible-controller) from which playbooks are run
+#
+# Usage:
+#   docker compose -f tests/docker/docker-compose.yml up -d --build
+#   docker compose -f tests/docker/docker-compose.yml exec ansible-controller make -f /opt/Makefile.controller test
+#   docker compose -f tests/docker/docker-compose.yml down -v
+#
+# The controller image is parameterised at build time via environment variables
+# so the same compose file works for every version-matrix entry:
+#   ANSIBLE_VERSION, PYTHON_VERSION, PATRONI_VERSION
+
+services:
+  pg-node1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.node
+      args:
+        PATRONI_VERSION: "${PATRONI_VERSION:-3.3.2}"
+    hostname: pg-node1
+    privileged: true
+    cgroup: host
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - node1-data:/opt/tantor
+      - ../..:/opt/pg_cluster:ro
+    networks:
+      pgnet:
+        ipv4_address: ${TEST_SUBNET_PREFIX:-10.20.0}.11
+
+  pg-node2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.node
+      args:
+        PATRONI_VERSION: "${PATRONI_VERSION:-3.3.2}"
+    hostname: pg-node2
+    privileged: true
+    cgroup: host
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - node2-data:/opt/tantor
+      - ../..:/opt/pg_cluster:ro
+    networks:
+      pgnet:
+        ipv4_address: ${TEST_SUBNET_PREFIX:-10.20.0}.12
+
+  pg-node3:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.node
+      args:
+        PATRONI_VERSION: "${PATRONI_VERSION:-3.3.2}"
+    hostname: pg-node3
+    privileged: true
+    cgroup: host
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - node3-data:/opt/tantor
+      - ../..:/opt/pg_cluster:ro
+    networks:
+      pgnet:
+        ipv4_address: ${TEST_SUBNET_PREFIX:-10.20.0}.13
+
+  ansible-controller:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.controller
+      args:
+        PYTHON_VERSION: "${PYTHON_VERSION:-3.11}"
+        ANSIBLE_VERSION: "${ANSIBLE_VERSION:-9.6.1}"
+        ANSIBLE_CORE_VERSION: "${ANSIBLE_CORE_VERSION:-2.16.7}"
+    hostname: ansible-controller
+    depends_on:
+      - pg-node1
+      - pg-node2
+      - pg-node3
+    volumes:
+      - ../..:/opt/pg_cluster:ro
+      - ssh-keys:/root/.ssh
+      - pki-data:/opt/pg_cluster/pki-dir
+      - controller-tmp:/tmp/ansible
+    environment:
+      - PATRONI_VERSION=${PATRONI_VERSION:-3.3.2}
+      - ANSIBLE_VERSION=${ANSIBLE_VERSION:-9.6.1}
+      - PYTHON_VERSION=${PYTHON_VERSION:-3.11}
+      - ANSIBLE_CORE_VERSION=${ANSIBLE_CORE_VERSION:-2.16.7}
+      - ANSIBLE_LOG_PATH=/tmp/ansible/ansible.log
+      - TEST_SUBNET_PREFIX=${TEST_SUBNET_PREFIX:-10.20.0}
+    networks:
+      pgnet:
+        ipv4_address: ${TEST_SUBNET_PREFIX:-10.20.0}.10
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/controller-ready"]
+      interval: 5s
+      timeout: 2s
+      retries: 180
+    command: sleep infinity
+
+volumes:
+  node1-data:
+  node2-data:
+  node3-data:
+  ssh-keys:
+  pki-data:
+  controller-tmp:
+
+networks:
+  pgnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${TEST_SUBNET_PREFIX:-10.20.0}.0/24

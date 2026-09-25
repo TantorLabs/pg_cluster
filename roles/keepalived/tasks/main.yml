@@ -1,6 +1,6 @@
 ---
 - name: Install keepalived-tantor-all (RHEL-like systems)
-  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+  when: ansible_facts.os_family in ["RED", "Centos", "Rocky", "RedHat"]
   ansible.builtin.dnf:
     name: >-
       {{
@@ -19,7 +19,7 @@
   tags: keepalived_install, keepalived
 
 - name: Install keepalived-tantor-all (Alt Linux)
-  when: ansible_os_family in ["Altlinux"]
+  when: ansible_facts.os_family in ["Altlinux"]
   community.general.apt_rpm:
     name: >-
       {{
@@ -37,7 +37,7 @@
   tags: keepalived_install, keepalived
 
 - name: Install keepalived-tantor-all (Debian-like systems)
-  when: ansible_os_family in ["Astra Linux", "Debian"]
+  when: ansible_facts.os_family in ["Astra Linux", "Debian"]
   ansible.builtin.apt:
     name: >-
       {{
@@ -105,21 +105,21 @@
   when: add_balancer is defined and add_balancer|bool
   tags: keepalived_conf, keepalived
   block: # for add_balancer.yml
-    - name: "Fetch keepalived.conf conf file from {{ groups.balancers[0] }}"
+    - name: Fetch keepalived.conf conf file from the first balancer
       run_once: true
       ansible.builtin.fetch:
         src: /opt/tantor/etc/keepalived/keepalived.conf
         dest: files/keepalived.conf
         validate_checksum: true
         flat: true
-      delegate_to: "{{ groups.balancers[0] }}"
+      delegate_to: "{{ groups['balancers'][0] if 'balancers' in groups else inventory_hostname }}"
 
     - name: Copy keepalived.conf conf file to replica
       ansible.builtin.copy:
         src: files/keepalived.conf
         dest: /opt/tantor/etc/keepalived/keepalived.conf
         mode: "0644"
-      notify: "Restart keepalived"
+      notify: "Restart keepalived-tantor service"
 
     - name: Remove keepalived.conf file from localhost
       become: false
@@ -139,4 +139,4 @@
         - { regexp: '^.*interface', line: '   interface {{ vip_interface }}' }
       loop_control:
         label: "{{ item.line }}"
-      notify: "Restart keepalived"
+      notify: "Restart keepalived-tantor service"

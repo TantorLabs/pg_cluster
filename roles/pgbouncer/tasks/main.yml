@@ -1,6 +1,6 @@
 ---
 - name: Install pgbouncer-tantor-all (RHEL-like systems)
-  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+  when: ansible_facts.os_family in ["RED", "Centos", "Rocky", "RedHat"]
   ansible.builtin.dnf:
     name: >-
       {{
@@ -13,7 +13,7 @@
     allow_downgrade: true
 
 - name: Install pgbouncer-tantor-all (Alt linux)
-  when: ansible_os_family in ["Altlinux"]
+  when: ansible_facts.os_family in ["Altlinux"]
   community.general.apt_rpm:
     name: >-
       {{
@@ -25,7 +25,7 @@
     state: present
 
 - name: Install pgbouncer-tantor-all (Debian-like systems)
-  when: ansible_os_family in ["Astra Linux", "Debian"]
+  when: ansible_facts.os_family in ["Astra Linux", "Debian"]
   ansible.builtin.apt:
     name: >-
       {{
@@ -78,45 +78,37 @@
     ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_user:
     login_host: 127.0.0.1
-    db: postgres
+    login_user: "{{ patroni_superuser_username }}"
+    login_password: "{{ patroni_superuser_password }}"
+    login_db: postgres
     name: "{{ pgbouncer_auth_user }}"
     password: "{{ pgbouncer_auth_user_passw }}"
     encrypted: true
     role_attr_flags: REPLICATION
     state: present
-    port: "5432"
+    login_port: "{{ patroni_pg_port }}"
   become: true
   become_user: postgres
   when: pgbouncer_psql_node_status.stdout == 'f'
 
-- name: Create userlist for PGbouncer
-  ansible.builtin.file:
-    path: /opt/tantor/etc/pgbouncer/userlist.txt
+# The auth_user password has to be stored in plain text. PgBouncer opens its
+# own backend connection to run auth_query, and a SCRAM secret copied from
+# pg_shadow.passwd cannot be used for that login: a SCRAM secret can only be
+# passed through from an authenticated client, and the internal auth_query
+# connection has no client. With a SCRAM secret there PgBouncer fails with
+# "failed to answer authreq" and every client login dies with
+# "server login has been failing, cached error: failed to answer authreq".
+# Client users are still resolved through auth_query and use SCRAM
+# pass-through, so only the auth_user needs a plain-text entry here.
+- name: Write PgBouncer userlist with the plain-text auth user password
+  ansible.builtin.copy:
+    content: |
+      "{{ pgbouncer_auth_user }}" "{{ pgbouncer_auth_user_passw }}"
+    dest: /opt/tantor/etc/pgbouncer/userlist.txt
     owner: "postgres"
     group: "postgres"
-    mode: "0644"
-
-- name: Check if pgbouncer missing in /opt/tantor/etc/pgbouncer/userlist.txt file
-  ansible.builtin.lineinfile:
-    path: /opt/tantor/etc/pgbouncer/userlist.txt
-    regexp: '\"pgbouncer\"\s\"(?:md5\w+\"|SCRAM-SHA-256.*\")'
-    state: absent
-  check_mode: true
-  register: pgbouncer_userlist
-  changed_when: false
-
-- name: Run query for creation of userlist.txt
-  vars:
-    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
-  community.postgresql.postgresql_query:
-    login_db: postgres
-    query: |
-      COPY (SELECT usename, passwd FROM pg_shadow WHERE usename='pgbouncer')
-      TO '/opt/tantor/etc/pgbouncer/userlist.txt'
-      WITH (FORMAT CSV, DELIMITER ' ', FORCE_QUOTE *)
-  when: ( groups['inv_cluster'] | length == 1  ) or (not pgbouncer_userlist.found)
-  become: true
-  become_user: postgres
+    mode: "0600"
+  no_log: true
   notify: Restart pgbouncer-tantor
 
 - name: Upload pgbouncer_prepare.sql
@@ -137,7 +129,7 @@
   vars:
     ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_script:
-    db: postgres
+    login_db: postgres
     path: /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql
   changed_when: false
   when: pgbouncer_psql_node_status.stdout == 'f'

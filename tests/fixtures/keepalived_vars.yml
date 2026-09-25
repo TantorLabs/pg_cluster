@@ -1,0 +1,9 @@
+# Fixture variables for keepalived template rendering tests
+
+cluster_vip_1: "10.20.0.100"
+vip_interface: "eth0"
+patroni_restapi_username: "test_user"
+patroni_restapi_password: "test_pass"
+patroni_pg_port: 5432
+patroni_restapi_connect_address: "10.20.0.11:8008"
+ansible_host: "10.20.0.11"

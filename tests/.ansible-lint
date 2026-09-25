@@ -1,0 +1,27 @@
+# Ansible-lint configuration for pg_cluster tests
+# Relaxed rules — the project uses older-style Ansible patterns
+
+profile: basic
+
+exclude_paths:
+  - ../tools/
+  - ../.git/
+  - pki-dir/
+
+warn_list:
+  - command-instead-of-module
+  - command-instead-of-shell
+  - yaml[truthy]
+  - yaml[colons]
+  - yaml[line-length]
+  - name[missing]
+  - name[casing]
+  - jinja[spacing]
+  - risky-file-permissions
+  - package-latest
+  - no-changed-when
+  - partial-become
+
+skip_list:
+  - experimental
+  - fqcn[deep]

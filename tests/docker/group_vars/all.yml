@@ -1,0 +1,279 @@
+# Test variables for Docker-based pg_cluster tests
+# Overrides production defaults with Docker-compatible values
+
+---
+# Use postgresql classic (not tantordb) for testing
+postgresql_vendor: classic
+
+# Python interpreter for Ansible modules on target nodes
+ansible_python_interpreter: /usr/bin/python3
+
+# Disable Nexus repository (packages come from system repos in Docker)
+add_nexus_repo: "false"
+
+# PostgreSQL version for testing
+major_version: "16"
+edition: "be"
+
+# --- etcd ---
+etcd_package_version: ""
+etcd_user: etcd
+etcd_group: etcd
+etcd_data_dir: /opt/tantor/var/lib/etcd
+etcd_master_group_name: inv_etcd
+etcd_secure: true
+etcd_bin_path: "/opt/tantor/usr/bin/etcdctl"
+etcd_conf_dir: "/opt/tantor/var/lib/etcd/pg-cluster.pki"
+etcd_pki_dir: "{{ playbook_dir }}/pki-dir/{{ ansible_inventory_sources[0] | basename | regex_replace('\\.(ini|yml|yaml)$', '') }}"
+etcd_pki_key_suffix: -key.pem
+etcd_pki_cert_suffix: .pem
+etcd_use_ips: true
+etcd_iface_public: "all"
+etcd_iface_cluster: "default"
+etcd_port_client: 2379
+etcd_port_peer: 2380
+etcd_cluster_name: pg-cluster
+etcd_initial_cluster_token: test-cluster-token-12345
+etcd_init_system: systemd
+etcd_launch: true
+etcd_scheme: "{% if etcd_secure %}https{% else %}http{% endif %}://"
+etcd_cluster: "{% for host in groups[etcd_master_group_name] %}{{ hostvars[host]['unified_hostname'] }}={{ etcd_scheme }}{{ hostvars[host]['ansible_facts']['default_ipv4'].address }}:{{ etcd_port_peer }}{% if not loop.last %},{% endif %}{% endfor %}"
+etcd_cluster_data_dir: "{{ etcd_data_dir }}/{{ etcd_cluster_name }}.etcd"
+etcd_cluster_pki_dir: "{{ etcd_data_dir }}/{{ etcd_cluster_name }}.pki"
+etcd_pki_key_file: "{{ inventory_hostname }}{{ etcd_pki_key_suffix }}"
+etcd_pki_key_src: "{{ etcd_pki_dir }}/{{ etcd_pki_key_file }}"
+etcd_pki_key_dest: "{{ etcd_cluster_pki_dir }}/{{ etcd_pki_key_file }}"
+etcd_pki_cert_file: "{{ inventory_hostname }}{{ etcd_pki_cert_suffix }}"
+etcd_pki_cert_src: "{{ etcd_pki_dir }}/{{ etcd_pki_cert_file }}"
+etcd_pki_cert_dest: "{{ etcd_cluster_pki_dir }}/{{ etcd_pki_cert_file }}"
+etcd_pki_ca_file: "ca{{ etcd_pki_cert_suffix }}"
+etcd_pki_ca_cert_src: "{{ etcd_pki_dir }}/{{ etcd_pki_ca_file }}"
+etcd_pki_ca_cert_dest: "{{ etcd_cluster_pki_dir }}/{{ etcd_pki_ca_file }}"
+
+# --- patroni ---
+patroni_package_version: ""
+pg_configurator_package_version: ""
+patroni_pg_exists: false
+patroni_pg_port: 5432
+patroni_config_dir: "/opt/tantor/etc/patroni"
+patroni_system_user: postgres
+patroni_system_group: postgres
+patroni_pg_data_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-{{ major_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
+patroni_pg_config_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}-{{ major_version }}/{{ patroni_scope }}/{{ inventory_hostname }}"
+patroni_exec_start_pre: "/bin/mkdir -m 2750 -p /var/run/postgresql/{{ major_version }}-main.pg_stat_tmp"
+# Override pip packages — in Docker we install patroni via system packages
+patroni_pip_packages: []
+patroni_replication_username: replicator
+patroni_replication_password: repuserpasswd
+patroni_superuser_username: postgres
+patroni_superuser_password: supersecretpostgrespasswd
+patroni_scope: main
+patroni_namespace: /service/
+patroni_name: "{{ inventory_hostname }}"
+patroni_log_destination: log
+patroni_log_level: INFO
+patroni_log_format: "%(asctime)s %(levelname)s: %(message)s"
+patroni_log_dateformat: ""
+patroni_log_max_queue_size: 1000
+patroni_log_dir: /opt/tantor/var/log/patroni
+patroni_log_file_num: 4
+patroni_log_file_size: 25000000
+patroni_log_loggers:
+  - { module: "patroni.postmaster", level: "WARNING" }
+  - { module: "urllib3", level: "WARNING" }
+patroni_restapi_listen: "0.0.0.0:8008"
+patroni_restapi_connect_address: "{{ ansible_host }}:8008"
+patroni_restapi_certfile: ""
+patroni_restapi_keyfile: ""
+patroni_restapi_cafile: ""
+patroni_restapi_username: "test_user"
+patroni_restapi_password: "test_pass"
+patroni_etcd3_host: ""
+patroni_etcd3_hosts: "{% for host in groups['inv_etcd'] %}{{ hostvars[host]['ansible_facts']['default_ipv4'].address }}:{{ etcd_port_client }}{% if not loop.last %},{% endif %}{% endfor %}"
+patroni_etcd3_use_proxies: false
+patroni_etcd3_url: ""
+patroni_etcd3_proxy: ""
+patroni_etcd3_srv: ""
+patroni_etcd3_protocol: https
+patroni_etcd3_username: ""
+patroni_etcd3_password: ""
+patroni_etcd3_cacert: "{{ patroni_config_dir }}/ca.pem"
+patroni_etcd3_cert: "{{ patroni_config_dir }}/{{ inventory_hostname }}.pem"
+patroni_etcd3_key: "{{ patroni_config_dir }}/{{ inventory_hostname }}-key.pem"
+patroni_bootstrap_dcs_ttl: 30
+patroni_bootstrap_dcs_loop_wait: 10
+patroni_bootstrap_dcs_retry_timeout: 10
+patroni_bootstrap_dcs_maximum_lag_on_failover: 1048576
+patroni_bootstrap_dcs_master_start_timeout: 300
+patroni_bootstrap_dcs_synchronous_mode: false
+patroni_bootstrap_dcs_synchronous_mode_strict: false
+patroni_bootstrap_dcs_check_timeline: false
+patroni_bootstrap_dcs_standby_cluster: []
+patroni_bootstrap_dcs_pg_use_pg_rewind: true
+patroni_bootstrap_dcs_pg_use_slots: true
+patroni_bootstrap_dcs_pg_parameters:
+  - { option: "max_connections", value: "100" }
+  - { option: "max_wal_senders", value: "10" }
+  - { option: "max_replication_slots", value: "10" }
+  - { option: "hot_standby", value: "on" }
+  - { option: "wal_log_hints", value: "on" }
+  - { option: "wal_level", value: "replica" }
+  - { option: "unix_socket_directories", value: "/var/run/postgresql" }
+patroni_bootstrap_dcs_pg_recovery_conf: []
+patroni_bootstrap_dcs_pg_hba:
+  - { type: "local", database: "all", user: "all", address: "", method: "trust" }
+  - { type: "host", database: "all", user: "all", address: "0.0.0.0/0", method: "scram-sha-256" }
+  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "scram-sha-256" }
+patroni_pg_authentication:
+  - { type: "superuser", username: "{{ patroni_superuser_username }}", password: "{{ patroni_superuser_password }}" }
+  - { type: "replication", username: "{{ patroni_replication_username }}", password: "{{ patroni_replication_password }}" }
+patroni_pg_callbacks:
+  - { event: "on_reload", script: "" }
+  - { event: "on_restart", script: "" }
+  - { event: "on_role_change", script: "" }
+  - { event: "on_start", script: "" }
+  - { event: "on_stop", script: "" }
+patroni_pg_create_replica_methods:
+  - basebackup
+patroni_pg_basebackup: []
+patroni_pg_wal_e: []
+patroni_pg_wal_g: []
+patroni_pg_barman: []
+patroni_pg_pgbackrest: []
+patroni_pg_recovery_conf: []
+patroni_pg_custom_conf: ""
+patroni_pg_parameters:
+  - { option: "unix_socket_directories", value: "/var/run/postgresql" }
+patroni_pg_hba: []
+patroni_pg_ident: []
+patroni_pg_ctl_timeout: 60
+patroni_pg_remove_data_directory_on_rewind_failure: false
+patroni_pg_remove_data_directory_on_diverged_timelines: false
+patroni_watchdog_mode: "off"
+patroni_watchdog_device: /dev/watchdog
+patroni_watchdog_safety_margin: 5
+patroni_tags:
+  - { name: "nofailover", value: "false" }
+  - { name: "noloadbalance", value: "false" }
+  - { name: "clonefrom", value: "false" }
+  - { name: "nosync", value: "false" }
+  - { name: "replicatefrom", value: "" }
+patroni_pg_bin_dir: "/usr/lib/postgresql/{{ major_version }}/bin"
+patroni_pg_pgpass: /var/lib/postgresql/.pgpass
+patroni_bin_dir: /usr/bin
+
+# PostgreSQL tuning for test containers
+pg_conf_db_cpu: 2
+pg_conf_db_ram: "1024Mi"
+pg_conf_db_disk_type: SSD
+pg_conf_db_duty: mixed
+
+# --- pgbouncer ---
+pgbouncer_package_version: ""
+pgbouncer_listen_port: 6432
+pgbouncer_log_file: "/opt/tantor/var/log/pgbouncer/pgbouncer.log"
+pgbouncer_conf_file: "/opt/tantor/etc/pgbouncer/pgbouncer.ini"
+pgbouncer_pid_file: "/var/run/pgbouncer-tantor/pgbouncer.pid"
+pgbouncer_auth_user: pgbouncer
+pgbouncer_auth_user_passw: pgbouncer819mQ
+pgbouncer_incoming_hosts: "{% for host in groups['inv_cluster'] %}{{ hostvars[host]['ansible_facts']['default_ipv4'].address }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+# --- haproxy ---
+haproxy_package_version: ""
+haproxy_postgresql_port_rewritten: 15432
+haproxy_postgresql_port_readonly: 15433
+haproxy_pool_postgresql_port_rewritten: 16432
+haproxy_pool_postgresql_port_readonly: 16433
+haproxy_patroni_auth: "{{ patroni_restapi_username }}:{{ patroni_restapi_password }}"
+haproxy_stat_user: admin
+haproxy_stat_password: admin
+
+# --- keepalived ---
+keepalived_package_version: ""
+test_subnet_prefix: "{{ lookup('env', 'TEST_SUBNET_PREFIX') | default('10.20.0', true) }}"
+cluster_vip_1: "{{ test_subnet_prefix }}.100"
+vip_interface: "{{ ansible_facts.default_ipv4.interface }}"
+
+keepalived_vrrp_interface: "{{ ansible_facts.default_ipv4.interface }}"
+keepalived_priority_offset: 0
+keepalived_advert_int: 1
+keepalived_auth_pass: "test_vrrp_pass"
+keepalived_router_id: 51
+keepalived_check_script: "/etc/keepalived/check_haproxy.sh"
+keepalived_role_master: "pg-node1"
+
+# --- postgres classic ---
+config_system_locale: 'en_US.UTF-8'
+config_system_language: 'en_US.UTF-8'
+postgresql_debian_gpg_key: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+
+# --- pg_conf_data (computed by patroni role pg_configurator) ---
+# Pre-computed for template rendering tests
+patroni_pg_conf_data:
+  postgresql:
+    parameters:
+      max_connections: 100
+      shared_buffers: 256MB
+      effective_cache_size: 768MB
+      maintenance_work_mem: 64MB
+      checkpoint_completion_target: 0.9
+      wal_buffers: 16MB
+      default_statistics_target: 100
+      random_page_cost: 1.1
+      effective_io_concurrency: 200
+      work_mem: 4MB
+      min_wal_size: 80MB
+      max_wal_size: 1GB
+      max_worker_processes: 8
+      max_parallel_workers_per_gather: 2
+      max_parallel_workers: 8
+      max_replication_slots: 10
+      max_wal_senders: 10
+      wal_level: replica
+      hot_standby: on
+      wal_log_hints: on
+      unix_socket_directories: /var/run/postgresql
+
+# --- expected services for health check ---
+# These services should be running after a successful deployment
+expected_services:
+  - etcd-tantor.service
+  - patroni-tantor.service
+  - haproxy-tantor.service
+  - pgbouncer-tantor.service
+  - keepalived-tantor.service
+
+# --- certificates role ---
+certificates_dir: "{{ playbook_dir }}/pki-dir"
+certificates_ca_cert: "{{ certificates_dir }}/ca.pem"
+certificates_ca_key: "{{ certificates_dir }}/ca-key.pem"
+
+# --- haproxy extra ---
+haproxy_stats_port: 7000
+haproxy_stats_user: "admin"
+haproxy_stats_password: "admin"
+haproxy_config_file: "/opt/tantor/etc/haproxy/haproxy.cfg"
+haproxy_pid_file: "/var/run/haproxy.pid"
+
+# --- pgbouncer extra ---
+pgbouncer_listen_addr: "*"
+pgbouncer_auth_query: "SELECT usename, passwd FROM pg_shadow WHERE usename=$1"
+pgbouncer_pool_mode: "transaction"
+pgbouncer_max_client_conn: 100
+pgbouncer_default_pool_size: 20
+pgbouncer_system_user: "postgres"
+pgbouncer_system_group: "postgres"
+
+# --- patroni bootstrap ---
+patroni_boostrap_method: "initdb"
+patroni_boostrap_method_walg_storage: ""
+patroni_boostrap_method_walg_s3_username: ""
+patroni_boostrap_method_walg_s3_password: ""
+patroni_boostrap_method_walg_s3_bucket: ""
+patroni_boostrap_method_walg_s3_region: "ru-central1"
+patroni_boostrap_method_nfs_storage: ""
+patroni_boostrap_method_nfs_compression: "lz4"
+patroni_boostrap_method_nfs_delta_max_steps: "0"
+patroni_bootstrap_users: []
+patroni_pg_listen: "0.0.0.0:{{ patroni_pg_port }}"
+patroni_pg_connect_address: "{{ ansible_host }}:{{ patroni_pg_port }}"

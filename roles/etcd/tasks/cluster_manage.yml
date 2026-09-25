@@ -1,13 +1,13 @@
 ---
 - name: Identify nodes to add and remove
   ansible.builtin.set_fact:
-    nodes_to_add: >-
+    etcd_nodes_to_add: >-
       {{
         groups['inv_etcd'] |
         map('extract', hostvars, 'unified_hostname') |
         difference(etcd_member_names | default([]))
       }}
-    nodes_to_remove: >-
+    etcd_nodes_to_remove: >-
       {{
         etcd_member_names | default([]) |
         difference(groups['inv_etcd'] | map('extract', hostvars, 'unified_hostname'))
@@ -17,14 +17,14 @@
 - name: Show planned changes
   ansible.builtin.debug:
     msg:
-      - "Nodes to add: {{ nodes_to_add | default([]) }}"
-      - "Nodes to remove: {{ nodes_to_remove | default([]) }}"
+      - "Nodes to add: {{ etcd_nodes_to_add | default([]) }}"
+      - "Nodes to remove: {{ etcd_nodes_to_remove | default([]) }}"
   run_once: true
 
 - name: Add new etcd members to cluster
   ansible.builtin.shell: |
     ETCDCTL_API=3 {{ etcd_bin_path }} \
-      --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
+      --endpoints=https://{{ hostvars[etcd_leader]['ansible_facts']['default_ipv4']['address'] }}:{{ etcd_port_client }} \
       --cacert={{ etcd_conf_dir }}/ca.pem \
       --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}.pem \
       --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}-key.pem \
@@ -36,48 +36,48 @@
         groups['inv_etcd'] |
         map('extract', hostvars) |
         selectattr('unified_hostname', 'equalto', item) |
-        map(attribute='ansible_default_ipv4.address') |
+        map(attribute='ansible_facts.default_ipv4.address') |
         first
       }}
   delegate_to: "{{ etcd_leader }}"
-  loop: "{{ nodes_to_add }}"
-  register: add_results
+  loop: "{{ etcd_nodes_to_add }}"
+  register: etcd_add_results
   failed_when:
-    - add_results.rc != 0
-    - "'already exists' not in add_results.stderr"
-  changed_when: add_results.rc == 0
-  when: nodes_to_add | length > 0
+    - etcd_add_results.rc != 0
+    - "'already exists' not in etcd_add_results.stderr"
+  changed_when: etcd_add_results.rc == 0
+  when: etcd_nodes_to_add | length > 0
   run_once: true
 
 
 - name: Get member HEX IDs for removal
   when:
     - etcd_cluster_exists
-    - nodes_to_remove | length > 0
+    - etcd_nodes_to_remove | length > 0
   ansible.builtin.shell: |
     set -o pipefail
     ETCDCTL_API=3 {{ etcd_bin_path }} \
-      --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
+      --endpoints=https://{{ hostvars[etcd_leader]['ansible_facts']['default_ipv4']['address'] }}:{{ etcd_port_client }} \
       --cacert={{ etcd_conf_dir }}/ca.pem \
       --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}.pem \
       --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}-key.pem \
       member list | grep "{{ item }}" | cut -d',' -f1
   register: etcd_member_hex_ids_to_remove
   delegate_to: "{{ etcd_leader }}"
-  loop: "{{ nodes_to_remove }}"
+  loop: "{{ etcd_nodes_to_remove }}"
   changed_when: false
   failed_when: etcd_member_hex_ids_to_remove.rc != 0
 
 - name: Remove etcd members from cluster
   when:
     - etcd_cluster_exists
-    - nodes_to_remove | length > 0
+    - etcd_nodes_to_remove | length > 0
     - item.stdout != ""
     - item.rc == 0
   ansible.builtin.shell: |
     set -o pipefail
     ETCDCTL_API=3 {{ etcd_bin_path }} \
-      --endpoints=https://{{ hostvars[etcd_leader]['ansible_default_ipv4']['address'] }}:{{ etcd_port_client }} \
+      --endpoints=https://{{ hostvars[etcd_leader]['ansible_facts']['default_ipv4']['address'] }}:{{ etcd_port_client }} \
       --cacert={{ etcd_conf_dir }}/ca.pem \
       --cert={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}.pem \
       --key={{ etcd_conf_dir }}/{{ hostvars[etcd_leader]['unified_hostname'] }}-key.pem \

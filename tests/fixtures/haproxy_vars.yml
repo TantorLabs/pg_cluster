@@ -1,0 +1,17 @@
+# Fixture variables for haproxy template rendering tests
+
+haproxy_postgresql_port_rewritten: 15432
+haproxy_postgresql_port_readonly: 15433
+haproxy_pool_postgresql_port_rewritten: 16432
+haproxy_pool_postgresql_port_readonly: 16433
+haproxy_patroni_auth: "test_user:test_pass"
+haproxy_stat_user: admin
+haproxy_stat_password: admin
+patroni_restapi_username: "test_user"
+patroni_restapi_password: "test_pass"
+patroni_restapi_certfile: ""
+patroni_restapi_keyfile: ""
+patroni_restapi_cafile: ""
+patroni_pg_port: 5432
+patroni_etcd3_cacert: "/opt/tantor/etc/patroni/etcd-ca.pem"
+pgbouncer_listen_port: 6432

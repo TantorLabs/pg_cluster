@@ -1,0 +1,51 @@
+# Controller image — runs Ansible playbooks against the test cluster
+#
+# Build args PYTHON_VERSION and ANSIBLE_VERSION allow testing the
+# playbooks against different Python/Ansible combinations.
+#
+# Build context is the tests directory.
+
+ARG PYTHON_VERSION=3.11
+FROM python:${PYTHON_VERSION}-slim-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+ARG ANSIBLE_VERSION=9.6.1
+ARG ANSIBLE_CORE_VERSION=2.16.19
+ENV ANSIBLE_VERSION=${ANSIBLE_VERSION}
+ENV ANSIBLE_CORE_VERSION=${ANSIBLE_CORE_VERSION}
+
+# Install system dependencies for Ansible and SSH
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssh-client \
+    sshpass \
+    git \
+    curl \
+    jq \
+    gpg \
+    ca-certificates \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Resolve all dependencies together so an incompatible pin fails the build.
+COPY requirements.txt /tmp/test-requirements.txt
+RUN pip install --no-cache-dir \
+    "ansible==${ANSIBLE_VERSION}" "ansible-core==${ANSIBLE_CORE_VERSION}" \
+    -r /tmp/test-requirements.txt \
+    && pip check
+# The pinned ansible distribution supplies the required collections.
+
+# Prepare SSH directory
+RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
+
+# Create python3 symlink for Ansible localhost tasks
+RUN ln -sf /usr/local/bin/python3 /usr/bin/python3
+
+# Copy entrypoint and Makefile
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /opt/pg_cluster
+COPY docker/Makefile.controller /opt/Makefile.controller
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["sleep", "infinity"]

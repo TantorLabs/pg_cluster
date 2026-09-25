@@ -1,0 +1,30 @@
+# Test inventory for Docker-based pg_cluster tests
+#
+# All three nodes act as etcd members, postgres/patroni nodes,
+# and keepalived nodes — mirroring a minimal 3-node production cluster.
+
+[all:children]
+inv_cluster
+inv_etcd
+inv_pg
+inv_keepalived
+
+[inv_cluster]
+pg-node1 ansible_host="{{ test_subnet_prefix }}.11" ansible_user=deploy unified_hostname=pg-node1
+pg-node2 ansible_host="{{ test_subnet_prefix }}.12" ansible_user=deploy unified_hostname=pg-node2
+pg-node3 ansible_host="{{ test_subnet_prefix }}.13" ansible_user=deploy unified_hostname=pg-node3
+
+[inv_etcd]
+pg-node1 ansible_host="{{ test_subnet_prefix }}.11" ansible_user=deploy unified_hostname=pg-node1
+pg-node2 ansible_host="{{ test_subnet_prefix }}.12" ansible_user=deploy unified_hostname=pg-node2
+pg-node3 ansible_host="{{ test_subnet_prefix }}.13" ansible_user=deploy unified_hostname=pg-node3
+
+[inv_pg]
+pg-node1 ansible_host="{{ test_subnet_prefix }}.11" ansible_user=deploy unified_hostname=pg-node1
+pg-node2 ansible_host="{{ test_subnet_prefix }}.12" ansible_user=deploy unified_hostname=pg-node2
+pg-node3 ansible_host="{{ test_subnet_prefix }}.13" ansible_user=deploy unified_hostname=pg-node3
+
+[inv_keepalived]
+pg-node1 ansible_host="{{ test_subnet_prefix }}.11" ansible_user=deploy unified_hostname=pg-node1
+pg-node2 ansible_host="{{ test_subnet_prefix }}.12" ansible_user=deploy unified_hostname=pg-node2
+pg-node3 ansible_host="{{ test_subnet_prefix }}.13" ansible_user=deploy unified_hostname=pg-node3

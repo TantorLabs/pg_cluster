@@ -1,0 +1,22 @@
+# Python dependencies for pg_cluster tests
+# Install with: pip install -r tests/requirements.txt
+
+pyyaml>=6.0
+jinja2>=3.1
+ansible-core>=2.14,<2.22
+# Exact pin, not a range: ansible-lint>=2.19 dropped the ansible.parsing.yaml.constructor
+# import ansible-core removed in 2.19.0, and 26.8.0+ excludes ansible-core 2.17.* outright.
+# 26.1.0 is the newest release confirmed to work across every active version-matrix entry
+# from ansible-core 2.16.19 up to 2.21.4. Re-verify against the whole matrix before bumping.
+# NOTE: py3.9-ansible8-patroni2 in tests/version-matrix.yml is marked "skip" because
+# it can't install this file at all: ansible-lint 26.1.0 needs ansible-core>=2.16.14
+# (that entry is pinned to 2.15.11) AND Python>=3.10 (that entry's controller is 3.9).
+ansible-lint==26.1.0
+yamllint>=1.30
+cryptography>=41.0
+packaging>=24.0
+psycopg2-binary>=2.9
+# Docker SDK for the community.docker connection plugin used by
+# tests/docker/test_package_policy.py (libpq-dev policy checks on real
+# Astra/RedOS/ALT images).
+docker>=6.0

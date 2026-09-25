@@ -1,0 +1,127 @@
+# Test cluster for pg_cluster Ansible playbooks — Astra Linux 1.7 edition
+#
+# Same architecture as docker-compose.yml (3 nodes + controller), but:
+#   - nodes run Astra Linux SE 1.7.3 (alse), whose system python3 is 3.7 —
+#     the oldest managed-node Python the playbooks support. Managing these
+#     nodes requires ansible-core <= 2.17 on the controller.
+#   - Tantor packages come from the public Nexus astra-smolensk-1.7 repo.
+#   - the controller is pinned to ansible 10 / ansible-core 2.17 (Python 3.12).
+#
+# The playbooks run with the production Tantor path on Astra:
+#   postgresql_vendor=tantordb, add_nexus_repo=true (see the run command in
+#   the Astra test documentation / goal notes).
+#
+# Usage:
+#   docker compose -f tests/docker/docker-compose.astra.yml up -d --build --wait
+#   docker compose -f tests/docker/docker-compose.astra.yml exec -T ansible-controller \
+#     bash -lc 'cd /opt/pg_cluster && ansible-playbook -i tests/docker/inventory/test_inventory \
+#       -e @tests/docker/group_vars/all.yml -e patroni_pip_packages=[] \
+#       -e postgresql_vendor=tantordb -e "{\"add_nexus_repo\": \"true\"}" \
+#       tests/integration/prepare.yml pg-cluster.yaml tests/integration/check_cluster.yml'
+#   docker compose -f tests/docker/docker-compose.astra.yml down -v
+
+name: pgcluster-astra
+
+services:
+  pg-node1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.node-astra
+      args:
+        PATRONI_VERSION: "${PATRONI_VERSION:-3.3.2}"
+    hostname: pg-node1
+    privileged: true
+    cgroup: host
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - node1-astra-data:/opt/tantor
+      - ../..:/opt/pg_cluster:ro
+    networks:
+      pgnet:
+        ipv4_address: ${TEST_SUBNET_PREFIX:-10.25.0}.11
+
+  pg-node2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.node-astra
+      args:
+        PATRONI_VERSION: "${PATRONI_VERSION:-3.3.2}"
+    hostname: pg-node2
+    privileged: true
+    cgroup: host
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - node2-astra-data:/opt/tantor
+      - ../..:/opt/pg_cluster:ro
+    networks:
+      pgnet:
+        ipv4_address: ${TEST_SUBNET_PREFIX:-10.25.0}.12
+
+  pg-node3:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.node-astra
+      args:
+        PATRONI_VERSION: "${PATRONI_VERSION:-3.3.2}"
+    hostname: pg-node3
+    privileged: true
+    cgroup: host
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - node3-astra-data:/opt/tantor
+      - ../..:/opt/pg_cluster:ro
+    networks:
+      pgnet:
+        ipv4_address: ${TEST_SUBNET_PREFIX:-10.25.0}.13
+
+  ansible-controller:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.controller
+      args:
+        PYTHON_VERSION: "3.12"
+        ANSIBLE_VERSION: "10.0.1"
+        ANSIBLE_CORE_VERSION: "2.17.0"
+    hostname: ansible-controller
+    depends_on:
+      - pg-node1
+      - pg-node2
+      - pg-node3
+    volumes:
+      - ../..:/opt/pg_cluster:ro
+      - ssh-keys-astra:/root/.ssh
+      - pki-data-astra:/opt/pg_cluster/pki-dir
+      - controller-tmp-astra:/tmp/ansible
+    environment:
+      - TEST_SUBNET_PREFIX=${TEST_SUBNET_PREFIX:-10.25.0}
+      - ANSIBLE_LOG_PATH=/tmp/ansible/ansible.log
+    networks:
+      pgnet:
+        ipv4_address: ${TEST_SUBNET_PREFIX:-10.25.0}.10
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/controller-ready"]
+      interval: 5s
+      timeout: 2s
+      retries: 180
+    command: sleep infinity
+
+volumes:
+  node1-astra-data:
+  node2-astra-data:
+  node3-astra-data:
+  ssh-keys-astra:
+  pki-data-astra:
+  controller-tmp-astra:
+
+networks:
+  pgnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${TEST_SUBNET_PREFIX:-10.25.0}.0/24

@@ -18,7 +18,7 @@ patroni_pg_config_dir: "/var/lib/postgresql/tantor-{{ edition | d('be', true) }}
 patroni_exec_start_pre: "/bin/mkdir -m 2750 -p /var/run/postgresql/{{ major_version }}-main.pg_stat_tmp"
 
 patroni_pip_packages:
-  - { name: "setuptools", state: "latest",  umask: "0022", executable: "pip3" }
+  - { name: "setuptools", state: "latest", umask: "0022", executable: "pip3" }
   - { name: "patroni[etcd]==1.6.4", state: "present", umask: "0022", executable: "pip3" }
 
 patroni_replication_username: replicator
@@ -42,7 +42,7 @@ patroni_log_file_num: 4
 patroni_log_file_size: 25000000
 patroni_log_loggers:
   - { module: "patroni.postmaster", level: "WARNING" }
-  - { module: "urllib3",            level: "DEBUG" }
+  - { module: "urllib3", level: "DEBUG" }
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#rest-api
 patroni_restapi_listen: 0.0.0.0:8008
@@ -55,7 +55,7 @@ patroni_restapi_password: "test_pass"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#etcd
 patroni_etcd3_host: ""
-patroni_etcd3_hosts: "{% for host in groups['inv_etcd'] %}{{ hostvars[host]['ansible_default_ipv4'].address }}:{{ etcd_port_client }}{% if not loop.last %},{% endif %}{% endfor %}"
+patroni_etcd3_hosts: "{% for host in groups['inv_etcd'] %}{{ hostvars[host]['ansible_facts']['default_ipv4'].address }}:{{ etcd_port_client }}{% if not loop.last %},{% endif %}{% endfor %}"
 patroni_etcd3_use_proxies: false
 patroni_etcd3_url: ""
 patroni_etcd3_proxy: ""
@@ -80,24 +80,24 @@ patroni_bootstrap_dcs_synchronous_mode: false
 patroni_bootstrap_dcs_synchronous_mode_strict: false
 patroni_bootstrap_dcs_check_timeline: false
 patroni_bootstrap_dcs_standby_cluster:
-  - { option: "host",                     value: "" }
-  - { option: "port",                     value: "" }
-  - { option: "primary_slot_name",        value: "" }
-  - { option: "create_replica_methods",   value: "" }
-  - { option: "restore_command",          value: "" }
-  - { option: "archive_cleanup_command",  value: "" }
+  - { option: "host", value: "" }
+  - { option: "port", value: "" }
+  - { option: "primary_slot_name", value: "" }
+  - { option: "create_replica_methods", value: "" }
+  - { option: "restore_command", value: "" }
+  - { option: "archive_cleanup_command", value: "" }
   - { option: "recovery_min_apply_delay", value: "" }
 
 patroni_bootstrap_dcs_pg_archive_mode: ""
 patroni_bootstrap_dcs_pg_use_pg_rewind: false
 patroni_bootstrap_dcs_pg_use_slots: true
 patroni_bootstrap_dcs_pg_parameters:
-  - { option: "port",                      value: "{{ patroni_pg_port }}" }
-  - { option: "track_commit_timestamp",    value: "off" }
+  - { option: "port", value: "{{ patroni_pg_port }}" }
+  - { option: "track_commit_timestamp", value: "off" }
   - { option: "max_prepared_transactions", value: "0" }
 
 patroni_bootstrap_dcs_pg_recovery_conf: []
-#  - { option: "standby_mode",    value: "on" }
+#  - { option: "standby_mode", value: "on" }
 #  - { option: "restore_command", value: "cp ../wal_archive/%f %p" }
 
 patroni_bootstrap_dcs_pg_hba:
@@ -108,14 +108,14 @@ patroni_bootstrap_dcs_pg_hba:
 
 patroni_bootstrap_dcs_slots: []
 #  - { name: "permanent_physical_1", type: "physical" }
-#  - { name: "permanent_logical_1",  type: "logical", database: "foo", plugin: "pgoutput" }
+#  - { name: "permanent_logical_1", type: "logical", database: "foo", plugin: "pgoutput" }
 
 # https://patroni.readthedocs.io/en/latest/replica_bootstrap.html#bootstrap
 patroni_bootstrap_method_name: ""
 patroni_bootstrap_method_command: ""
 patroni_bootstrap_method_keep_existing_recovery_conf: false
 patroni_bootstrap_method_recovery_conf: []
-#  - { option: "standby_mode",    value: "on" }
+#  - { option: "standby_mode", value: "on" }
 #  - { option: "restore_command", value: '/opt/tantor/usr/bin/wal-g --config /var/lib/postgresql/.walg.json wal-fetch "%f" "%p" 2>&1 | tee -a /var/lib/postgresql/walg.log' }
 #  - { option: "recovery_target_timeline", value: "latest" }
 #  - { option: "recovery_target_action", value: "promote" }
@@ -137,7 +137,7 @@ patroni_bootstrap_initdb:
   # - { option: "waldir", value: "{{ patroni_pg_wal_dir }}" }
 
 patroni_bootstrap_pg_hba: []
-#  - { type: "host", database: "all",         user: "all",                                address: "0.0.0.0/0", method: "ident", options: "map=omicron" }
+#  - { type: "host", database: "all", user: "all", address: "0.0.0.0/0", method: "ident", options: "map=omicron" }
 #  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
 #  - { type: "host", database: "all", user: "all", address: "0.0.0.0/0", method: "md5" }
 
@@ -145,7 +145,7 @@ patroni_bootstrap_post_bootstrap: "" #TODO
 patroni_bootstrap_post_init: "" #TODO
 
 patroni_bootstrap_users:
-  - { name: "{{ patroni_superuser_username }}",   password: "{{ patroni_superuser_password }}",   options: [] }
+  - { name: "{{ patroni_superuser_username }}", password: "{{ patroni_superuser_password }}", options: [] }
   - { name: "{{ patroni_replication_username }}", password: "{{ patroni_replication_password }}", options: ['replication'] }
 
 patroni_pg_use_unix_socket: true
@@ -154,15 +154,15 @@ patroni_pg_connect_address: "{{ ansible_host }}:{{ patroni_pg_port }}"
 
 # https://patroni.readthedocs.io/en/latest/SETTINGS.html#postgresql
 patroni_pg_authentication:
-  - { type: "superuser",   username: "{{ patroni_superuser_username }}",   password: "{{ patroni_superuser_password }}" }
+  - { type: "superuser", username: "{{ patroni_superuser_username }}", password: "{{ patroni_superuser_password }}" }
   - { type: "replication", username: "{{ patroni_replication_username }}", password: "{{ patroni_replication_password }}" }
 
 patroni_pg_callbacks:
-  - { event: "on_reload",      script: "" }
-  - { event: "on_restart",     script: "" }
+  - { event: "on_reload", script: "" }
+  - { event: "on_restart", script: "" }
   - { event: "on_role_change", script: "" }
-  - { event: "on_start",       script: "" }
-  - { event: "on_stop",        script: "" }
+  - { event: "on_start", script: "" }
+  - { event: "on_stop", script: "" }
 
 patroni_pg_create_replica_methods:
   - basebackup
@@ -172,22 +172,22 @@ patroni_pg_basebackup: []
 #   - { option: "checkpoint", value: "fast" }
 #   - { option: "max-rate", value: "100M" }
 #   - { option: "waldir", value: "bulk_wal_dir" }
-  
+
 
 patroni_pg_wal_e: []
   # - { option: "", value: "" }
 
 patroni_pg_wal_g: []
-  # - { option: "", value: "" } 
+  # - { option: "", value: "" }
 
 patroni_pg_barman: []
-  # - { option: "", value: "" } 
+  # - { option: "", value: "" }
 
 patroni_pg_pgbackrest: []
-  # - { option: "", value: "" } 
+  # - { option: "", value: "" }
 
 patroni_pg_recovery_conf: []
-#  - { option: "standby_mode",    value: "on" }
+#  - { option: "standby_mode", value: "on" }
 #  - { option: "restore_command", value: "cp ../wal_archive/%f %p" }
 
 patroni_pg_custom_conf: "" #TODO
@@ -198,7 +198,7 @@ patroni_pg_parameters:
   # - { option: "archive_command", value: '/opt/tantor/usr/bin/wal-g --config /var/lib/postgresql/.walg.json wal-push "%p" 2>&1 | tee -a /var/lib/postgresql/walg.log' }
 
 patroni_pg_hba: []
-#  - { type: "host", database: "all",         user: "all",                                address: "0.0.0.0/0", method: "ident", options: "map=omicron" }
+#  - { type: "host", database: "all", user: "all", address: "0.0.0.0/0", method: "ident", options: "map=omicron" }
 #  - { type: "host", database: "replication", user: "{{ patroni_replication_username }}", address: "0.0.0.0/0", method: "md5" }
 
 patroni_pg_ident: []
@@ -216,14 +216,14 @@ patroni_watchdog_device: /dev/watchdog
 patroni_watchdog_safety_margin: 5
 
 patroni_tags:
-  - { name: "nofailover",    value: "false" }
+  - { name: "nofailover", value: "false" }
   - { name: "noloadbalance", value: "false" }
-  - { name: "clonefrom",     value: "false" }
-  - { name: "nosync",        value: "false" }
+  - { name: "clonefrom", value: "false" }
+  - { name: "nosync", value: "false" }
   - { name: "replicatefrom", value: "" }
 
-pg_conf_db_cpu: "{{ hostvars[inventory_hostname]['ansible_processor_count'] }}"
-pg_conf_db_ram: "{{ hostvars[inventory_hostname]['ansible_memtotal_mb'] }}Mi"
+pg_conf_db_cpu: "{{ hostvars[inventory_hostname]['ansible_facts']['processor_count'] }}"
+pg_conf_db_ram: "{{ hostvars[inventory_hostname]['ansible_facts']['memtotal_mb'] }}Mi"
 pg_conf_db_disk_type: SSD
 pg_conf_db_duty: mixed
 
@@ -233,9 +233,9 @@ patroni_pg_pgpass: /var/lib/postgresql/.pgpass
 patroni_bin_dir: /opt/tantor/usr/bin
 
 # patroni_pg_packages:
-#   - { name: "tantor-{{ edition | d('be', true) }}-server-{{ major_version }}",            state: "present" }
+#   - { name: "tantor-{{ edition | d('be', true) }}-server-{{ major_version }}", state: "present" }
 
 # patroni_system_packages:
 #   - { name: "python3-psycopg2", state: "present" }
-#   - { name: "python3-pip",      state: "present" }
-#   - { name: "jq",               state: "present" }
+#   - { name: "python3-pip", state: "present" }
+#   - { name: "jq", state: "present" }

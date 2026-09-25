@@ -1,0 +1,76 @@
+# Version matrix for pg_cluster compatibility testing
+#
+# Each entry defines a combination of Python, Ansible, and Patroni versions
+# that the playbooks should be tested against. The test runner iterates
+# over these entries, rebuilding the controller and node images for each combination.
+#
+# Structure:
+#   name     — human-readable identifier for the matrix entry
+#   python   — Python version for the controller container (base image tag)
+#   ansible  — Ansible package version (pip-installable, e.g. "9.6.0")
+#   patroni  — Patroni version (pip package, used for pip-based installs)
+#   ansible_core — Required ansible-core version pin
+#   status   — "active" or "skip" (skip entries are listed but not run)
+
+matrix:
+  # --- Stable / current combination ---
+  - name: "py3.11-ansible9-patroni3"
+    python: "3.11"
+    ansible: "9.6.1"
+    patroni: "3.3.2"
+    ansible_core: "2.16.19"
+    status: "active"
+
+  # --- Python 3.12 with latest Ansible 10 ---
+  - name: "py3.12-ansible10-patroni4"
+    python: "3.12"
+    ansible: "10.0.1"
+    patroni: "4.0.3"
+    ansible_core: "2.17.0"
+    status: "active"
+
+  # --- Older Python 3.9 with Ansible 8 (compatibility floor) ---
+  - name: "py3.9-ansible8-patroni2"
+    python: "3.9"
+    ansible: "8.7.0"
+    patroni: "2.1.6"
+    ansible_core: "2.15.11"
+    status: "skip"
+    reason: >-
+      ansible-lint==26.1.0 (needed for ansible-core>=2.19 compat, see
+      tests/requirements.txt) requires both ansible-core>=2.16.14 and
+      Python>=3.10; ansible==8.7.0 caps ansible-core at ~=2.15.7 and this
+      entry's controller is Python 3.9, so it fails both independently.
+
+  # --- Python 3.10 with Ansible 9 ---
+  - name: "py3.10-ansible9-patroni3"
+    python: "3.10"
+    ansible: "9.6.1"
+    patroni: "3.3.2"
+    ansible_core: "2.16.19"
+    status: "active"
+
+  # --- Python 3.13 with Ansible 12 ---
+  - name: "py3.13-ansible12-patroni4"
+    python: "3.13"
+    ansible: "12.3.0"
+    patroni: "4.1.5"
+    ansible_core: "2.19.13"
+    status: "active"
+
+  # --- Python 3.14 with the latest Ansible 14 / ansible-core 2.21 ---
+  - name: "py3.14-ansible14-patroni4"
+    python: "3.14"
+    ansible: "14.4.0"
+    patroni: "4.1.5"
+    ansible_core: "2.21.4"
+    status: "active"
+
+  # --- Unsupported: Ansible 7 / core 2.14 require Python 3.9+ ---
+  - name: "py3.8-ansible7-patroni1.6"
+    python: "3.8"
+    ansible: "7.7.0"
+    patroni: "1.6.4"
+    ansible_core: "2.14.17"
+    status: "skip"
+    reason: "Ansible 7 and ansible-core 2.14 require controller Python >=3.9"
