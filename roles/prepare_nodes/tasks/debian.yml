@@ -1,4 +1,27 @@
 ---
+# Names of psycopg2 OS packages (Debian/ALT naming variants).
+# libpq-dev is a build-time dependency and is only needed when the OS
+# provides no psycopg2 package at all; python3-psycopg2 already pulls in
+# the libpq runtime library.
+- name: Check for psycopg2 packages in the OS (apt)
+  ansible.builtin.command:
+    cmd: "apt-cache show {{ item }}"
+  loop:
+    - python3-psycopg2
+    - python3-module-psycopg2
+    - python-psycopg2
+  register: prepare_nodes_psycopg2_apt_check
+  changed_when: false
+  failed_when: false
+
+- name: Set psycopg2 availability fact
+  ansible.builtin.set_fact:
+    prepare_nodes_psycopg2_in_os: >-
+      {{ prepare_nodes_psycopg2_apt_check.results
+         | selectattr('rc', 'equalto', 0)
+         | rejectattr('stdout', 'equalto', '')
+         | list | length > 0 }}
+
 - name: Create folders if not exists
   ansible.builtin.file:
     state: directory
@@ -84,6 +107,15 @@
           - gnupg
           - gpg
           - locales
+        state: present
+        update_cache: true
+
+    - name: Install libpq-dev when no psycopg2 package in OS
+      when:
+        - ansible_pkg_mgr == 'apt'
+        - not prepare_nodes_psycopg2_in_os
+      ansible.builtin.package:
+        name:
           - libpq-dev
         state: present
         update_cache: true
@@ -102,29 +134,52 @@
     - add_nexus_repo == 'true'
   block:
     - name: Configure nexus repository (Astra 1.8)
-      ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_astra_1_8 }}"
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/nexus_public_tantorlabs_ru_repository_astra_1_8.list
+        content: "{{ nexus_apt_astra_1_8 }}\n"
+        mode: "0644"
+      register: prepare_nodes_repo_astra_1_8
       when:
         - ansible_distribution == "Astra Linux"
         - ansible_distribution_version == "1.8_x86-64"
+
+    - name: Update APT cache (Astra) # noqa: no-handler
+      ansible.builtin.apt:
+        update_cache: true
+      register: prepare_nodes_apt_update_astra
+      until: prepare_nodes_apt_update_astra is succeeded
+      retries: 5
+      delay: 5
+      when: prepare_nodes_repo_astra_1_8 is changed
 
 - name: Block for Ubuntu
   when: (ansible_distribution == "Ubuntu") and (add_nexus_repo == 'true')
   block:
     - name: Configure nexus repository (Ubuntu 22.04)
-      ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_ubuntu_22_04 }}"
-        state: present
-        filename: tantorlabs
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/tantorlabs.list
+        content: "{{ nexus_apt_ubuntu_22_04 }}\n"
+        mode: "0644"
+      register: prepare_nodes_repo_ubuntu_22_04
       when:
         - ansible_distribution == "Ubuntu"
         - ansible_distribution_major_version == "22"
 
     - name: Configure nexus repository (Ubuntu 20.04)
-      ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_ubuntu_20_04 }}"
-        state: present
-        filename: tantorlabs
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/tantorlabs.list
+        content: "{{ nexus_apt_ubuntu_20_04 }}\n"
+        mode: "0644"
+      register: prepare_nodes_repo_ubuntu_20_04
       when:
         - ansible_distribution == "Ubuntu"
         - ansible_distribution_major_version == "20"
+
+    - name: Update APT cache (Ubuntu)
+      ansible.builtin.apt:
+        update_cache: true
+      register: prepare_nodes_apt_update_ubuntu
+      until: prepare_nodes_apt_update_ubuntu is succeeded
+      retries: 5
+      delay: 5
+      when: prepare_nodes_repo_ubuntu_22_04 is changed or prepare_nodes_repo_ubuntu_20_04 is changed

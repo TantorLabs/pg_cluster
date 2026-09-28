@@ -244,9 +244,9 @@ postgresql:
     - {{ create_replica_method }}
   {% endfor %}
 {% for create_replica_method in patroni_pg_create_replica_methods |d(['basebackup'], true) %}
-  {% if (vars['patroni_pg_' + create_replica_method]) |d([], true) |length > 0 %}
+  {% if lookup('vars', 'patroni_pg_' + create_replica_method, default=[]) |length > 0 %}
   {{ create_replica_method }}:
-{% for item in vars['patroni_pg_' + create_replica_method] %}
+{% for item in lookup('vars', 'patroni_pg_' + create_replica_method, default=[]) %}
   {% if item.value is undefined %}
     {{ item.option }}
   {% else %}
