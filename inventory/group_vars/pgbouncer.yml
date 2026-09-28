@@ -9,5 +9,5 @@ pgbouncer_auth_user: pgbouncer
 pgbouncer_auth_user_passw: pgbouncer819mQ
 pgbouncer_incoming_hosts: >-
   {%- for host in groups['inv_cluster'] -%}
-  {{ hostvars[host]['ansible_default_ipv4'].address -}}{% if not loop.last %},{% endif -%}
+  {{ hostvars[host]['ansible_facts']['default_ipv4'].address -}}{% if not loop.last %},{% endif -%}
   {%- endfor -%}

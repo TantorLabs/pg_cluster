@@ -41,7 +41,7 @@
     mode: '0755'
   when:
     - add_nexus_repo | bool
-    - ansible_os_family != 'Altlinux'
+    - ansible_facts.os_family != 'Altlinux'
 
 - name: Download Tantor GPG key (ASCII)
   ansible.builtin.get_url:
@@ -50,7 +50,7 @@
     mode: '0644'
   when:
     - add_nexus_repo | bool
-    - ansible_os_family != 'Altlinux'
+    - ansible_facts.os_family != 'Altlinux'
 
 - name: Convert Tantor GPG key to binary .gpg format
   ansible.builtin.command: >
@@ -59,12 +59,12 @@
     creates: /etc/apt/keyrings/tantor-nexus.gpg
   when:
     - add_nexus_repo | bool
-    - ansible_os_family != 'Altlinux'
+    - ansible_facts.os_family != 'Altlinux'
 
 - name: Block for Altlinux
   when:
     - add_nexus_repo == 'true'
-    - ansible_os_family == 'Altlinux'
+    - ansible_facts.os_family == 'Altlinux'
   block:
     - name: Add Tantor repository key for ALT Linux
       ansible.builtin.get_url:
@@ -74,7 +74,7 @@
 
     - name: Add Tantor repository for Alt Linux c10f2
       when:
-        - ansible_distribution_version == '10.2'
+        - ansible_facts.distribution_version == '10.2'
       ansible.builtin.copy:
         dest: "/etc/apt/sources.list.d/tantorlabs.list"
         content: |
@@ -83,7 +83,7 @@
 
     - name: Install prerequisite packages (apt_rpm)
       when:
-        - ansible_pkg_mgr == 'apt_rpm'
+        - ansible_facts.pkg_mgr == 'apt_rpm'
       ansible.builtin.package:
         name:
           - glibc-locales
@@ -96,11 +96,11 @@
 
 - name: Block for Debian-like systems
   when:
-    - ansible_os_family != 'Altlinux'
+    - ansible_facts.os_family != 'Altlinux'
   block:
     - name: Install prerequisite packages
       when:
-        - ansible_pkg_mgr == 'apt'
+        - ansible_facts.pkg_mgr == 'apt'
       ansible.builtin.package:
         name:
           - openssl
@@ -112,7 +112,7 @@
 
     - name: Install libpq-dev when no psycopg2 package in OS
       when:
-        - ansible_pkg_mgr == 'apt'
+        - ansible_facts.pkg_mgr == 'apt'
         - not prepare_nodes_psycopg2_in_os
       ansible.builtin.package:
         name:
@@ -130,7 +130,7 @@
 
 - name: Block for Astra
   when:
-    - ansible_os_family in ["Astra Linux", "Astra Linux (Orel)"]
+    - ansible_facts.os_family in ["Astra Linux", "Astra Linux (Orel)"]
     - add_nexus_repo == 'true'
   block:
     - name: Configure nexus repository (Astra 1.8)
@@ -140,8 +140,8 @@
         mode: "0644"
       register: prepare_nodes_repo_astra_1_8
       when:
-        - ansible_distribution == "Astra Linux"
-        - ansible_distribution_version == "1.8_x86-64"
+        - ansible_facts.distribution == "Astra Linux"
+        - ansible_facts.distribution_version == "1.8_x86-64"
 
     - name: Update APT cache (Astra) # noqa: no-handler
       ansible.builtin.apt:
@@ -153,7 +153,7 @@
       when: prepare_nodes_repo_astra_1_8 is changed
 
 - name: Block for Ubuntu
-  when: (ansible_distribution == "Ubuntu") and (add_nexus_repo == 'true')
+  when: (ansible_facts.distribution == "Ubuntu") and (add_nexus_repo == 'true')
   block:
     - name: Configure nexus repository (Ubuntu 22.04)
       ansible.builtin.copy:
@@ -162,8 +162,8 @@
         mode: "0644"
       register: prepare_nodes_repo_ubuntu_22_04
       when:
-        - ansible_distribution == "Ubuntu"
-        - ansible_distribution_major_version == "22"
+        - ansible_facts.distribution == "Ubuntu"
+        - ansible_facts.distribution_major_version == "22"
 
     - name: Configure nexus repository (Ubuntu 20.04)
       ansible.builtin.copy:
@@ -172,8 +172,8 @@
         mode: "0644"
       register: prepare_nodes_repo_ubuntu_20_04
       when:
-        - ansible_distribution == "Ubuntu"
-        - ansible_distribution_major_version == "20"
+        - ansible_facts.distribution == "Ubuntu"
+        - ansible_facts.distribution_major_version == "20"
 
     - name: Update APT cache (Ubuntu)
       ansible.builtin.apt:

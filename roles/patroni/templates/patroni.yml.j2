@@ -113,7 +113,7 @@ bootstrap:
         - {{ client.type }} {{ client.database }} {{ client.user }} {{ client.address |d(None) }} {{ client.method }} {{ client.options |d(None) }}
       {% endfor %}
 	  {% for host in groups['inv_pg'] %}
-        - host all all {{ hostvars[host]['ansible_default_ipv4'].address }}/32 {% if major_version <= "13" %}md5{% elif major_version >= "14" %}scram-sha-256{%+ endif +%}
+        - host all all {{ hostvars[host]['ansible_facts']['default_ipv4'].address }}/32 {% if major_version <= "13" %}md5{% elif major_version >= "14" %}scram-sha-256{%+ endif +%}
       {% endfor %}
     {% endif %}
   {% if patroni_bootstrap_dcs_slots |d([], true) |length > 0 %}

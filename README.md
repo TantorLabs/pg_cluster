@@ -105,8 +105,8 @@ The following text will present examples of commands to be entered in the termin
 ## Requirements
 
 Playbook requires the following component's version to be installed:
-* Ansible >= 14.4.0 (ansible-core 2.21.4; with collections community.general, community.postgresql, community.crypto)
-* Python3 (with pip module) >= 3.14
+* Ansible >= 2.9.10 (with collections community.general, community.postgresql, community.crypto)
+* Python3 (with pip module) >= 3.10.0
 * psycopg2 >= 2.5.1 (it's recommended to install via pip)
 * packaging >= 24 (it's recommended to install via pip)
 
@@ -232,8 +232,7 @@ One of the playbook tasks is executed on the same node from which ansible is lau
 By default, the playbook does not attempt to connect to Tantor repositories and requires the following packages to be available within the system:
 
 * etcd-tantor-all
-* ansible-tantor-all >= 14.4.0
-* python3-tantor-all >= 3.14
+* python3-tantor-all
 * patroni-tantor-all
 * pg_configurator-tantor-all
 * haproxy-tantor-all
@@ -242,10 +241,7 @@ By default, the playbook does not attempt to connect to Tantor repositories and 
 * wal-g-tantor-all
 * tantor DBMS
 
-Pay attention to the last point in the list above. The Tantor package must match
-the edition and major version selected for the playbook. The default values in
-``inventory/group_vars/tantordb.yml`` are ``edition=be`` and
-``major_version=17``, which select the ``tantor-be-server-17`` package.
+Pay attention to last point from the list above. Tantor package should match environment that is used during playbook launch. For example if you want to install ``tantor-be-server-16`` DBMS using command ``ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16" pg-cluster.yaml -K`` make sure that package ``tantor-be-server-16`` is available in your local repository.
 
 The playbook installs packages from repositories that are already configured on
 the target hosts. If the hosts have access to the Tantor Nexus repository, the
@@ -257,83 +253,31 @@ If the playbook is run in an environment with internet access, you can leverage 
 
 There are several options to run Ansible: with the option to install TantorDB or classic PostgreSQL as a DBMS.
 
-Use the following command to install the default Tantor BE 17 package:
+Use the following command to install TantorDB:
 
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=17" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16" pg-cluster.yaml -K
 ```
 
-Use the following command to install Tantor Persey 17. It selects the
-``tantor-persey-server-17`` package:
+Use the following command to install the PostgreSQL DBMS:
 
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=persey major_version=17" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=classic major_version=11" pg-cluster.yaml -K
 ```
 
-Use the following command to install classic PostgreSQL 17:
-
-```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=classic major_version=17" pg-cluster.yaml -K
-```
-
-In the commands above, replace ``major_version`` with the required PostgreSQL
-major version and ``admin_user`` with an account that has passwordless SSH access
-to all target servers and can become root. For TantorDB, ``edition`` selects the
-product edition and is included in the package name.
-
-## Install a specific database package version
-
-By default, an empty package-version variable makes the system package manager
-install the latest version available in the configured repositories. A specific
-package build can be selected from a pipeline or command line with an extra
-variable:
-
-* ``tantordb_package_version`` for TantorDB editions;
-* ``postgresql_package_version`` for classic PostgreSQL.
-
-``major_version`` and the package-version variables have different purposes.
-For example, ``major_version=17`` selects the PostgreSQL 17 package family,
-while ``tantordb_package_version`` or ``postgresql_package_version`` selects an
-exact build from that family.
-
-For DEB repositories, the playbook passes ``package=version`` to APT. For RPM
-repositories, it passes ``package-version`` to YUM, DNF, or APT-RPM. Supply only
-the version portion reported by the package repository; do not repeat the package
-name.
-
-Install a specific Tantor BE build:
-
-```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=17 tantordb_package_version=<PACKAGE_VERSION>" pg-cluster.yaml -K
-```
-
-Install a specific Tantor Persey build:
-
-```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=persey major_version=17 tantordb_package_version=<PACKAGE_VERSION>" pg-cluster.yaml -K
-```
-
-Install a specific classic PostgreSQL build:
-
-```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=classic major_version=17 postgresql_package_version=<PACKAGE_VERSION>" pg-cluster.yaml -K
-```
-
-The requested package version must exist in one of the repositories configured
-on every target host. Keep values containing RPM/DEB release suffixes quoted when
-passing them through a pipeline.
+In the commands above, replace the value of the ``major_version`` parameter with the DBMS version to be installed, the value of ``postgresql_vendor`` with the DBMS vendor and the ``admin_user`` parameter with the user who has passwordless access to the servers from the ``my_inventory`` file with the ability to switch to privileged mode (root) without prompting the password. For TantorDB you also need to specify DBMS edition.
 
 ## Launch with internet access
 
 It's possible to launch the playbook with external internet access.
 ```bash
-ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=17 add_nexus_repo=true" pg-cluster.yaml -K
+ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=tantordb edition=be major_version=16 add_nexus_repo=true" pg-cluster.yaml -K
 ```
 In that case, make sure that connection details are provided in the file ``inventory/group_vars/prepare_nodes.yml``.
 
 ## Component maintenance
 
-The playbook supports both full and partial updates for most components. Each role includes a variable that defines the desired version of a component (e.g., the variable ``pg_configurator_package_version`` corresponds to the ``pg-configurator-tantor-all`` component). Database package versions are controlled separately by ``tantordb_package_version`` and ``postgresql_package_version``. These variables are defined in the ``inventory/group_vars`` YAML files. On the first run, the latest available versions are installed when the corresponding version variables are empty. To install a specific version, set the appropriate variable and run the playbook again.
+The playbook supports both full and partial updates for most components. Each role includes a variable that defines the desired version of a component (e.g., the variable ``pg_configurator_package_version`` corresponds to the ``pg-configurator-tantor-all`` component). These variables are defined in the ``inventory/group_vars`` YAML files. On the first run, the latest available versions are installed when the corresponding version variables are empty. To install a specific version, set the appropriate variable and run the playbook again.
 
 ## HOW TO
 

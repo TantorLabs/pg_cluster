@@ -1,6 +1,6 @@
 ---
 - name: Install pgbouncer-tantor-all (RHEL-like systems)
-  when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
+  when: ansible_facts.os_family in ["RED", "Centos", "Rocky", "RedHat"]
   ansible.builtin.dnf:
     name: >-
       {{
@@ -13,7 +13,7 @@
     allow_downgrade: true
 
 - name: Install pgbouncer-tantor-all (Alt linux)
-  when: ansible_os_family in ["Altlinux"]
+  when: ansible_facts.os_family in ["Altlinux"]
   community.general.apt_rpm:
     name: >-
       {{
@@ -25,7 +25,7 @@
     state: present
 
 - name: Install pgbouncer-tantor-all (Debian-like systems)
-  when: ansible_os_family in ["Astra Linux", "Debian"]
+  when: ansible_facts.os_family in ["Astra Linux", "Debian"]
   ansible.builtin.apt:
     name: >-
       {{
@@ -38,10 +38,10 @@
     allow_downgrade: true
 
 - name: Install pgbouncer-tantor-all (MosOS)
-  when: ansible_pkg_mgr == 'zypper'
+  when: ansible_facts.pkg_mgr == 'zypper'
   community.general.zypper:
     name: >-
-      {{ 'pgbouncer-tantor-all-' ~ pgbouncer_package_version
+      {{ 'pgbouncer-tantor-all=' ~ pgbouncer_package_version
          if pgbouncer_package_version | length > 0
          else 'pgbouncer-tantor-all' }}
     state: present
@@ -94,56 +94,38 @@
     ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_user:
     login_host: 127.0.0.1
+    login_user: "{{ patroni_superuser_username }}"
+    login_password: "{{ patroni_superuser_password }}"
     login_db: postgres
     name: "{{ pgbouncer_auth_user }}"
     password: "{{ pgbouncer_auth_user_passw }}"
     encrypted: true
     role_attr_flags: REPLICATION
     state: present
-    login_port: "5432"
+    login_port: "{{ patroni_pg_port }}"
   become: true
   become_user: postgres
   when: pgbouncer_psql_node_status.stdout == 'f'
 
-- name: Read current PgBouncer authentication data
-  vars:
-    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
-  community.postgresql.postgresql_query:
-    login_db: postgres
-    query: >-
-      SELECT usename, passwd
-      FROM pg_catalog.pg_shadow
-      WHERE usename = %(pgbouncer_username)s
-    named_args:
-      pgbouncer_username: "{{ pgbouncer_auth_user }}"
-  become: true
-  become_user: postgres
-  register: pgbouncer_auth_data
-  changed_when: false
-  no_log: true
-
-- name: Validate PgBouncer authentication data
-  ansible.builtin.assert:
-    that:
-      - pgbouncer_auth_data.query_result | length == 1
-      - pgbouncer_auth_data.query_result[0].usename == pgbouncer_auth_user
-      - pgbouncer_auth_data.query_result[0].passwd is string
-      - pgbouncer_auth_data.query_result[0].passwd | length > 0
-    fail_msg: >-
-      Unable to create userlist.txt: PostgreSQL must return exactly one
-      PgBouncer role with a non-empty password hash.
-  no_log: true
-
-- name: Write PgBouncer userlist
+# The auth_user password has to be stored in plain text. PgBouncer opens its
+# own backend connection to run auth_query, and a SCRAM secret copied from
+# pg_shadow.passwd cannot be used for that login: a SCRAM secret can only be
+# passed through from an authenticated client, and the internal auth_query
+# connection has no client. With a SCRAM secret there PgBouncer fails with
+# "failed to answer authreq" and every client login dies with
+# "server login has been failing, cached error: failed to answer authreq".
+# Client users are still resolved through auth_query and use SCRAM
+# pass-through, so only the auth_user needs a plain-text entry here.
+- name: Write PgBouncer userlist with the plain-text auth user password
   ansible.builtin.copy:
     content: |
-      "{{ pgbouncer_auth_data.query_result[0].usename }}" "{{ pgbouncer_auth_data.query_result[0].passwd }}"
+      "{{ pgbouncer_auth_user }}" "{{ pgbouncer_auth_user_passw }}"
     dest: /opt/tantor/etc/pgbouncer/userlist.txt
     owner: "postgres"
-    group: "pgbouncer"
-    mode: "0640"
-  notify: Restart pgbouncer-tantor
+    group: "postgres"
+    mode: "0600"
   no_log: true
+  notify: Restart pgbouncer-tantor
 
 - name: Upload pgbouncer_prepare.sql
   become: true

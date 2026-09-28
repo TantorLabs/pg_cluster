@@ -57,7 +57,7 @@ patroni_restapi_password: "test_pass"
 patroni_etcd3_host: ""
 patroni_etcd3_hosts: >-
   {%- for host in groups['inv_etcd'] -%}
-  {{ hostvars[host]['ansible_default_ipv4'].address }}:{{ etcd_port_client -}}{% if not loop.last %},{% endif -%}
+  {{ hostvars[host]['ansible_facts']['default_ipv4'].address }}:{{ etcd_port_client -}}{% if not loop.last %},{% endif -%}
   {%- endfor -%}
 patroni_etcd3_use_proxies: false
 patroni_etcd3_url: ""
@@ -229,8 +229,8 @@ patroni_tags:
   - { name: "nosync", value: "false" }
   - { name: "replicatefrom", value: "" }
 
-pg_conf_db_cpu: "{{ hostvars[inventory_hostname]['ansible_processor_count'] }}"
-pg_conf_db_ram: "{{ hostvars[inventory_hostname]['ansible_memtotal_mb'] }}Mi"
+pg_conf_db_cpu: "{{ hostvars[inventory_hostname]['ansible_facts']['processor_count'] }}"
+pg_conf_db_ram: "{{ hostvars[inventory_hostname]['ansible_facts']['memtotal_mb'] }}Mi"
 pg_conf_db_disk_type: SSD
 pg_conf_db_duty: mixed
 
