@@ -101,13 +101,6 @@
     - ansible_os_family in ["Astra Linux", "Astra Linux (Orel)"]
     - add_nexus_repo == 'true'
   block:
-    - name: Configure nexus repository (Astra 1.7)
-      ansible.builtin.apt_repository:
-        repo: "{{ nexus_apt_astra_1_7 }}"
-      when:
-        - ansible_distribution == "Astra Linux"
-        - ansible_distribution_version == "1.7_x86-64"
-
     - name: Configure nexus repository (Astra 1.8)
       ansible.builtin.apt_repository:
         repo: "{{ nexus_apt_astra_1_8 }}"

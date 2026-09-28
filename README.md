@@ -105,12 +105,12 @@ The following text will present examples of commands to be entered in the termin
 ## Requirements
 
 Playbook requires the following component's version to be installed:
-* Ansible >= 2.9.10 (with collections community.general, community.postgresql, community.crypto)
-* Python3 (with pip module) >= 3.10.0
+* Ansible >= 14.4.0 (ansible-core 2.21.4; with collections community.general, community.postgresql, community.crypto)
+* Python3 (with pip module) >= 3.14
 * psycopg2 >= 2.5.1 (it's recommended to install via pip)
 * packaging >= 24 (it's recommended to install via pip)
 
-## Host preparation (based on OS Astra Linux 1.7)
+## Host preparation (based on OS Astra Linux 1.8)
 
 1. Create an ``admin_user`` user (executed on each node from the ``inventory`` file):
 
@@ -232,7 +232,8 @@ One of the playbook tasks is executed on the same node from which ansible is lau
 By default, the playbook does not attempt to connect to Tantor repositories and requires the following packages to be available within the system:
 
 * etcd-tantor-all
-* python3-tantor-all
+* ansible-tantor-all >= 14.4.0
+* python3-tantor-all >= 3.14
 * patroni-tantor-all
 * pg_configurator-tantor-all
 * haproxy-tantor-all
@@ -321,29 +322,6 @@ ansible-playbook -i inventory/my_inventory -u admin_user -e "postgresql_vendor=c
 The requested package version must exist in one of the repositories configured
 on every target host. Keep values containing RPM/DEB release suffixes quoted when
 passing them through a pipeline.
-
-## MosOS support
-
-MosOS 15.5 is supported through its native ``zypper`` package manager. During
-node preparation the playbook installs the required RPM prerequisites and
-disables ``firewalld`` on MosOS. TantorDB, classic PostgreSQL and the Tantor
-cluster components are installed with Zypper; a requested package version uses
-the RPM ``package-version`` format.
-
-When ``add_nexus_repo=true`` is set, ``prepare_nodes`` configures the repository
-from ``nexus_zypper_mosos_15_5``. Its default value is a placeholder for the
-expected repository:
-
-```text
-https://nexus-public.tantorlabs.ru/repository/mosos-15.5/
-```
-
-Until that repository is published, use a repository already configured on the
-MosOS hosts or override the URL from the pipeline:
-
-```bash
--e "add_nexus_repo=true nexus_zypper_mosos_15_5=<REPOSITORY_URL>"
-```
 
 ## Launch with internet access
 
