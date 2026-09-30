@@ -103,6 +103,7 @@
         - ansible_facts.pkg_mgr == 'apt'
       ansible.builtin.package:
         name:
+          - acl
           - openssl
           - gnupg
           - gpg
