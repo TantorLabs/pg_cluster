@@ -1,11 +1,6 @@
 ---
 - name: Block for checking if hostnames are valid
   block:
-    - name: Gather inventory hostnames from all hosts
-      ansible.builtin.set_fact:
-        prepare_nodes_all_inventory_names: "{{ groups['all'] }}"
-      run_once: true
-
     - name: Extract domain part and count domain levels
       ansible.builtin.set_fact:
         prepare_nodes_domain_part: "{{ inventory_hostname | regex_replace('^[^.]+\\.?', '') }}"
@@ -45,14 +40,14 @@
       run_once: true
 
     - name: Set unified hostname variable for FQDN inventory
-      ansible.builtin.set_fact:
-        unified_hostname: "{{ ansible_fqdn }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
+        unified_hostname: "{{ ansible_fqdn }}"
         cacheable: true
       when: prepare_nodes_has_domain
 
     - name: Set unified hostname variable for hostname-only inventory
-      ansible.builtin.set_fact:
-        unified_hostname: "{{ inventory_hostname }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
+        unified_hostname: "{{ inventory_hostname }}"
         cacheable: true
       when: not prepare_nodes_has_domain
 
@@ -96,7 +91,7 @@
 - name: Get content of /etc/security/limits.conf file
   ansible.builtin.lineinfile:
     path: /etc/security/limits.conf
-    regexp: '(postgres\shard)|(postgres\ssoft)'
+    regexp: "(postgres\\shard)|(postgres\\ssoft)"
     state: absent
   check_mode: true
   register: prepare_nodes_sec_limit
@@ -116,5 +111,5 @@
   when: ansible_env.PATH is not search("/opt/tantor/usr/bin:/opt/tantor/usr/sbin")
   ansible.builtin.copy:
     dest: /etc/profile.d/tantor.sh
-    content: 'PATH=$PATH:/opt/tantor/usr/bin:/opt/tantor/usr/sbin'
+    content: "PATH=$PATH:/opt/tantor/usr/bin:/opt/tantor/usr/sbin"
     mode: "0644"

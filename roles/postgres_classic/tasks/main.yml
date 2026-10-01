@@ -182,7 +182,7 @@
         - name: "Fix repolist for RedOS"
           ansible.builtin.replace:
             path: /etc/yum.repos.d/pgdg-redhat-all.repo
-            regexp: 'rhel-\$releasever'
+            regexp: "rhel-\\$releasever"
             replace: "rhel-{{ ansible_distribution_version }}"
           when: (ansible_distribution == "RED")
 
@@ -262,7 +262,7 @@
           ansible.builtin.file:
             path: /var/run/postgresql
             state: directory
-            mode: '0755'
+            mode: "0755"
             owner: postgres
             group: postgres
 
@@ -276,9 +276,7 @@
       when: ansible_pkg_mgr == 'zypper'
 
     - name: Block for Cleanup for Debian-like systems
-      when: (ansible_facts['os_family'] == "Astra Linux") or
-            (ansible_facts['os_family'] == "Astra Linux (Orel)") or
-            (ansible_facts['os_family'] == "Debian")
+      when: (ansible_facts['os_family'] == "Astra Linux") or (ansible_facts['os_family'] == "Astra Linux (Orel)") or (ansible_facts['os_family'] == "Debian")
       block:
         - name: Stop Postgresql service
           ansible.builtin.service:

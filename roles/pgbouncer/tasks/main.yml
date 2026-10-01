@@ -150,14 +150,14 @@
   become_user: root
   with_items:
     - f: "{{ playbook_dir + '/roles/pgbouncer/sql/pgbouncer_prepare.sql' }}"
-      d: '/opt/tantor/etc/pgbouncer'
-      m: '0400'
+      d: "/opt/tantor/etc/pgbouncer"
+      m: "0400"
   ansible.builtin.copy:
-    src: '{{ item.f }}'
-    dest: '{{ item.d }}'
+    src: "{{ item.f }}"
+    dest: "{{ item.d }}"
     owner: "postgres"
     group: postgres
-    mode: '{{ item.m }}'
+    mode: "{{ item.m }}"
 
 - name: Create pgbouncer namespace
   vars:

@@ -3,8 +3,8 @@
   ansible.builtin.file:
     state: directory
     path: "{{ item }}"
-    owner: 'root'
-    group: 'root'
+    owner: "root"
+    group: "root"
     mode: "0755"
   with_items:
     - /etc/apt/sources.list.d
@@ -15,7 +15,7 @@
   ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
-    mode: '0755'
+    mode: "0755"
   when:
     - add_nexus_repo | bool
     - ansible_os_family != 'Altlinux'
@@ -24,7 +24,7 @@
   ansible.builtin.get_url:
     url: "{{ nexus_key_url }}"
     dest: /etc/apt/keyrings/tantor-nexus.asc
-    mode: '0644'
+    mode: "0644"
   when:
     - add_nexus_repo | bool
     - ansible_os_family != 'Altlinux'

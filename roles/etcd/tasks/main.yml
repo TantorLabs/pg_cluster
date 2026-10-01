@@ -12,16 +12,16 @@
       when: unified_hostname is not defined or unified_hostname != inventory_hostname.split('.')[0]
 
     - name: Set unified hostname for FQDN inventory (fallback)
-      ansible.builtin.set_fact:
-        unified_hostname: "{{ ansible_fqdn }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
+        unified_hostname: "{{ ansible_fqdn }}"
         cacheable: true
       when:
         - (unified_hostname is not defined or unified_hostname != inventory_hostname.split('.')[0])
         - etcd_has_domain | default(false)
 
     - name: Set unified hostname for non-FQDN inventory (fallback)
-      ansible.builtin.set_fact:
-        unified_hostname: "{{ inventory_hostname }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
+        unified_hostname: "{{ inventory_hostname }}"
         cacheable: true
       when:
         - (unified_hostname is not defined or unified_hostname != inventory_hostname)
@@ -65,9 +65,9 @@
 - name: Create etcd directories
   ansible.builtin.file:
     state: directory
-    path: '{{ etcd_cluster_pki_dir }}'
-    owner: '{{ etcd_user }}'
-    group: '{{ etcd_group }}'
+    path: "{{ etcd_cluster_pki_dir }}"
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
     mode: "0755"
 
 - name: Discover etcd cluster state

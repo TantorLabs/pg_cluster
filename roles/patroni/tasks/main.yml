@@ -330,7 +330,7 @@
     path: "{{ item }}"
     owner: "postgres"
     group: "postgres"
-    mode: '0750'
+    mode: "0750"
   loop:
     - "{{ patroni_pg_data_dir }}"
     - "{{ patroni_pg_config_dir }}"
@@ -404,16 +404,16 @@
     --common-conf \
     --output-file-name='{{ patroni_config_dir }}/postgresql.json'
   args:
-    creates: '{{ patroni_config_dir }}/postgresql.json'
+    creates: "{{ patroni_config_dir }}/postgresql.json"
 
 - name: Get content of remote file
   ansible.builtin.slurp:
-    src: '{{ patroni_config_dir }}/postgresql.json'
+    src: "{{ patroni_config_dir }}/postgresql.json"
   register: patroni_remote_yaml
 
 - name: Interpret remote file content as yaml
   ansible.builtin.set_fact:
-    patroni_pg_conf_data: '{{ patroni_remote_yaml.content | b64decode | from_json }}'
+    patroni_pg_conf_data: "{{ patroni_remote_yaml.content | b64decode | from_json }}"
 
 - name: Check if patoni conf file exists
   ansible.builtin.stat:
@@ -423,7 +423,7 @@
 - name: Get content of patroni conf file
   ansible.builtin.lineinfile:
     path: "{{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml"
-    regexp: '(bulk_wal_dir|log_directory:\spg_log)'
+    regexp: "(bulk_wal_dir|log_directory:\\spg_log)"
     state: absent
   check_mode: true
   register: patroni_pg_wal_log_conf
@@ -467,14 +467,14 @@
 - name: Replace patroni_pg_wal_dir string from the patroni template to real variable
   ansible.builtin.replace:
     path: "{{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml"
-    regexp: 'bulk_wal_dir'
+    regexp: "bulk_wal_dir"
     replace: "{{ patroni_pg_wal_dir }}"
   when: patroni_pg_wal_dir is defined
 
 - name: Replace pg_log string from the patroni template to real variable
   ansible.builtin.replace:
     path: "{{ patroni_config_dir }}/{{ patroni_name | default(inventory_hostname) }}.yml"
-    regexp: 'log_directory:\spg_log'
+    regexp: "log_directory:\\spg_log"
     replace: "log_directory: {{ patroni_pg_log_dir }}"
   when: patroni_pg_log_dir is defined
 
@@ -482,21 +482,21 @@
   become: true
   become_user: root
   with_items:
-    - f: '{{ etcd_pki_key_src }}'
-      d: '{{ patroni_config_dir }}'
-      m: '0400'
-    - f: '{{ etcd_pki_cert_src }}'
-      d: '{{ patroni_config_dir }}'
-      m: '0600'
-    - f: '{{ etcd_pki_ca_cert_src }}'
-      d: '{{ patroni_config_dir }}'
-      m: '0600'
+    - f: "{{ etcd_pki_key_src }}"
+      d: "{{ patroni_config_dir }}"
+      m: "0400"
+    - f: "{{ etcd_pki_cert_src }}"
+      d: "{{ patroni_config_dir }}"
+      m: "0600"
+    - f: "{{ etcd_pki_ca_cert_src }}"
+      d: "{{ patroni_config_dir }}"
+      m: "0600"
   ansible.builtin.copy:
-    src: '{{ item.f }}'
-    dest: '{{ item.d }}'
+    src: "{{ item.f }}"
+    dest: "{{ item.d }}"
     owner: postgres
     group: postgres
-    mode: '{{ item.m }}'
+    mode: "{{ item.m }}"
   notify: Restart patroni
 
 - name: Ensure patroni is running

@@ -49,7 +49,6 @@
   when: etcd_nodes_to_add | length > 0
   run_once: true
 
-
 - name: Get member HEX IDs for removal
   when:
     - etcd_cluster_exists

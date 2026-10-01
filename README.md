@@ -322,14 +322,6 @@ The requested package version must exist in one of the repositories configured
 on every target host. Keep values containing RPM/DEB release suffixes quoted when
 passing them through a pipeline.
 
-## MosOS support
-
-MosOS 15.5 is supported through its native ``zypper`` package manager. During
-node preparation the playbook installs the required RPM prerequisites and
-disables ``firewalld`` on MosOS. TantorDB, classic PostgreSQL and the Tantor
-cluster components are installed with Zypper; the required packages must be
-available in repositories already configured on the MosOS hosts.
-
 ## Launch with internet access
 
 It's possible to launch the playbook with external internet access.

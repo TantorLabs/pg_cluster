@@ -8,7 +8,7 @@
       - libpq5
     state: present
 
-- name: Disable firewalld on MosOS
+- name: Disable firewalld on zypper-based systems
   ansible.builtin.service:
     name: firewalld
     state: stopped

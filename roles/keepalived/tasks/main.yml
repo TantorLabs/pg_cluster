@@ -75,7 +75,7 @@
   ansible.builtin.file:
     path: /opt/keepalived/scripts
     state: directory
-    mode: '0755'
+    mode: "0755"
     owner: root
     group: root
   tags: keepalived_conf, keepalived
@@ -108,12 +108,12 @@
     #   d: /opt/keepalived/scripts
     - f: check_scripts/chk_patroni_leader.sh
       d: /opt/keepalived/scripts
-    # - f: check_scripts/chk_patroni_sync.sh
-    #   d: /opt/keepalived/scripts
+  # - f: check_scripts/chk_patroni_sync.sh
+  #   d: /opt/keepalived/scripts
   ansible.builtin.template:
-    src: '{{ item.f }}'
-    dest: '{{ item.d }}'
-    mode: '0755'
+    src: "{{ item.f }}"
+    dest: "{{ item.d }}"
+    mode: "0755"
     owner: root
     group: root
 
@@ -152,7 +152,7 @@
         line: "{{ item.line }}"
         backrefs: true
       loop:
-        - { regexp: '^.*interface', line: '   interface {{ vip_interface }}' }
+        - { regexp: "^.*interface", line: "   interface {{ vip_interface }}" }
       loop_control:
         label: "{{ item.line }}"
       notify: "Restart keepalived"
