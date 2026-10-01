@@ -16,8 +16,8 @@
 
 - name: Build TantorDB package specification
   ansible.builtin.set_fact:
-    tantordb_package_name: "tantor-{{ edition }}-server-{{ major_version }}"
-    tantordb_package_spec: >-
+    postgres_tantordb_package_name: "tantor-{{ edition }}-server-{{ major_version }}"
+    postgres_tantordb_package_spec: >-
       {{ 'tantor-' ~ edition ~ '-server-' ~ major_version ~
          (('=' if ansible_pkg_mgr == 'apt' else '-') ~ tantordb_package_version
           if tantordb_package_version | default('') | length > 0 else '') }}
@@ -25,7 +25,7 @@
 
 - name: Install TantorDB server (Debian package)
   ansible.builtin.apt:
-    name: "{{ tantordb_package_spec }}"
+    name: "{{ postgres_tantordb_package_spec }}"
     state: present
     allow_downgrade: true
   when:
@@ -34,7 +34,7 @@
 
 - name: Install TantorDB server (RPM package)
   ansible.builtin.dnf:
-    name: "{{ tantordb_package_spec }}"
+    name: "{{ postgres_tantordb_package_spec }}"
     state: present
     allow_downgrade: true
   when:
@@ -43,7 +43,7 @@
 
 - name: Install TantorDB server (ALT RPM package)
   community.general.apt_rpm:
-    name: "{{ tantordb_package_spec }}"
+    name: "{{ postgres_tantordb_package_spec }}"
     state: present
   when:
     - postgresql_vendor == 'tantordb'
@@ -51,7 +51,7 @@
 
 - name: Install TantorDB server (MosOS)
   community.general.zypper:
-    name: "{{ tantordb_package_spec }}"
+    name: "{{ postgres_tantordb_package_spec }}"
     state: present
     force_resolution: true
   when:

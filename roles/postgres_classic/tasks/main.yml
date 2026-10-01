@@ -19,15 +19,15 @@
 
     - name: Build classic PostgreSQL package specifications
       ansible.builtin.set_fact:
-        postgresql_deb_package_spec: >-
+        postgres_classic_deb_package_spec: >-
           {{ 'postgresql-' ~ major_version ~
              (('=' ~ postgresql_package_version)
               if postgresql_package_version | default('') | length > 0 else '') }}
-        postgresql_rpm_server_package_spec: >-
+        postgres_classic_rpm_server_package_spec: >-
           {{ 'postgresql' ~ major_version ~ '-server' ~
              (('-' ~ postgresql_package_version)
               if postgresql_package_version | default('') | length > 0 else '') }}
-        postgresql_rpm_contrib_package_spec: >-
+        postgres_classic_rpm_contrib_package_spec: >-
           {{ 'postgresql' ~ major_version ~ '-contrib' ~
              (('-' ~ postgresql_package_version)
               if postgresql_package_version | default('') | length > 0 else '') }}
@@ -155,7 +155,7 @@
         - name: Install postgresql-server (Debian)
           ansible.builtin.apt:
             name:
-              - "{{ postgresql_deb_package_spec }}"
+              - "{{ postgres_classic_deb_package_spec }}"
               - postgresql-contrib
               - libpq-dev
               - python3-psycopg2
@@ -204,8 +204,8 @@
         - name: Install PostgreSQL
           ansible.builtin.dnf:
             name:
-              - "{{ postgresql_rpm_server_package_spec }}"
-              - "{{ postgresql_rpm_contrib_package_spec }}"
+              - "{{ postgres_classic_rpm_server_package_spec }}"
+              - "{{ postgres_classic_rpm_contrib_package_spec }}"
               - postgresql-libs
               - python3-psycopg2
             state: present
@@ -236,7 +236,7 @@
         - name: Install postgresql-server (Astra)
           ansible.builtin.apt:
             name:
-              - "{{ postgresql_deb_package_spec }}"
+              - "{{ postgres_classic_deb_package_spec }}"
               - postgresql-contrib
               - libpq-dev
             state: present
@@ -253,8 +253,8 @@
         - name: Install PostgreSQL
           community.general.apt_rpm:
             name:
-              - "{{ postgresql_rpm_server_package_spec }}"
-              - "{{ postgresql_rpm_contrib_package_spec }}"
+              - "{{ postgres_classic_rpm_server_package_spec }}"
+              - "{{ postgres_classic_rpm_contrib_package_spec }}"
               - python3-module-psycopg2
             state: present
 
@@ -269,8 +269,8 @@
     - name: Install classic PostgreSQL (MosOS)
       community.general.zypper:
         name:
-          - "{{ postgresql_rpm_server_package_spec }}"
-          - "{{ postgresql_rpm_contrib_package_spec }}"
+          - "{{ postgres_classic_rpm_server_package_spec }}"
+          - "{{ postgres_classic_rpm_contrib_package_spec }}"
         state: present
         force_resolution: true
       when: ansible_pkg_mgr == 'zypper'

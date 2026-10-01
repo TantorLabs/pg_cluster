@@ -8,24 +8,24 @@
 
     - name: Set unified hostname fallback based on inventory format
       ansible.builtin.set_fact:
-        has_domain: "{{ '.' in inventory_hostname }}"
+        etcd_has_domain: "{{ '.' in inventory_hostname }}"
       when: unified_hostname is not defined or unified_hostname != inventory_hostname.split('.')[0]
 
     - name: Set unified hostname for FQDN inventory (fallback)
       ansible.builtin.set_fact:
-        unified_hostname: "{{ ansible_fqdn }}"
+        unified_hostname: "{{ ansible_fqdn }}"  # noqa: var-naming[no-role-prefix]
         cacheable: true
       when:
         - (unified_hostname is not defined or unified_hostname != inventory_hostname.split('.')[0])
-        - has_domain | default(false)
+        - etcd_has_domain | default(false)
 
     - name: Set unified hostname for non-FQDN inventory (fallback)
       ansible.builtin.set_fact:
-        unified_hostname: "{{ inventory_hostname }}"
+        unified_hostname: "{{ inventory_hostname }}"  # noqa: var-naming[no-role-prefix]
         cacheable: true
       when:
         - (unified_hostname is not defined or unified_hostname != inventory_hostname)
-        - not (has_domain | default(false))
+        - not (etcd_has_domain | default(false))
 
     - name: Debug final unified hostname
       ansible.builtin.debug:

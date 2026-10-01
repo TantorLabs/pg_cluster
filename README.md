@@ -327,23 +327,8 @@ passing them through a pipeline.
 MosOS 15.5 is supported through its native ``zypper`` package manager. During
 node preparation the playbook installs the required RPM prerequisites and
 disables ``firewalld`` on MosOS. TantorDB, classic PostgreSQL and the Tantor
-cluster components are installed with Zypper; a requested package version uses
-the RPM ``package-version`` format.
-
-When ``add_nexus_repo=true`` is set, ``prepare_nodes`` configures the repository
-from ``nexus_zypper_mosos_15_5``. Its default value is a placeholder for the
-expected repository:
-
-```text
-https://nexus-public.tantorlabs.ru/repository/mosos-15.5/
-```
-
-Until that repository is published, use a repository already configured on the
-MosOS hosts or override the URL from the pipeline:
-
-```bash
--e "add_nexus_repo=true nexus_zypper_mosos_15_5=<REPOSITORY_URL>"
-```
+cluster components are installed with Zypper; the required packages must be
+available in repositories already configured on the MosOS hosts.
 
 ## Launch with internet access
 
