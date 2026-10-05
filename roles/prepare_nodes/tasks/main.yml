@@ -1,22 +1,17 @@
 ---
 - name: Block for checking if hostnames are valid
   block:
-    - name: Gather inventory hostnames from all hosts
-      ansible.builtin.set_fact:
-        all_inventory_names: "{{ groups['all'] }}"
-      run_once: true
-
     - name: Extract domain part and count domain levels
       ansible.builtin.set_fact:
-        domain_part: "{{ inventory_hostname | regex_replace('^[^.]+\\.?', '') }}"
-        domain_levels: "{{ (inventory_hostname | regex_replace('^[^.]+\\.?', '')).split('.') | length if '.' in inventory_hostname else 0 }}"
-        has_domain: "{{ '.' in inventory_hostname }}"
+        prepare_nodes_domain_part: "{{ inventory_hostname | regex_replace('^[^.]+\\.?', '') }}"
+        prepare_nodes_domain_levels: "{{ (inventory_hostname | regex_replace('^[^.]+\\.?', '')).split('.') | length if '.' in inventory_hostname else 0 }}"
+        prepare_nodes_has_domain: "{{ '.' in inventory_hostname }}"
 
     - name: Collect domain information from all hosts
       ansible.builtin.set_fact:
-        all_domain_parts: "{{ ansible_play_hosts | map('extract', hostvars, 'domain_part') | list }}"
-        all_domain_levels: "{{ ansible_play_hosts | map('extract', hostvars, 'domain_levels') | list }}"
-        all_has_domain: "{{ ansible_play_hosts | map('extract', hostvars, 'has_domain') | list }}"
+        prepare_nodes_all_domain_parts: "{{ ansible_play_hosts | map('extract', hostvars, 'prepare_nodes_domain_part') | list }}"
+        prepare_nodes_all_domain_levels: "{{ ansible_play_hosts | map('extract', hostvars, 'prepare_nodes_domain_levels') | list }}"
+        prepare_nodes_all_has_domain: "{{ ansible_play_hosts | map('extract', hostvars, 'prepare_nodes_has_domain') | list }}"
       run_once: true
 
     - name: Check consistency of naming convention
@@ -26,35 +21,35 @@
           All hosts must have the same domain structure (same number of domain levels).
           Current hosts analysis:
           {% for host in ansible_play_hosts %}
-          - {{ host }}: {{ 'no domain' if not hostvars[host]['has_domain']
-              else hostvars[host]['domain_levels']|string + ' domain levels (' +
-              hostvars[host]['domain_part'] + ')' }}
+          - {{ host }}: {{ 'no domain' if not hostvars[host]['prepare_nodes_has_domain']
+              else hostvars[host]['prepare_nodes_domain_levels']|string + ' domain levels (' +
+              hostvars[host]['prepare_nodes_domain_part'] + ')' }}
           {% endfor %}
 
           Issues found:
-          {% if all_has_domain | unique | length > 1 %}
+          {% if prepare_nodes_all_has_domain | unique | length > 1 %}
           - Mixed hostname formats: some have domains, others don't
           {% endif %}
-          {% if all_domain_levels | unique | length > 1 %}
-          - Different domain levels: {{ all_domain_levels | unique | sort }}
+          {% if prepare_nodes_all_domain_levels | unique | length > 1 %}
+          - Different domain levels: {{ prepare_nodes_all_domain_levels | unique | sort }}
           {% endif %}
 
           Please ensure all hosts follow the same naming convention.
       when:
-        - (all_has_domain | unique | length > 1) or (all_domain_levels | unique | length > 1)
+        - (prepare_nodes_all_has_domain | unique | length > 1) or (prepare_nodes_all_domain_levels | unique | length > 1)
       run_once: true
 
     - name: Set unified hostname variable for FQDN inventory
-      ansible.builtin.set_fact:
+      ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
         unified_hostname: "{{ ansible_fqdn }}"
         cacheable: true
-      when: has_domain
+      when: prepare_nodes_has_domain
 
     - name: Set unified hostname variable for hostname-only inventory
-      ansible.builtin.set_fact:
+      ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
         unified_hostname: "{{ inventory_hostname }}"
         cacheable: true
-      when: not has_domain
+      when: not prepare_nodes_has_domain
 
 - name: "Configure hostname"
   ansible.builtin.hostname:
@@ -89,10 +84,14 @@
   ansible.builtin.include_tasks: rhel.yml
   when: ansible_os_family in ["RED", "Centos", "Rocky", "RedHat"]
 
+- name: Include task for SUSE-like systems (MosOS)
+  ansible.builtin.include_tasks: suse.yml
+  when: ansible_pkg_mgr == 'zypper'
+
 - name: Get content of /etc/security/limits.conf file
   ansible.builtin.lineinfile:
     path: /etc/security/limits.conf
-    regexp: '(postgres\shard)|(postgres\ssoft)'
+    regexp: "(postgres\\shard)|(postgres\\ssoft)"
     state: absent
   check_mode: true
   register: prepare_nodes_sec_limit
@@ -112,5 +111,5 @@
   when: ansible_env.PATH is not search("/opt/tantor/usr/bin:/opt/tantor/usr/sbin")
   ansible.builtin.copy:
     dest: /etc/profile.d/tantor.sh
-    content: 'PATH=$PATH:/opt/tantor/usr/bin:/opt/tantor/usr/sbin'
+    content: "PATH=$PATH:/opt/tantor/usr/bin:/opt/tantor/usr/sbin"
     mode: "0644"

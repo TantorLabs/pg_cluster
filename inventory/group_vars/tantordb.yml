@@ -1,4 +1,5 @@
 ---
 
-major_version: 16
+major_version: 17
 edition: "be"
+tantordb_package_version: ""

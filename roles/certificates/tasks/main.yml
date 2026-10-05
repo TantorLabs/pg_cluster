@@ -7,7 +7,7 @@
   ansible.builtin.file:
     path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Get all nodes from inventory
   ansible.builtin.set_fact:
@@ -104,7 +104,7 @@
     path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/{{ item }}-key.pem"
     size: 2048
     type: RSA
-    mode: '0644'
+    mode: "0644"
   loop: "{{ certificates_missing_cert_nodes }}"
   when: certificates_missing_cert_nodes | length > 0
 
@@ -137,7 +137,7 @@
     ownca_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca.pem"
     ownca_privatekey_path: "{{ playbook_dir }}/pki-dir/{{ certificates_inventory_name }}/ca-key.pem"
     provider: ownca
-    mode: '0644'
+    mode: "0644"
   loop: "{{ certificates_missing_cert_nodes }}"
   when: certificates_missing_cert_nodes | length > 0
 

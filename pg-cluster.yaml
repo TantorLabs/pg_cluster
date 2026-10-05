@@ -8,7 +8,7 @@
   become: true
   tags: prepare_nodes
   vars_files:
-    - 'inventory/group_vars/prepare_nodes.yml'
+    - "inventory/group_vars/prepare_nodes.yml"
   roles:
     - prepare_nodes
   any_errors_fatal: true
@@ -27,7 +27,7 @@
   become: true
   tags: etcd
   vars_files:
-    - 'inventory/group_vars/etcd.yml'
+    - "inventory/group_vars/etcd.yml"
   roles:
     - role: etcd
   any_errors_fatal: true
@@ -37,8 +37,8 @@
   become: true
   tags: postgres_tantordb
   vars_files:
-    - 'inventory/group_vars/etcd.yml'
-    - 'inventory/group_vars/tantordb.yml'
+    - "inventory/group_vars/etcd.yml"
+    - "inventory/group_vars/tantordb.yml"
   roles:
     - postgres_tantordb
   any_errors_fatal: true
@@ -48,8 +48,8 @@
   become: true
   tags: postgres_classic
   vars_files:
-    - 'inventory/group_vars/etcd.yml'
-    - 'inventory/group_vars/postgres_classic.yml'
+    - "inventory/group_vars/etcd.yml"
+    - "inventory/group_vars/postgres_classic.yml"
   roles:
     - postgres_classic
   any_errors_fatal: true
@@ -59,10 +59,10 @@
   become: true
   tags: patroni
   vars_files:
-    - 'inventory/group_vars/etcd.yml'
-    - 'inventory/group_vars/patroni.yml'
-    - 'inventory/group_vars/tantordb.yml'
-    - 'inventory/group_vars/postgres_classic.yml'
+    - "inventory/group_vars/etcd.yml"
+    - "inventory/group_vars/patroni.yml"
+    - "inventory/group_vars/tantordb.yml"
+    - "inventory/group_vars/postgres_classic.yml"
   roles:
     - patroni
   any_errors_fatal: true
@@ -72,9 +72,9 @@
   become: true
   tags: pgbouncer
   vars_files:
-    - 'inventory/group_vars/pgbouncer.yml'
-    - 'inventory/group_vars/etcd.yml'
-    - 'inventory/group_vars/patroni.yml'
+    - "inventory/group_vars/pgbouncer.yml"
+    - "inventory/group_vars/etcd.yml"
+    - "inventory/group_vars/patroni.yml"
   roles:
     - pgbouncer
   any_errors_fatal: true
@@ -84,10 +84,10 @@
   become: true
   tags: haproxy
   vars_files:
-    - 'inventory/group_vars/etcd.yml'
-    - 'inventory/group_vars/haproxy.yml'
-    - 'inventory/group_vars/patroni.yml'
-    - 'inventory/group_vars/pgbouncer.yml'
+    - "inventory/group_vars/etcd.yml"
+    - "inventory/group_vars/haproxy.yml"
+    - "inventory/group_vars/patroni.yml"
+    - "inventory/group_vars/pgbouncer.yml"
   roles:
     - haproxy
   any_errors_fatal: true
@@ -97,9 +97,9 @@
   become: true
   tags: keepalived
   vars_files:
-    - 'inventory/group_vars/etcd.yml'
-    - 'inventory/group_vars/patroni.yml'
-    - 'inventory/group_vars/keepalived.yml'
+    - "inventory/group_vars/etcd.yml"
+    - "inventory/group_vars/patroni.yml"
+    - "inventory/group_vars/keepalived.yml"
   roles:
     - keepalived
   any_errors_fatal: true

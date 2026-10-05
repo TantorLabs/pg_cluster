@@ -7,14 +7,15 @@ etcd_data_dir: /opt/tantor/var/lib/etcd
 
 etcd_master_group_name: inv_etcd
 
-etcd_secure: True
+etcd_secure: true
 etcd_bin_path: "/opt/tantor/usr/bin/etcdctl"
 etcd_conf_dir: "/opt/tantor/var/lib/etcd/pg-cluster.pki"
-etcd_pki_dir: "{{playbook_dir}}/pki-dir/{{ ansible_inventory_sources[0] | basename | regex_replace('\\.(ini|yml|yaml)$', '') }}"
+etcd_pki_dir: >-
+  {{ playbook_dir }}/pki-dir/{{ ansible_inventory_sources[0] | basename | regex_replace('\\.(ini|yml|yaml)$', '') }}
 etcd_pki_key_suffix: -key.pem
 etcd_pki_cert_suffix: .pem
 
-etcd_use_ips: True
+etcd_use_ips: true
 etcd_iface_public: '{{ etcd_network_iface | default("all") }}'
 etcd_iface_cluster: '{{ etcd_network_iface | default("default") }}'
 etcd_port_client: 2379
@@ -23,23 +24,27 @@ etcd_port_peer: 2380
 etcd_cluster_name: pg-cluster
 etcd_initial_cluster_token: d8bf8cc6-5158-11e6-8f13-3b32f4935bde
 
-etcd_init_system: systemd #**
-etcd_launch: True #**
+etcd_init_system: systemd # **
+etcd_launch: true # **
 
 etcd_scheme: "{% if etcd_secure %}https{% else %}http{% endif %}://"
-etcd_cluster: "{% for host in groups[etcd_master_group_name] %}{{ hostvars[host]['unified_hostname'] }}={{ etcd_scheme }}{{ hostvars[host]['ansible_default_ipv4'].address }}:{{ etcd_port_peer }}{% if not loop.last %},{% endif %}{% endfor %}"
+etcd_cluster: >-
+  {%- for host in groups[etcd_master_group_name] -%}
+  {{ hostvars[host]['unified_hostname'] }}={{ etcd_scheme }}{{ hostvars[host]['ansible_facts']['default_ipv4'].address }}:{{ etcd_port_peer -}}
+  {% if not loop.last %},{% endif -%}
+  {%- endfor -%}
 
-etcd_cluster_data_dir: '{{ etcd_data_dir }}/{{ etcd_cluster_name }}.etcd'
-etcd_cluster_pki_dir: '{{ etcd_data_dir }}/{{ etcd_cluster_name }}.pki'
+etcd_cluster_data_dir: "{{ etcd_data_dir }}/{{ etcd_cluster_name }}.etcd"
+etcd_cluster_pki_dir: "{{ etcd_data_dir }}/{{ etcd_cluster_name }}.pki"
 
-etcd_pki_key_file: '{{ inventory_hostname }}{{ etcd_pki_key_suffix }}'
-etcd_pki_key_src: '{{ etcd_pki_dir }}/{{ etcd_pki_key_file }}'
-etcd_pki_key_dest: '{{ etcd_cluster_pki_dir }}/{{ etcd_pki_key_file }}'
+etcd_pki_key_file: "{{ inventory_hostname }}{{ etcd_pki_key_suffix }}"
+etcd_pki_key_src: "{{ etcd_pki_dir }}/{{ etcd_pki_key_file }}"
+etcd_pki_key_dest: "{{ etcd_cluster_pki_dir }}/{{ etcd_pki_key_file }}"
 
-etcd_pki_cert_file: '{{ inventory_hostname }}{{ etcd_pki_cert_suffix }}'
-etcd_pki_cert_src: '{{ etcd_pki_dir }}/{{ etcd_pki_cert_file }}'
-etcd_pki_cert_dest: '{{ etcd_cluster_pki_dir }}/{{ etcd_pki_cert_file }}'
+etcd_pki_cert_file: "{{ inventory_hostname }}{{ etcd_pki_cert_suffix }}"
+etcd_pki_cert_src: "{{ etcd_pki_dir }}/{{ etcd_pki_cert_file }}"
+etcd_pki_cert_dest: "{{ etcd_cluster_pki_dir }}/{{ etcd_pki_cert_file }}"
 
-etcd_pki_ca_file: 'ca{{ etcd_pki_cert_suffix }}'
-etcd_pki_ca_cert_src: '{{ etcd_pki_dir }}/{{ etcd_pki_ca_file }}'
-etcd_pki_ca_cert_dest: '{{ etcd_cluster_pki_dir }}/{{ etcd_pki_ca_file }}'
+etcd_pki_ca_file: "ca{{ etcd_pki_cert_suffix }}"
+etcd_pki_ca_cert_src: "{{ etcd_pki_dir }}/{{ etcd_pki_ca_file }}"
+etcd_pki_ca_cert_dest: "{{ etcd_cluster_pki_dir }}/{{ etcd_pki_ca_file }}"
