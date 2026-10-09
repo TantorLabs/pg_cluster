@@ -84,9 +84,17 @@
   notify: Restart pgbouncer-tantor
 
 - name: Check if postgresql node is in master state
-  ansible.builtin.command:
-    cmd: su - postgres -s /bin/bash -c "psql -A -t -d postgres -c \"SELECT pg_is_in_recovery();\""
+  vars:
+    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
+  community.postgresql.postgresql_query:
+    login_host: 127.0.0.1
+    db: postgres
+    port: "5432"
+    query: SELECT pg_is_in_recovery() AS in_recovery;
+  become: true
+  become_user: postgres
   changed_when: false
+  check_mode: false
   register: pgbouncer_psql_node_status
 
 - name: Create pgbouncer role
@@ -94,18 +102,16 @@
     ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_user:
     login_host: 127.0.0.1
-    login_user: "{{ patroni_superuser_username }}"
-    login_password: "{{ patroni_superuser_password }}"
-    login_db: postgres
+    db: postgres
     name: "{{ pgbouncer_auth_user }}"
     password: "{{ pgbouncer_auth_user_passw }}"
     encrypted: true
     role_attr_flags: REPLICATION
     state: present
-    login_port: "{{ patroni_pg_port }}"
+    port: "5432"
   become: true
   become_user: postgres
-  when: pgbouncer_psql_node_status.stdout == 'f'
+  when: not pgbouncer_psql_node_status.query_result[0].in_recovery
 
 # The auth_user password has to be stored in plain text. PgBouncer opens its
 # own backend connection to run auth_query, and a SCRAM secret copied from
@@ -148,7 +154,7 @@
     login_db: postgres
     path: /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql
   changed_when: false
-  when: pgbouncer_psql_node_status.stdout == 'f'
+  when: not pgbouncer_psql_node_status.query_result[0].in_recovery
 
 - name: Remove legacy PgBouncer systemd override
   ansible.builtin.file:
