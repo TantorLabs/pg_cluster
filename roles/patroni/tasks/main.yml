@@ -472,7 +472,7 @@
     owner: "{{ patroni_system_user }}"
     group: "{{ patroni_system_group }}"
     mode: "0600"
-  when: (not patroni_conf.stat.exists) or (patroni_pg_wal_log_conf.found | bool)
+  when: (not patroni_conf.stat.exists) or (patroni_pg_wal_log_conf.found == 1)
 
 - name: Replace patroni_pg_wal_dir string from the patroni template to real variable
   ansible.builtin.replace:

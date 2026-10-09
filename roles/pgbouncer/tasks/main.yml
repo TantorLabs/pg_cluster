@@ -88,8 +88,8 @@
     ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_query:
     login_host: 127.0.0.1
-    db: postgres
-    port: "5432"
+    login_db: postgres
+    login_port: "5432"
     query: SELECT pg_is_in_recovery() AS in_recovery;
   become: true
   become_user: postgres
@@ -102,13 +102,13 @@
     ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
   community.postgresql.postgresql_user:
     login_host: 127.0.0.1
-    db: postgres
+    login_db: postgres
     name: "{{ pgbouncer_auth_user }}"
     password: "{{ pgbouncer_auth_user_passw }}"
     encrypted: true
     role_attr_flags: REPLICATION
     state: present
-    port: "5432"
+    login_port: "5432"
   become: true
   become_user: postgres
   when: not pgbouncer_psql_node_status.query_result[0].in_recovery
