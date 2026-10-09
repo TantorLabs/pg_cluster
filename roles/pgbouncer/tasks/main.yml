@@ -84,9 +84,17 @@
   notify: Restart pgbouncer-tantor
 
 - name: Check if postgresql node is in master state
-  ansible.builtin.command:
-    cmd: su - postgres -s /bin/bash -c "psql -A -t -d postgres -c \"SELECT pg_is_in_recovery();\""
+  vars:
+    ansible_python_interpreter: "/opt/tantor/usr/bin/python3"
+  community.postgresql.postgresql_query:
+    login_host: 127.0.0.1
+    db: postgres
+    port: "5432"
+    query: SELECT pg_is_in_recovery() AS in_recovery;
+  become: true
+  become_user: postgres
   changed_when: false
+  check_mode: false
   register: pgbouncer_psql_node_status
 
 - name: Create pgbouncer role
@@ -103,7 +111,7 @@
     port: "5432"
   become: true
   become_user: postgres
-  when: pgbouncer_psql_node_status.stdout == 'f'
+  when: not pgbouncer_psql_node_status.query_result[0].in_recovery
 
 - name: Read current PgBouncer authentication data
   vars:
@@ -166,7 +174,7 @@
     db: postgres
     path: /opt/tantor/etc/pgbouncer/pgbouncer_prepare.sql
   changed_when: false
-  when: pgbouncer_psql_node_status.stdout == 'f'
+  when: not pgbouncer_psql_node_status.query_result[0].in_recovery
 
 - name: Remove legacy PgBouncer systemd override
   ansible.builtin.file:
