@@ -330,7 +330,7 @@
     path: "{{ item }}"
     owner: "postgres"
     group: "postgres"
-    mode: '0750'
+    mode: '0700'
   loop:
     - "{{ patroni_pg_data_dir }}"
     - "{{ patroni_pg_config_dir }}"
