@@ -1,6 +1,9 @@
 # [member]
 ETCD_NAME="{{unified_hostname}}"
 ETCD_DATA_DIR="{{etcd_cluster_data_dir}}"
+ETCD_AUTO_COMPACTION_MODE="{{ etcd_auto_compaction_mode }}"
+ETCD_AUTO_COMPACTION_RETENTION="{{ etcd_auto_compaction_retention }}"
+ETCD_QUOTA_BACKEND_BYTES="{{ etcd_quota_backend_bytes }}"
 #ETCD_SNAPSHOT_COUNTER="10000"
 #ETCD_HEARTBEAT_INTERVAL="100"
 #ETCD_ELECTION_TIMEOUT="1000"

@@ -1,6 +1,10 @@
 ---
 etcd_package_version: ""
 
+etcd_auto_compaction_mode: periodic
+etcd_auto_compaction_retention: 1h
+etcd_quota_backend_bytes: 2147483648
+
 etcd_user: etcd
 etcd_group: etcd
 etcd_data_dir: /opt/tantor/var/lib/etcd
