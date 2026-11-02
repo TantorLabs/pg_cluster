@@ -36,6 +36,78 @@
     - postgresql_vendor == 'tantordb'
     - ansible_facts.pkg_mgr == 'apt'
 
+- name: Ensure PostgreSQL user has MIC level 63 on Astra Linux
+  when: ansible_facts.os_family == "Astra Linux"
+  block:
+    - name: Check if MIC is enabled
+      ansible.builtin.command: astra-mic-control status
+      register: mic_status_result
+      changed_when: false
+      failed_when: mic_status_result.rc != 0 and mic_status_result.rc != 1
+
+    - name: Normalize MIC status output
+      ansible.builtin.set_fact:
+        mic_normalized: >-
+          {{ ((mic_status_result.stdout | default('')) + (mic_status_result.stderr | default(''))) | lower }}
+
+    - name: Compute effective MIC active status (SAFE MODE)
+      ansible.builtin.set_fact:
+        mic_is_active: >-
+          {{ not (mic_normalized is search('неактивно|disabled|off|выключен|stopped')) }}
+
+    - name: Report MIC status analysis (DEBUG)
+      ansible.builtin.debug:
+        msg: |
+          Status MIC: {{ mic_normalized[:50] }}...mic_is_active: {{ mic_is_active }}
+      when: mic_normalized is defined
+
+    - name: Manage MIC rights for postgres user
+      when: mic_is_active | bool
+      block:
+        - name: Get current MIC level for postgres user
+          ansible.builtin.command: pdpl-user postgres
+          register: current_mic_level
+          changed_when: false
+          failed_when: current_mic_level.rc != 0
+          when: mic_is_active | bool
+
+        - name: Determine if MIC level 63 is already set
+          ansible.builtin.set_fact:
+            mic_level_is_63: >-
+              {{ (current_mic_level.stdout | default('')) is search('0:63:', ignorecase=true) }}
+          when:
+            - mic_is_active | bool
+            - current_mic_level is success
+
+        - name: Report - Is level 63 set?
+          ansible.builtin.debug:
+            msg: "Level 63 detected: {{ mic_level_is_63 }}"
+          when:
+            - mic_is_active | bool
+            - mic_level_is_63 is defined
+
+        - name: Grant MIC level 63 to postgres user if missing
+          ansible.builtin.command: pdpl-user -i 63 postgres
+          when:
+            - mic_is_active | bool
+            - current_mic_level is success
+            - not mic_level_is_63
+          register: pdpl_result
+          changed_when: pdpl_result.rc == 0 and not mic_level_is_63
+          failed_when: pdpl_result.rc != 0
+
+        - name: Report result if rights were applied
+          ansible.builtin.debug:
+            msg: "MIC level 63 successfully applied to user 'postgres' on {{ inventory_hostname }}"
+          when: pdpl_result is changed
+
+        - name: Report that MIC is active but rights already set
+          ansible.builtin.debug:
+            msg: "MIC is active, level 63 already set for user 'postgres' on {{ inventory_hostname }}"
+          when:
+            - pdpl_result is not changed
+            - current_mic_level is success
+
 - name: Install TantorDB server (RPM package)
   ansible.builtin.dnf:
     name: "{{ postgres_tantordb_package_spec }}"
