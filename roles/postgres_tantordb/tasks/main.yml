@@ -55,12 +55,6 @@
         mic_is_active: >-
           {{ not (mic_normalized is search('неактивно|disabled|off|выключен|stopped')) }}
 
-    - name: Report MIC status analysis (DEBUG)
-      ansible.builtin.debug:
-        msg: |
-          Status MIC: {{ mic_normalized[:50] }}...mic_is_active: {{ mic_is_active }}
-      when: mic_normalized is defined
-
     - name: Manage MIC rights for postgres user
       when: mic_is_active | bool
       block:
@@ -79,13 +73,6 @@
             - mic_is_active | bool
             - current_mic_level is success
 
-        - name: Report - Is level 63 set?
-          ansible.builtin.debug:
-            msg: "Level 63 detected: {{ mic_level_is_63 }}"
-          when:
-            - mic_is_active | bool
-            - mic_level_is_63 is defined
-
         - name: Grant MIC level 63 to postgres user if missing
           ansible.builtin.command: pdpl-user -i 63 postgres
           when:
@@ -95,18 +82,6 @@
           register: pdpl_result
           changed_when: pdpl_result.rc == 0 and not mic_level_is_63
           failed_when: pdpl_result.rc != 0
-
-        - name: Report result if rights were applied
-          ansible.builtin.debug:
-            msg: "MIC level 63 successfully applied to user 'postgres' on {{ inventory_hostname }}"
-          when: pdpl_result is changed
-
-        - name: Report that MIC is active but rights already set
-          ansible.builtin.debug:
-            msg: "MIC is active, level 63 already set for user 'postgres' on {{ inventory_hostname }}"
-          when:
-            - pdpl_result is not changed
-            - current_mic_level is success
 
 - name: Install TantorDB server (RPM package)
   ansible.builtin.dnf:
