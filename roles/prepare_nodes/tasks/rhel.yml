@@ -15,10 +15,13 @@
   when:
     - add_nexus_repo == 'true'
     - ansible_facts.pkg_mgr in ['yum', 'dnf']
-  ansible.builtin.get_url:
-    url: "{{ nexus_key_url }}"
-    dest: "/etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs"
-    mode: "0644"
+  become: true
+  command: >
+    wget -O /etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs "{{ nexus_key_url }}"
+  args:
+    creates: /etc/pki/rpm-gpg/RPM-GPG-KEY-tantorlabs
+  register: wget_result
+  failed_when: wget_result.rc != 0
 
 - name: Block for REDos
   when: add_nexus_repo == 'true'
