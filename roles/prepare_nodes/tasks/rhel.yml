@@ -1,7 +1,7 @@
 ---
 - name: Install prerequisite packages (yum or dnf)
   when:
-    - ansible_facts.pkg_mgr in ['yum', 'dnf', 'dnf5']
+    - ansible_facts.pkg_mgr in ['yum', 'dnf']
   ansible.builtin.package:
     name:
       - openssl
